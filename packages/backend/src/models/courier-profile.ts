@@ -69,18 +69,29 @@ const CourierPayoutSchema = new Schema<ICourierPayout>(
   { _id: false },
 );
 
+// GeoJSON Point sub-schema. Modelled as a sub-schema (not an inline nested
+// object) with `default: undefined` on the field so Mongoose NEVER auto-creates
+// an empty/partial `{ coordinates: [] }`. An empty value is invalid GeoJSON and
+// the 2dsphere index rejects the whole write (MongoServerError 16755). When the
+// courier sends a location ping the value is a complete, valid Point.
+const CourierGeoPointSchema = new Schema<ICourierGeoPoint>(
+  {
+    type: { type: String, enum: ['Point'], required: true, default: 'Point' },
+    // [lng, lat] per GeoJSON; required so the field is only ever a valid Point.
+    coordinates: { type: [Number], required: true },
+  },
+  { _id: false },
+);
+
 const CourierProfileSchema = new Schema<ICourierProfile>(
   {
     oxyUserId: { type: String, required: true },
     status: { type: String, enum: STATUSES as string[], default: 'pending' },
     onlineStatus: { type: String, enum: ONLINE_STATUSES as string[], default: 'offline' },
-    currentLocation: {
-      type: {
-        type: String,
-        enum: ['Point'],
-      },
-      coordinates: { type: [Number] },
-    },
+    // ABSENT until the courier sends a location ping (default: undefined). The
+    // 2dsphere index ignores documents missing the field, but rejects a present
+    // invalid one — so we must never persist an empty Point.
+    currentLocation: { type: CourierGeoPointSchema, default: undefined },
     lastPingAt: { type: Date },
     vehicleIds: { type: [String], default: [] },
     activeVehicleId: { type: String },
@@ -99,7 +110,7 @@ const CourierProfileSchema = new Schema<ICourierProfile>(
 );
 
 CourierProfileSchema.index({ oxyUserId: 1 }, { unique: true });
-CourierProfileSchema.index({ currentLocation: '2dsphere' });
+CourierProfileSchema.index({ currentLocation: '2dsphere' }, { sparse: true });
 CourierProfileSchema.index({ onlineStatus: 1, lastPingAt: -1 });
 
 export const CourierProfile: Model<ICourierProfile> =
