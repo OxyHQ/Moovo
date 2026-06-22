@@ -12,17 +12,12 @@ export const DEV_API_BASE_URL = 'http://localhost:3001';
 export const STAGING_API_BASE_URL = 'https://staging-api.moovo.now';
 export const PROD_API_BASE_URL = 'https://api.moovo.now';
 
-// Oxy SSO client id for Moovo.
-// HANDOFF: the committed fallback below is a TEMPORARY placeholder inherited
-// from the Mercaria base shell — it is NOT a registered Moovo RP client. A
-// dedicated Moovo Oxy RP application must be registered and its public client
-// id wired here (and into the EXPO_PUBLIC_OXY_CLIENT_ID build var) before the
-// SSO RP flow works for Moovo. The oxy_dk_ publicKey is a public client
-// identifier and is safe to commit; it is the fallback used when
-// EXPO_PUBLIC_OXY_CLIENT_ID is not injected at build.
+// Oxy SSO client id for Moovo. The committed fallback is Moovo's registered
+// public RP client id (oxy_dk_ publicKey) — a public client identifier, safe to
+// commit. EXPO_PUBLIC_OXY_CLIENT_ID overrides it when injected at build.
 export const OXY_CLIENT_ID =
   process.env.EXPO_PUBLIC_OXY_CLIENT_ID ??
-  'oxy_dk_8993efc30f18b2cfd361374634df4099a63a247df675132c';
+  'oxy_dk_f0348545dad800903773ddd598183e021cc81e01116ba60b';
 
 const ENV = {
   dev: {
