@@ -8,8 +8,12 @@
 // Common API envelope, pagination and utility types.
 export * from './common';
 
-// Money DTO.
+// Money DTO (inherited marketplace fiat money — retained until Phase 2).
 export * from './money';
+
+// FairCoin (FAIR) money contract — canonical Moovo money (FairMoney, DisplayMoney,
+// FairRate, SupportedCurrency, FAIR_* constants).
+export * from './fair-money';
 
 // Seller DTO.
 export * from './seller';

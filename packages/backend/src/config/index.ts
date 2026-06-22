@@ -35,6 +35,31 @@ function boolEnv(name: string, fallback: boolean): boolean {
   return ['1', 'true', 'yes', 'on'].includes(raw.trim().toLowerCase());
 }
 
+/**
+ * Read a non-empty string environment variable, falling back to `fallback` when
+ * the variable is unset or empty (after trimming).
+ */
+function strEnv(name: string, fallback: string): string {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') {
+    return fallback;
+  }
+  return raw.trim();
+}
+
+/**
+ * Parse a finite float environment variable, falling back to `fallback` when the
+ * variable is unset, empty, or not a finite number.
+ */
+function floatEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') {
+    return fallback;
+  }
+  const parsed = Number.parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 const MINUTE_MS = 60_000;
 
 export interface PaginationConfig {
@@ -99,12 +124,44 @@ export interface OrdersConfig {
   readonly lowStockThreshold: number;
 }
 
+export interface FairCoinConfig {
+  /**
+   * Base URL of the FairCoin Explorer API that serves the current FAIR price.
+   * The rate service appends the price path (`/api/price`) to this.
+   */
+  readonly explorerApiUrl: string;
+  /**
+   * How long a fetched rate is cached in-memory before the next read triggers a
+   * refresh. Keeps the Explorer from being hit on every conversion while still
+   * tracking the live rate.
+   */
+  readonly rateCacheTtlMs: number;
+  /**
+   * Timeout for a single Explorer price request. A slow Explorer must never hang
+   * a conversion; on timeout the service uses its cached/fallback rate.
+   */
+  readonly requestTimeoutMs: number;
+  /**
+   * The Explorer prices FAIR in USD only. This is the USD→EUR rate used to derive
+   * the EUR price of FAIR (EUR per FAIR = USD per FAIR × this). Sourced from
+   * config because the Explorer does not serve EUR; adjust per-deployment.
+   */
+  readonly usdToEurRate: number;
+  /**
+   * Last-resort fallback for the USD price of one FAIR, used ONLY when the
+   * Explorer is unreachable AND no cached rate exists yet. Never the primary
+   * source — the live Explorer rate always takes precedence.
+   */
+  readonly fallbackUsdPerFair: number;
+}
+
 export interface AppConfig {
   readonly pagination: PaginationConfig;
   readonly catalog: CatalogConfig;
   readonly feed: FeedConfig;
   readonly cart: CartConfig;
   readonly orders: OrdersConfig;
+  readonly faircoin: FairCoinConfig;
 }
 
 /**
@@ -137,5 +194,12 @@ export const config: AppConfig = Object.freeze({
     }),
     idempotencyTtlMs: intEnv('CHECKOUT_IDEMPOTENCY_TTL_MS', 10 * MINUTE_MS),
     lowStockThreshold: intEnv('LOW_STOCK_THRESHOLD', 5),
+  }),
+  faircoin: Object.freeze({
+    explorerApiUrl: strEnv('FAIRCOIN_EXPLORER_API_URL', 'https://explorer.fairco.in'),
+    rateCacheTtlMs: intEnv('FAIRCOIN_RATE_CACHE_TTL_MS', 5 * MINUTE_MS),
+    requestTimeoutMs: intEnv('FAIRCOIN_RATE_REQUEST_TIMEOUT_MS', 5_000),
+    usdToEurRate: floatEnv('FAIRCOIN_USD_TO_EUR_RATE', 0.92),
+    fallbackUsdPerFair: floatEnv('FAIRCOIN_FALLBACK_USD_PER_FAIR', 0.49),
   }),
 });
