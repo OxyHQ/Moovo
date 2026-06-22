@@ -55,3 +55,30 @@ Moovo's own couriers and external providers like DHL/FedEx).
 Icons and splash images under `packages/frontend/assets/` and
 `packages/frontend/public/` are still the Mercaria-era binaries. They are left
 as-is for a branding handoff — regenerate them with Moovo branding.
+
+## 6. Maps / native module dependencies (added for the courier UX)
+
+The three frontends now depend on map, location, and camera modules for the
+courier/transport UX:
+
+- `maplibre-gl` (5.24.0) — web map renderer, all three apps. Uses OpenStreetMap
+  tiles by default; **no API key required** for web. (No `@types/maplibre-gl` —
+  maplibre-gl ships its own bundled types; the `@types` stub is deprecated.)
+- `react-native-maps` (1.27.2) — native map, all three apps.
+- `expo-location` (~56.0.18) — GPS. `packages/frontend` (customer, when-in-use)
+  and `packages/courier-app` (Moovo Go, when-in-use + background for live
+  position pings). Config plugins + permission strings added to each `app.json`.
+- `expo-camera` (~56.0.8) — `packages/courier-app` only, for scanning
+  pickup/delivery QR codes. Config plugin + permission string added.
+
+**Platform split required (UI work, not done here):** the web bundle must NEVER
+import `react-native-maps`. The map component must be platform-split
+(`Map.web.tsx` → maplibre-gl, `Map.native.tsx` → react-native-maps).
+
+**Android native Maps key — DEFERRED:** `react-native-maps` on **Android**
+requires a Google Maps API key (`expo.android.config.googleMaps.apiKey` in
+`app.json`, sourced from a secret — do NOT hardcode). None is provisioned yet.
+- **Web** uses maplibre-gl / OSM → no key.
+- **iOS** native uses Apple Maps → no key.
+- **Android** native builds will show a blank map until a Google Maps key is
+  added. Provision the key and wire it before the first Android native build.

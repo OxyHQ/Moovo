@@ -44,7 +44,21 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-asset",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Moovo Go uses your location in the background to keep your delivery position live for the customer while you are on a job.",
+          "locationWhenInUsePermission": "Moovo Go uses your location to navigate to pickups and drop-offs and to share your live position during a delivery.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Scan pickup/delivery QR codes."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

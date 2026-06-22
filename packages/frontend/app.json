@@ -44,7 +44,13 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-asset",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Moovo uses your location to show nearby couriers and track your delivery in real time."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
