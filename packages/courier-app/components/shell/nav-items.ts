@@ -1,9 +1,7 @@
 import {
   Home,
-  LayoutGrid,
-  ShoppingCart,
-  Tag,
-  Heart,
+  Truck,
+  Settings,
   type LucideIcon,
 } from "lucide-react-native";
 
@@ -32,21 +30,19 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { key: "home", label: "Home", icon: Home, href: "/", available: true },
   {
-    key: "explore",
-    label: "Explore",
-    icon: LayoutGrid,
-    href: "/categories",
-    available: false,
+    key: "vehicles",
+    label: "Vehicles",
+    icon: Truck,
+    href: "/vehicles",
+    available: true,
   },
   {
-    key: "cart",
-    label: "Cart",
-    icon: ShoppingCart,
-    href: "/cart",
-    available: false,
+    key: "settings",
+    label: "Settings",
+    icon: Settings,
+    href: "/settings",
+    available: true,
   },
-  { key: "deals", label: "Deals", icon: Tag, href: "/offers", available: false },
-  { key: "saved", label: "Saved", icon: Heart, href: "/saved", available: false },
 ] as const;
 
 /**

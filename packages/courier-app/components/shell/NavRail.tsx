@@ -158,7 +158,7 @@ export function NavRail() {
     (item: NavItem) => {
       // Only navigate to routes that actually exist. Unavailable destinations
       // are intentional no-ops until their screens are built.
-      if (item.available && item.href === "/") router.push("/");
+      if (item.available) router.push(item.href);
     },
     [router]
   );

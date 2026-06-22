@@ -1,14 +1,15 @@
-import { View, ScrollView, Platform, ActivityIndicator } from "react-native";
+import { View, ScrollView, Platform, ActivityIndicator, Pressable } from "react-native";
 import Head from "expo-router/head";
 import { type ReactNode } from "react";
+import { useRouter } from "expo-router";
 import {
   useQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
 import { useOxy, showSignInModal } from "@oxyhq/services";
-import { FAIR_SYMBOL } from "@moovo/shared-types";
 import type { JobSummary } from "@moovo/shared-types";
+import { ChevronRight } from "lucide-react-native";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,7 +18,13 @@ import { MoovoWordmark } from "@/components/ui/moovo-wordmark";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { queryKeys } from "@/lib/hooks/query-keys";
 import { fetchCourierMe, goOnline, goOffline } from "@/lib/api/courier";
+import { acceptJob } from "@/lib/api/jobs";
 import { fetchCourierJobs } from "@/lib/api/jobs";
+import { formatDisplayMoney } from "@/lib/money";
+import { VehicleSelector } from "@/components/courier/VehicleSelector";
+import { OfferSheet } from "@/components/courier/OfferSheet";
+import { useJobSocket } from "@/lib/hooks/use-job-socket";
+import { isApiConflict, errorMessage } from "@/lib/api/errors";
 
 /** Spread (px) of the gutter-color mask around the rounded frame. Paints a ring
  *  of the gutter color over any content bleeding into the thin gutter + corners. */
@@ -98,37 +105,47 @@ function AvailabilityToggle({ canUsePrivateApi }: { canUsePrivateApi: boolean })
   );
 }
 
-/** A single job row. */
+/** A single job row — tapping it opens the active-job screen. */
 function JobCard({ job }: { job: JobSummary }) {
-  const { total } = job.totals;
-  // Render the converted display amount + its fiat currency when present, else
-  // fall back to the FAIR major amount with the FAIR glyph (never invent fields).
-  const totalLabel = total.display
-    ? `${total.display.amount} ${total.display.currency}`
-    : `${FAIR_SYMBOL}${total.fair}`;
+  const router = useRouter();
+  const { colors } = useColorScheme();
+  const totalLabel = formatDisplayMoney(job.totals.total);
 
   return (
-    <Card>
-      <CardContent className="gap-2 pt-5">
-        <View className="flex-row items-center justify-between gap-3">
-          <Text className="text-base font-semibold text-surface-foreground">
-            {job.jobNumber}
-          </Text>
-          <Text className="text-base font-semibold text-surface-foreground">
-            {totalLabel}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-2">
-          <Text className="text-sm capitalize text-muted-foreground">
-            {job.type}
-          </Text>
-          <Text className="text-sm text-muted-foreground">·</Text>
-          <Text className="text-sm capitalize text-muted-foreground">
-            {job.status.replace("_", " ")}
-          </Text>
-        </View>
-      </CardContent>
-    </Card>
+    <Pressable
+      onPress={() => router.push(`/jobs/${job.id}`)}
+      accessibilityRole="button"
+      accessibilityLabel={`Open job ${job.jobNumber}`}
+    >
+      <Card className="active:opacity-90 web:hover:opacity-90">
+        <CardContent className="flex-row items-center gap-3 pt-5">
+          <View className="flex-1 gap-2">
+            <View className="flex-row items-center justify-between gap-3">
+              <Text className="text-base font-semibold text-surface-foreground">
+                {job.jobNumber}
+              </Text>
+              <Text className="text-base font-semibold text-surface-foreground">
+                {totalLabel}
+              </Text>
+            </View>
+            <View className="flex-row items-center gap-2">
+              <Text className="text-sm capitalize text-muted-foreground">
+                {job.type}
+              </Text>
+              <Text className="text-sm text-muted-foreground">·</Text>
+              <Text className="text-sm capitalize text-muted-foreground">
+                {job.sizeClass}
+              </Text>
+              <Text className="text-sm text-muted-foreground">·</Text>
+              <Text className="text-sm capitalize text-muted-foreground">
+                {job.status.replace("_", " ")}
+              </Text>
+            </View>
+          </View>
+          <ChevronRight size={20} color={colors.mutedForeground} />
+        </CardContent>
+      </Card>
+    </Pressable>
   );
 }
 
@@ -152,9 +169,7 @@ function JobsList({ canUsePrivateApi }: { canUsePrivateApi: boolean }) {
   } else if (jobsQuery.isError) {
     body = (
       <Text className="py-10 text-center text-sm text-muted-foreground">
-        {jobsQuery.error instanceof Error
-          ? jobsQuery.error.message
-          : "Could not load jobs"}
+        {errorMessage(jobsQuery.error, "Could not load jobs")}
       </Text>
     );
   } else if (jobs.length === 0) {
@@ -181,27 +196,33 @@ function JobsList({ canUsePrivateApi }: { canUsePrivateApi: boolean }) {
   );
 }
 
-/** A visually-disabled "Coming soon" placeholder card (no logic). */
-function ComingSoonCard({ title }: { title: string }) {
-  return (
-    <Card className="flex-1 opacity-50">
-      <CardContent className="items-center gap-1 py-8">
-        <Text className="text-base font-semibold text-surface-foreground">
-          {title}
-        </Text>
-        <Text className="text-xs text-muted-foreground">Coming soon</Text>
-      </CardContent>
-    </Card>
-  );
-}
-
 /**
  * The courier home. Gates on Oxy cold-boot auth: a neutral loading state while
  * auth is undetermined, a branded sign-in prompt when resolved-and-signed-out,
- * and the online/offline toggle + assigned-jobs list when signed in.
+ * and the online/offline toggle + vehicle selector + assigned-jobs list when
+ * signed in. While signed in it subscribes to the real-time dispatch socket and
+ * surfaces incoming `job:offer`s as an accept/decline offer card.
  */
 function HomeBody() {
   const { isAuthenticated, isAuthResolved, canUsePrivateApi } = useOxy();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { offer, clearOffer } = useJobSocket();
+
+  const acceptMutation = useMutation({
+    mutationFn: (jobId: string) => acceptJob(jobId),
+    onSuccess: (response) => {
+      clearOffer();
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.courier });
+      const acceptedId = response.data?.id;
+      if (acceptedId) router.push(`/jobs/${acceptedId}`);
+    },
+    onError: (error) => {
+      // The offer was won by another courier (or otherwise no longer claimable):
+      // dismiss it. Other errors leave it up so the courier can retry.
+      if (isApiConflict(error)) clearOffer();
+    },
+  });
 
   // Cold-boot auth is still undetermined — neutral loading, never a sign-in flash.
   if (!isAuthResolved) {
@@ -213,14 +234,21 @@ function HomeBody() {
   }
   // Signed in — the courier "on the road" surface.
   return (
-    <View className="gap-6 px-4 py-8 md:px-8">
-      <AvailabilityToggle canUsePrivateApi={canUsePrivateApi} />
-      <JobsList canUsePrivateApi={canUsePrivateApi} />
-      <View className="flex-row gap-3">
-        <ComingSoonCard title="Map" />
-        <ComingSoonCard title="Scan QR" />
+    <>
+      <View className="gap-6 px-4 py-8 md:px-8">
+        <AvailabilityToggle canUsePrivateApi={canUsePrivateApi} />
+        <VehicleSelector canUsePrivateApi={canUsePrivateApi} />
+        <JobsList canUsePrivateApi={canUsePrivateApi} />
       </View>
-    </View>
+      {offer ? (
+        <OfferSheet
+          offer={offer}
+          accepting={acceptMutation.isPending}
+          onAccept={() => acceptMutation.mutate(offer.jobId)}
+          onDecline={clearOffer}
+        />
+      ) : null}
+    </>
   );
 }
 
