@@ -5,11 +5,11 @@ import { getRedisClient, getRedisSubClient } from './lib/redis.js';
 import { oxyClient } from './middleware/auth.js';
 import { log } from './lib/logger.js';
 
-const ALLOWED_ORIGINS = [
+const ALLOWED_ORIGINS: (string | RegExp)[] = [
   process.env.WEB_URL || 'http://localhost:3000',
   'https://moovo.now',
-  'https://console.moovo.now',
-  'https://gateway.moovo.now',
+  // Any one-level *.moovo.now subdomain (go = Moovo Go, hub = Moovo Hub, …).
+  /^https:\/\/[a-z0-9-]+\.moovo\.now$/,
 ];
 
 let io: Server | null = null;

@@ -67,12 +67,10 @@ server.on('connection', (socket) => {
 
 initSocket(server);
 
-// CORS — restricted to known origins
-const PRODUCTION_ORIGINS = [
-  'https://moovo.now',
-  'https://console.moovo.now',
-  'https://gateway.moovo.now',
-];
+// CORS — restricted to the Moovo first-party origins: the apex (customer app)
+// plus any one-level *.moovo.now subdomain (go = Moovo Go, hub = Moovo Hub, …).
+const MOOVO_APEX_ORIGIN = 'https://moovo.now';
+const MOOVO_SUBDOMAIN_ORIGIN = /^https:\/\/[a-z0-9-]+\.moovo\.now$/;
 
 const DEV_ORIGINS = [
   'http://localhost:3000',
@@ -82,11 +80,14 @@ const DEV_ORIGINS = [
   'http://10.0.2.2:8081',
 ];
 
-const allowedOrigins = [
+const staticAllowedOrigins = [
   ...(process.env.WEB_URL ? [process.env.WEB_URL] : []),
-  ...PRODUCTION_ORIGINS,
+  MOOVO_APEX_ORIGIN,
   ...DEV_ORIGINS,
 ];
+
+const isAllowedOrigin = (origin: string): boolean =>
+  staticAllowedOrigins.includes(origin) || MOOVO_SUBDOMAIN_ORIGIN.test(origin);
 
 app.use((req, res, next) => {
   cors({
@@ -94,7 +95,7 @@ app.use((req, res, next) => {
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (isAllowedOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
