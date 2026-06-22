@@ -45,6 +45,8 @@ WORKDIR /app
 COPY package.json bun.lock bunfig.toml ./
 COPY packages/backend/package.json ./packages/backend/package.json
 COPY packages/frontend/package.json ./packages/frontend/package.json
+COPY packages/courier-app/package.json ./packages/courier-app/package.json
+COPY packages/fleet-dashboard/package.json ./packages/fleet-dashboard/package.json
 COPY packages/shared-types/package.json ./packages/shared-types/package.json
 
 # Copy shared-types source before install so its `postinstall` (tsc) can build
