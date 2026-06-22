@@ -20,12 +20,23 @@
     "user": "Usuario",
     "done": "Listo",
     "tryAgain": "Reintentar",
-    "processing": "Procesando..."
+    "processing": "Procesando...",
+    "permissionDeniedTitle": "No tienes acceso",
+    "permissionDeniedBody": "Tu rol en esta empresa no te da acceso a esta sección."
   },
   "home": {
     "title": "Moovo Hub",
     "emptyTitle": "Aún no tienes empresas",
-    "emptySubtitle": "Crea una empresa para empezar a gestionar tu flota de reparto."
+    "emptySubtitle": "Crea una empresa para empezar a gestionar tu flota de reparto.",
+    "recentJobs": "Trabajos recientes",
+    "noRecentJobs": "Aún no hay trabajos.",
+    "kpi": {
+      "activeJobs": "Trabajos activos",
+      "activeVehicles": "Vehículos activos",
+      "completedToday": "Completados hoy",
+      "rating": "Valoración media",
+      "reviewsCount": "{{count}} reseñas"
+    }
   },
   "companies": {
     "heading": "Tus empresas",
@@ -45,7 +56,123 @@
   },
   "nav": {
     "home": "Inicio",
-    "settings": "Ajustes"
+    "settings": "Ajustes",
+    "dispatch": "Despacho",
+    "fleet": "Flota",
+    "members": "Miembros",
+    "stats": "Estadísticas"
+  },
+  "companyForm": {
+    "createTitle": "Nueva empresa",
+    "createSubtitle": "Crea una empresa para gestionar miembros, flota y trabajos.",
+    "settingsTitle": "Ajustes de la empresa",
+    "name": "Nombre de la empresa",
+    "namePlaceholder": "p. ej. Acme Couriers",
+    "description": "Descripción",
+    "descriptionHelper": "Opcional. Un breve resumen de tu empresa.",
+    "descriptionPlaceholder": "¿A qué se dedica tu empresa?",
+    "brandColor": "Color de marca",
+    "currency": "Moneda predeterminada",
+    "status": "Estado",
+    "createButton": "Crear empresa",
+    "created": "Empresa creada.",
+    "createFailed": "No se pudo crear la empresa.",
+    "saved": "Cambios guardados.",
+    "saveFailed": "No se pudieron guardar los cambios.",
+    "manageDenied": "Necesitas el permiso company:manage para editar los ajustes de la empresa."
+  },
+  "members": {
+    "listTitle": "{{count}} miembros",
+    "inviteTitle": "Invitar a un miembro",
+    "usernamePlaceholder": "Usuario de Oxy (p. ej. @alex)",
+    "inviteButton": "Invitar",
+    "inviteSuccess": "Miembro invitado.",
+    "inviteFailed": "No se pudo invitar a ese miembro.",
+    "roleUpdated": "Rol actualizado.",
+    "updateFailed": "No se pudo actualizar el miembro.",
+    "remove": "Eliminar",
+    "removed": "Miembro eliminado.",
+    "removeFailed": "No se pudo eliminar el miembro.",
+    "removeTitle": "Eliminar miembro",
+    "removeConfirm": "Esta persona perderá el acceso a la empresa. Puedes volver a invitarla más tarde.",
+    "joinedOn": "Se unió el {{date}}",
+    "manageDenied": "Necesitas el permiso members:manage para gestionar miembros.",
+    "role": {
+      "owner": "Propietario",
+      "dispatcher": "Despachador",
+      "driver": "Conductor"
+    }
+  },
+  "fleet": {
+    "addVehicle": "Añadir vehículo",
+    "editVehicle": "Editar vehículo",
+    "vehicleType": "Tipo de vehículo",
+    "label": "Etiqueta",
+    "labelHelper": "Opcional. Un nombre como \"Vespa roja\".",
+    "labelPlaceholder": "p. ej. Vespa roja",
+    "plate": "Matrícula",
+    "platePlaceholder": "p. ej. 1234-ABC",
+    "maxWeight": "Peso máx. (kg)",
+    "maxWeightHelper": "Opcional. Por defecto según el tipo de vehículo.",
+    "statusLabel": "Estado",
+    "statusActive": "Activo",
+    "statusInactive": "Inactivo",
+    "capacityKg": "{{kg}} kg",
+    "vehicleAdded": "Vehículo añadido.",
+    "addFailed": "No se pudo añadir el vehículo.",
+    "vehicleUpdated": "Vehículo actualizado.",
+    "updateFailed": "No se pudo actualizar el vehículo.",
+    "vehicleDeleted": "Vehículo eliminado.",
+    "deleteFailed": "No se pudo eliminar el vehículo.",
+    "deleteTitle": "Eliminar vehículo",
+    "deleteConfirm": "Este vehículo se eliminará de tu flota.",
+    "noVehicles": "Aún no hay vehículos. Añade el primero.",
+    "loadError": "No pudimos cargar tu flota.",
+    "readDenied": "No tienes acceso a la flota de esta empresa.",
+    "couriersTitle": "Mensajeros registrados ({{count}})",
+    "noCouriers": "Aún no hay mensajeros registrados.",
+    "type": {
+      "bike": "Bicicleta",
+      "scooter": "Patinete",
+      "car": "Coche",
+      "van": "Furgoneta",
+      "truck": "Camión"
+    }
+  },
+  "dispatch": {
+    "live": "En vivo",
+    "offline": "Sin conexión",
+    "courierHere": "Mensajero",
+    "activeTitle": "Trabajos activos ({{count}})",
+    "recentTitle": "Trabajos recientes",
+    "noActiveJobs": "No hay trabajos activos ahora mismo.",
+    "loadError": "No pudimos cargar los trabajos.",
+    "readDenied": "No tienes acceso a los trabajos de esta empresa.",
+    "scopeNoticeTitle": "Mostrando tus trabajos",
+    "scopeNoticeBody": "La API de trabajos está limitada a ti (como remitente o mensajero asignado). Un panel de despacho de toda la empresa necesita un endpoint de trabajos por empresa en el backend. Las actualizaciones en vivo aquí cubren los trabajos en los que participas.",
+    "status": {
+      "requested": "Solicitado",
+      "offered": "Ofrecido",
+      "accepted": "Aceptado",
+      "picked_up": "Recogido",
+      "in_transit": "En tránsito",
+      "delivered": "Entregado",
+      "cancelled": "Cancelado"
+    },
+    "type": {
+      "package": "Paquete",
+      "food": "Comida",
+      "move": "Mudanza"
+    }
+  },
+  "stats": {
+    "completedJobs": "Trabajos completados",
+    "reviews": "Reseñas",
+    "jobsByStatus": "Trabajos por estado",
+    "jobsSampleNote": "Basado en tus trabajos más recientes.",
+    "noJobsSample": "Aún no hay trabajos para resumir.",
+    "teamByRole": "Equipo por rol",
+    "readDenied": "Necesitas el permiso stats:read para ver las estadísticas."
   },
   "login": {
     "title": "Inicia sesión o regístrate",

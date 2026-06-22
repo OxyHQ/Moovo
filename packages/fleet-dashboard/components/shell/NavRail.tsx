@@ -156,9 +156,8 @@ export function NavRail() {
 
   const handlePress = useCallback(
     (item: NavItem) => {
-      // Only navigate to routes that actually exist. Unavailable destinations
-      // are intentional no-ops until their screens are built.
-      if (item.available && item.href === "/") router.push("/");
+      // Navigate to any available destination; unavailable items are no-ops.
+      if (item.available) router.push(item.href as Parameters<typeof router.push>[0]);
     },
     [router]
   );

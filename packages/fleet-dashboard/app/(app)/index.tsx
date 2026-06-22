@@ -1,224 +1,242 @@
-import { View, ScrollView, Platform, ActivityIndicator } from "react-native";
-import Head from "expo-router/head";
+import { View, ActivityIndicator } from "react-native";
 import { Link } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { useOxy, showSignInModal } from "@oxyhq/services";
-import type { Company } from "@moovo/shared-types";
+import {
+  Truck,
+  CheckCircle2,
+  Star,
+  Package,
+  Users,
+} from "lucide-react-native";
+import type { JobSummary } from "@moovo/shared-types";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MoovoWordmark } from "@/components/ui/moovo-wordmark";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { useTranslation } from "@/hooks/useTranslation";
-import { fetchCompanies } from "@/lib/api/companies";
+import { DashboardScreen } from "@/components/dashboard/DashboardScreen";
+import { CompanySelector } from "@/components/dashboard/CompanySelector";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { StatusChip } from "@/components/dashboard/StatusChip";
+import { NoCompaniesState } from "@/components/dashboard/CompanyHeader";
+import { useCompanyContext } from "@/lib/hooks/use-company-context";
+import { useJobSocket } from "@/lib/hooks/use-job-socket";
+import { fetchJobs } from "@/lib/api/jobs";
+import { fetchVehicles } from "@/lib/api/vehicles";
 import { queryKeys } from "@/lib/hooks/query-keys";
+import { useTranslation } from "@/hooks/useTranslation";
+import { formatMoney, formatTime, isActiveJob, jobTypeKey } from "@/lib/format";
+import { useI18nStore } from "@/lib/stores/i18n-store";
 
-/** Spread (px) of the gutter-color mask around the rounded frame. Paints a ring
- *  of the gutter color over any content bleeding into the thin gutter + corners. */
-const GUTTER_MASK_SPREAD = 40;
-
-/** Maps a company lifecycle status to its `companies.status.*` i18n key. */
-const STATUS_LABEL_KEY: Record<Company["status"], string> = {
-  active: "companies.status.active",
-  suspended: "companies.status.suspended",
-  closed: "companies.status.closed",
-};
-
-/** A single company tile in the dashboard grid. */
-function CompanyCard({ company }: { company: Company }) {
-  const { t } = useTranslation();
+/** Whether an ISO instant falls on today's local date. */
+function isToday(iso: string): boolean {
+  const d = new Date(iso);
+  const now = new Date();
   return (
-    <Card className="gap-3 p-4">
-      <View className="flex-row items-center gap-3">
-        {/* Brand accent — `company.brandColor` is a per-row runtime CSS color
-            from the API; there is no NativeWind class for an arbitrary color, so
-            an inline backgroundColor is the correct tool here. */}
-        <View
-          className="h-9 w-1.5 rounded-full"
-          style={{ backgroundColor: company.brandColor }}
-        />
-        <View className="min-w-0 flex-1">
-          <Text className="text-base font-semibold text-foreground" numberOfLines={1}>
-            {company.name}
-          </Text>
-          <Text className="text-sm text-muted-foreground" numberOfLines={1}>
-            {t("companies.membersCount", { count: company.members.length })}
-          </Text>
-        </View>
-      </View>
-      <View className="self-start rounded-full bg-muted px-2.5 py-1">
-        <Text className="text-xs font-medium text-muted-foreground">
-          {t(STATUS_LABEL_KEY[company.status])}
-        </Text>
-      </View>
-    </Card>
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
   );
 }
 
-/**
- * Moovo Hub home: the operator's companies.
- *
- * Auth-gated against the Oxy SDK — while the session is undetermined we show a
- * neutral loader; signed-out users get a branded sign-in prompt; signed-in
- * operators get their companies (fetched only once the private API is ready).
- */
+/** One recent-job row in the overview list. */
+function RecentJobRow({ job }: { job: JobSummary }) {
+  const { t } = useTranslation();
+  const locale = useI18nStore((s) => s.locale);
+  return (
+    <Link href={{ pathname: "/dispatch", params: { jobId: job.id } }} asChild>
+      <View className="flex-row items-center gap-3 border-b border-border px-1 py-3 web:cursor-pointer web:hover:bg-accent/40">
+        <View className="min-w-0 flex-1">
+          <Text className="text-sm font-semibold text-surface-foreground" numberOfLines={1}>
+            {job.jobNumber}
+          </Text>
+          <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+            {t(jobTypeKey(job.type))} · {formatTime(job.createdAt, locale)}
+          </Text>
+        </View>
+        <Text className="text-sm font-medium text-surface-foreground">
+          {formatMoney(job.totals.total)}
+        </Text>
+        <StatusChip status={job.status} />
+      </View>
+    </Link>
+  );
+}
+
 function HomeBody() {
   const { t } = useTranslation();
-  const { isAuthenticated, isAuthResolved, canUsePrivateApi } = useOxy();
+  const ctx = useCompanyContext();
 
-  const companiesQuery = useQuery({
-    queryKey: queryKeys.companies.all,
-    queryFn: fetchCompanies,
-    enabled: canUsePrivateApi,
+  // Live job stream once a company is selected (drives KPIs/recent refresh).
+  const hasCompany = ctx.selectedCompanyId !== null;
+  useJobSocket(ctx.canUsePrivateApi && hasCompany);
+
+  const jobsQuery = useQuery({
+    queryKey: queryKeys.jobs.list("sender"),
+    queryFn: () => fetchJobs({ role: "sender", limit: 50 }),
+    enabled: ctx.canUsePrivateApi && hasCompany,
   });
 
-  // Session still resolving (cold boot) — neutral loader, never flash signed-out.
-  if (!isAuthResolved) {
+  const vehiclesQuery = useQuery({
+    queryKey: ctx.selectedCompanyId
+      ? queryKeys.companies.vehicles(ctx.selectedCompanyId)
+      : ["companies", "none", "vehicles"],
+    queryFn: () => fetchVehicles(ctx.selectedCompanyId as string),
+    enabled: ctx.canUsePrivateApi && hasCompany,
+  });
+
+  if (ctx.isLoadingCompanies) {
     return (
-      <View className="min-h-[60vh] items-center justify-center px-8 py-24">
+      <View className="items-center py-16">
         <ActivityIndicator />
       </View>
     );
   }
 
-  // Resolved + signed out — branded sign-in prompt.
-  if (!isAuthenticated) {
+  if (ctx.isCompaniesError) {
     return (
-      <View className="min-h-[60vh] items-center justify-center gap-4 px-8 py-24">
-        <MoovoWordmark width={180} />
-        <Text className="text-center text-xl font-semibold text-foreground">
-          {t("companies.signInTitle")}
+      <View className="items-center gap-3 py-16">
+        <Text className="text-center text-base text-muted-foreground">
+          {t("companies.loadError")}
         </Text>
-        <Text className="max-w-md text-center text-base text-muted-foreground">
-          {t("companies.signInSubtitle")}
-        </Text>
-        <Button onPress={() => showSignInModal()} className="mt-2">
-          <Text className="text-sm font-medium text-primary-foreground">
-            {t("companies.signInButton")}
+        <Button variant="outline" onPress={ctx.refetchCompanies}>
+          <Text className="text-sm font-medium text-foreground">
+            {t("common.tryAgain")}
           </Text>
         </Button>
       </View>
     );
   }
 
-  const companies = companiesQuery.data?.data ?? [];
+  if (ctx.companies.length === 0) {
+    return <NoCompaniesState />;
+  }
+
+  const company = ctx.company;
+  const jobs = jobsQuery.data?.data ?? [];
+  const activeJobs = jobs.filter((j) => isActiveJob(j.status)).length;
+  const completedToday = jobs.filter(
+    (j) => j.status === "delivered" && isToday(j.createdAt),
+  ).length;
+  const activeVehicles =
+    vehiclesQuery.data?.filter((v) => v.status === "active").length ?? 0;
 
   return (
     <View className="gap-6 px-5 py-8 md:px-8">
       <View className="flex-row items-center justify-between gap-3">
-        <Text className="text-2xl font-bold text-foreground">
-          {t("companies.heading")}
+        <Text className="text-2xl font-bold text-foreground" numberOfLines={1}>
+          {company?.name ?? t("home.title")}
         </Text>
         <Link href="/companies/new" asChild>
-          <Button>
-            <Text className="text-sm font-medium text-primary-foreground">
+          <Button variant="outline" size="sm">
+            <Text className="text-sm font-medium text-foreground">
               {t("companies.createCompany")}
             </Text>
           </Button>
         </Link>
       </View>
 
-      {companiesQuery.isPending ? (
-        <View className="items-center py-16">
-          <ActivityIndicator />
+      <CompanySelector
+        companies={ctx.companies}
+        selectedCompanyId={ctx.selectedCompanyId}
+        onSelect={ctx.selectCompany}
+      />
+
+      {/* KPI grid */}
+      <View className="gap-3 md:flex-row md:flex-wrap">
+        <View className="flex-row gap-3">
+          <StatCard
+            label={t("home.kpi.activeJobs")}
+            value={String(activeJobs)}
+            icon={Package}
+            loading={jobsQuery.isPending}
+          />
+          <StatCard
+            label={t("home.kpi.activeVehicles")}
+            value={String(activeVehicles)}
+            icon={Truck}
+            loading={vehiclesQuery.isPending}
+          />
         </View>
-      ) : companiesQuery.isError ? (
-        <View className="items-center gap-3 py-16">
-          <Text className="text-center text-base text-muted-foreground">
-            {t("companies.loadError")}
-          </Text>
-          <Button variant="outline" onPress={() => companiesQuery.refetch()}>
-            <Text className="text-sm font-medium text-foreground">
-              {t("common.tryAgain")}
+        <View className="flex-row gap-3">
+          <StatCard
+            label={t("home.kpi.completedToday")}
+            value={String(completedToday)}
+            icon={CheckCircle2}
+            loading={jobsQuery.isPending}
+          />
+          <StatCard
+            label={t("home.kpi.rating")}
+            value={company ? company.rating.toFixed(1) : "—"}
+            caption={
+              company
+                ? t("home.kpi.reviewsCount", { count: company.reviewCount })
+                : undefined
+            }
+            icon={Star}
+            loading={ctx.isLoadingCompany}
+          />
+        </View>
+      </View>
+
+      {/* Quick links */}
+      <View className="flex-row flex-wrap gap-2">
+        <Link href="/dispatch" asChild>
+          <Button variant="secondary" size="sm">
+            <Text className="text-sm font-medium text-secondary-foreground">
+              {t("nav.dispatch")}
             </Text>
           </Button>
-        </View>
-      ) : companies.length === 0 ? (
-        <View className="items-center gap-4 py-16">
-          <Text className="text-center text-lg font-semibold text-foreground">
-            {t("home.emptyTitle")}
+        </Link>
+        <Link href="/fleet" asChild>
+          <Button variant="secondary" size="sm">
+            <Text className="text-sm font-medium text-secondary-foreground">
+              {t("nav.fleet")}
+            </Text>
+          </Button>
+        </Link>
+        <Link href="/members" asChild>
+          <Button variant="secondary" size="sm">
+            <Text className="text-sm font-medium text-secondary-foreground">
+              {t("nav.members")}
+            </Text>
+          </Button>
+        </Link>
+      </View>
+
+      {/* Recent jobs */}
+      <Card className="gap-1 p-4">
+        <View className="flex-row items-center justify-between pb-2">
+          <Text className="text-base font-semibold text-surface-foreground">
+            {t("home.recentJobs")}
           </Text>
-          <Text className="max-w-md text-center text-base text-muted-foreground">
-            {t("home.emptySubtitle")}
+          <View className="flex-row items-center gap-1.5">
+            <Users size={14} className="text-muted-foreground" />
+            <Text className="text-xs text-muted-foreground">
+              {t("companies.membersCount", {
+                count: company?.members.length ?? 0,
+              })}
+            </Text>
+          </View>
+        </View>
+        {jobsQuery.isPending ? (
+          <View className="items-center py-10">
+            <ActivityIndicator />
+          </View>
+        ) : jobs.length === 0 ? (
+          <Text className="py-8 text-center text-sm text-muted-foreground">
+            {t("home.noRecentJobs")}
           </Text>
-          <Link href="/companies/new" asChild>
-            <Button>
-              <Text className="text-sm font-medium text-primary-foreground">
-                {t("companies.createCompany")}
-              </Text>
-            </Button>
-          </Link>
-        </View>
-      ) : (
-        <View className="gap-4 md:grid md:grid-cols-2 md:gap-4 lg:grid-cols-3">
-          {companies.map((company) => (
-            <CompanyCard key={company.id} company={company} />
-          ))}
-        </View>
-      )}
+        ) : (
+          jobs.slice(0, 8).map((job) => <RecentJobRow key={job.id} job={job} />)
+        )}
+      </Card>
     </View>
   );
 }
 
 export default function HomeScreen() {
-  const { colors } = useColorScheme();
-  const isWeb = Platform.OS === "web";
-
-  const head = (
-    <Head>
-      <title>Moovo Hub</title>
-      <meta
-        name="description"
-        content="Moovo Hub — manage your delivery fleet, companies, and jobs."
-      />
-    </Head>
-  );
-
-  // WEB: the content flows in normal document flow (no vertical ScrollView) so the
-  // BODY scrolls — scrolling works from anywhere, incl. over the sticky rail and
-  // gutter (pure NativeWind classes, zero scroll JS).
-  if (isWeb) {
-    return (
-      <>
-        {head}
-        {/* Decorative rounded-panel frame + bleed mask (desktop only, gated by
-            CSS `max-md:hidden` — no JS width check). A STICKY overlay pinned to
-            the viewport; the negative bottom margin gives it ~0 layout height so
-            it doesn't push the content, while it frames the viewport and stays put
-            as the body scrolls under it. The `boxShadow` paints a ring of the
-            GUTTER color (Bloom `background` token — not hardcoded) around the
-            rounded rect; `clip-path: inset(-12px)` keeps that ring from spilling
-            onto the rail. `pointer-events-none` passes clicks. */}
-        <View
-          pointerEvents="none"
-          className="max-md:hidden web:sticky web:top-2 z-30 h-[calc(100dvh-16px)] w-full rounded-3xl border border-border web:[margin-bottom:calc(-100dvh+16px)] web:[clip-path:inset(-12px)]"
-          style={{
-            boxShadow: `0 0 0 ${GUTTER_MASK_SPREAD}px ${colors.background}`,
-          }}
-        />
-        {/* The content panel flows in the document and scrolls with the body,
-            passing under the sticky frame. Full-bleed below md, rounded card panel
-            at md+. The content is centered (`mx-auto max-w-[2000px]`). */}
-        <View className="relative w-full bg-card pb-24 web:min-h-screen web:overflow-x-clip md:rounded-3xl">
-          <View className="web:mx-auto web:w-full web:max-w-[2000px]">
-            <HomeBody />
-          </View>
-        </View>
-      </>
-    );
-  }
-
-  // NATIVE: a single full-height ScrollView (no document scroll on native).
   return (
-    <View className="flex-1 bg-card">
-      {head}
-      <ScrollView
-        className="flex-1 bg-card"
-        contentContainerClassName="pb-24"
-        keyboardShouldPersistTaps="handled"
-      >
-        <HomeBody />
-      </ScrollView>
-    </View>
+    <DashboardScreen title="Moovo Hub">
+      <HomeBody />
+    </DashboardScreen>
   );
 }

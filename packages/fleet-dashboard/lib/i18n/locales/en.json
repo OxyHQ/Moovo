@@ -20,12 +20,23 @@
     "user": "User",
     "done": "Done",
     "tryAgain": "Try Again",
-    "processing": "Processing..."
+    "processing": "Processing...",
+    "permissionDeniedTitle": "You don't have access",
+    "permissionDeniedBody": "Your role in this company doesn't grant access to this section."
   },
   "home": {
     "title": "Moovo Hub",
     "emptyTitle": "No companies yet",
-    "emptySubtitle": "Create a company to start managing your delivery fleet."
+    "emptySubtitle": "Create a company to start managing your delivery fleet.",
+    "recentJobs": "Recent jobs",
+    "noRecentJobs": "No jobs yet.",
+    "kpi": {
+      "activeJobs": "Active jobs",
+      "activeVehicles": "Active vehicles",
+      "completedToday": "Completed today",
+      "rating": "Avg rating",
+      "reviewsCount": "{{count}} reviews"
+    }
   },
   "companies": {
     "heading": "Your companies",
@@ -45,7 +56,123 @@
   },
   "nav": {
     "home": "Home",
-    "settings": "Settings"
+    "settings": "Settings",
+    "dispatch": "Dispatch",
+    "fleet": "Fleet",
+    "members": "Members",
+    "stats": "Stats"
+  },
+  "companyForm": {
+    "createTitle": "New company",
+    "createSubtitle": "Create a company to manage members, fleet and jobs.",
+    "settingsTitle": "Company settings",
+    "name": "Company name",
+    "namePlaceholder": "e.g. Acme Couriers",
+    "description": "Description",
+    "descriptionHelper": "Optional. A short summary of your company.",
+    "descriptionPlaceholder": "What does your company do?",
+    "brandColor": "Brand color",
+    "currency": "Default currency",
+    "status": "Status",
+    "createButton": "Create company",
+    "created": "Company created.",
+    "createFailed": "Couldn't create the company.",
+    "saved": "Changes saved.",
+    "saveFailed": "Couldn't save changes.",
+    "manageDenied": "You need the company:manage permission to edit company settings."
+  },
+  "members": {
+    "listTitle": "{{count}} members",
+    "inviteTitle": "Invite a member",
+    "usernamePlaceholder": "Oxy username (e.g. @alex)",
+    "inviteButton": "Invite",
+    "inviteSuccess": "Member invited.",
+    "inviteFailed": "Couldn't invite that member.",
+    "roleUpdated": "Role updated.",
+    "updateFailed": "Couldn't update the member.",
+    "remove": "Remove",
+    "removed": "Member removed.",
+    "removeFailed": "Couldn't remove the member.",
+    "removeTitle": "Remove member",
+    "removeConfirm": "This person will lose access to the company. You can re-invite them later.",
+    "joinedOn": "Joined {{date}}",
+    "manageDenied": "You need the members:manage permission to manage members.",
+    "role": {
+      "owner": "Owner",
+      "dispatcher": "Dispatcher",
+      "driver": "Driver"
+    }
+  },
+  "fleet": {
+    "addVehicle": "Add vehicle",
+    "editVehicle": "Edit vehicle",
+    "vehicleType": "Vehicle type",
+    "label": "Label",
+    "labelHelper": "Optional. A friendly name like \"Red Vespa\".",
+    "labelPlaceholder": "e.g. Red Vespa",
+    "plate": "Plate",
+    "platePlaceholder": "e.g. 1234-ABC",
+    "maxWeight": "Max weight (kg)",
+    "maxWeightHelper": "Optional. Defaults from the vehicle type.",
+    "statusLabel": "Status",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "capacityKg": "{{kg}} kg",
+    "vehicleAdded": "Vehicle added.",
+    "addFailed": "Couldn't add the vehicle.",
+    "vehicleUpdated": "Vehicle updated.",
+    "updateFailed": "Couldn't update the vehicle.",
+    "vehicleDeleted": "Vehicle removed.",
+    "deleteFailed": "Couldn't remove the vehicle.",
+    "deleteTitle": "Remove vehicle",
+    "deleteConfirm": "This vehicle will be removed from your fleet.",
+    "noVehicles": "No vehicles yet. Add your first one.",
+    "loadError": "We couldn't load your fleet.",
+    "readDenied": "You don't have access to this company's fleet.",
+    "couriersTitle": "Enrolled couriers ({{count}})",
+    "noCouriers": "No couriers enrolled yet.",
+    "type": {
+      "bike": "Bike",
+      "scooter": "Scooter",
+      "car": "Car",
+      "van": "Van",
+      "truck": "Truck"
+    }
+  },
+  "dispatch": {
+    "live": "Live",
+    "offline": "Offline",
+    "courierHere": "Courier",
+    "activeTitle": "Active jobs ({{count}})",
+    "recentTitle": "Recent jobs",
+    "noActiveJobs": "No active jobs right now.",
+    "loadError": "We couldn't load jobs.",
+    "readDenied": "You don't have access to this company's jobs.",
+    "scopeNoticeTitle": "Showing your jobs",
+    "scopeNoticeBody": "The jobs API is currently scoped to you (as sender or assigned courier). A company-wide dispatch feed needs a backend company-jobs endpoint. Live updates here cover jobs you are party to.",
+    "status": {
+      "requested": "Requested",
+      "offered": "Offered",
+      "accepted": "Accepted",
+      "picked_up": "Picked up",
+      "in_transit": "In transit",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "type": {
+      "package": "Package",
+      "food": "Food",
+      "move": "Move"
+    }
+  },
+  "stats": {
+    "completedJobs": "Completed jobs",
+    "reviews": "Reviews",
+    "jobsByStatus": "Jobs by status",
+    "jobsSampleNote": "Based on your most recent jobs.",
+    "noJobsSample": "No jobs to summarize yet.",
+    "teamByRole": "Team by role",
+    "readDenied": "You need the stats:read permission to view stats."
   },
   "login": {
     "title": "Sign in or sign up",

@@ -12,6 +12,12 @@ export const DEV_API_BASE_URL = 'http://localhost:3001';
 export const STAGING_API_BASE_URL = 'https://staging-api.moovo.now';
 export const PROD_API_BASE_URL = 'https://api.moovo.now';
 
+// OpenStreetMap raster tiles used by the web map (maplibre-gl). No API key
+// required — the public OSM tile server. `{s}`/`{z}`/`{x}`/`{y}` are filled in
+// by maplibre at render time.
+export const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+export const OSM_ATTRIBUTION = '© OpenStreetMap contributors';
+
 // Oxy SSO client id for Moovo Hub. The committed fallback is Moovo's registered
 // public RP client id (oxy_dk_ publicKey) — a public client identifier, safe to
 // commit. EXPO_PUBLIC_OXY_CLIENT_ID overrides it when injected at build.
@@ -56,4 +62,12 @@ const getEnvVars = () => {
   return ENV.dev;
 };
 
-export default getEnvVars();
+const env = getEnvVars();
+
+/**
+ * Socket.IO server URL. The Moovo backend serves Socket.IO from the same origin
+ * as the REST API, so the realtime URL is always the resolved API base URL.
+ */
+export const SOCKET_URL = env.apiUrl;
+
+export default env;

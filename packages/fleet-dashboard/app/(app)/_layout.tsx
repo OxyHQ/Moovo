@@ -28,7 +28,12 @@ export default function AppLayout() {
           <View className="flex-1 bg-background">
             <Stack screenOptions={SCREEN_OPTIONS}>
               <Stack.Screen name="index" />
+              <Stack.Screen name="dispatch" />
+              <Stack.Screen name="fleet" />
+              <Stack.Screen name="members" />
+              <Stack.Screen name="stats" />
               <Stack.Screen name="companies/new" />
+              <Stack.Screen name="companies/settings" />
               <Stack.Screen name="settings/index" />
               <Stack.Screen name="settings/general" />
               <Stack.Screen name="settings/feedback" />
