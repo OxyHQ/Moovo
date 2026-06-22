@@ -24,6 +24,8 @@ export const NOTIFICATION_TYPES = [
   'review_received',
   'store_member_invited',
   'low_inventory',
+  // Transport (courier company / fleet).
+  'company_member_invited',
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

@@ -22,6 +22,7 @@ import checkoutRouter from './routes/checkout.js';
 import ordersRouter from './routes/orders.js';
 import reviewsRouter from './routes/reviews.js';
 import sellerRouter from './routes/seller.js';
+import courierRouter from './routes/courier.js';
 import adminRouter from './routes/admin/index.js';
 
 // Socket.io
@@ -132,6 +133,7 @@ app.use('/checkout', checkoutRouter);
 app.use('/orders', ordersRouter);
 app.use('/reviews', reviewsRouter);
 app.use('/seller', sellerRouter);
+app.use('/courier', courierRouter);
 app.use('/admin', adminRouter);
 
 // Root route
@@ -153,6 +155,7 @@ app.get('/', (_req, res) => {
       '/orders',
       '/reviews',
       '/seller',
+      '/courier',
       '/admin',
     ]
   });

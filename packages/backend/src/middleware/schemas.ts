@@ -387,3 +387,131 @@ export const webPushSubscriptionSchema = z.object({
 export const webPushSubscriptionDeleteSchema = z.object({
   endpoint: z.string().trim().min(1),
 });
+
+// ---------------------------------------------------------------------------
+// Courier / transport — vehicles, location ping, active vehicle
+// ---------------------------------------------------------------------------
+
+const vehicleTypeSchema = z.enum(['bike', 'scooter', 'car', 'van', 'truck']);
+
+/** Cargo bounding dimensions (centimetres). */
+const dimsCmSchema = z.object({
+  l: z.number().positive(),
+  w: z.number().positive(),
+  h: z.number().positive(),
+});
+
+/** Optional capacity overrides; weight defaults from the capability table. */
+const vehicleCapacityInputSchema = z.object({
+  maxWeightKg: z.number().positive().optional(),
+  maxVolumeL: z.number().positive().optional(),
+  maxDimsCm: dimsCmSchema.optional(),
+});
+
+/** Body for `POST /courier/vehicles` and company `POST /vehicles` (CreateVehicleInput). */
+export const createVehicleSchema = z.object({
+  type: vehicleTypeSchema,
+  label: z.string().trim().min(1).max(120).optional(),
+  plate: z.string().trim().min(1).max(40).optional(),
+  capacity: vehicleCapacityInputSchema.optional(),
+});
+
+/** Body for vehicle `PATCH` endpoints (at least one field). */
+export const updateVehicleSchema = z
+  .object({
+    type: vehicleTypeSchema.optional(),
+    label: z.string().trim().min(1).max(120).optional(),
+    plate: z.string().trim().min(1).max(40).optional(),
+    capacity: vehicleCapacityInputSchema.optional(),
+    status: z.enum(['active', 'inactive']).optional(),
+  })
+  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+
+/** Body for `PATCH /courier/me` (editable courier preferences). */
+export const courierPrefsSchema = z
+  .object({
+    payout: z
+      .object({
+        accountRef: z.string().trim().min(1).max(200).optional(),
+      })
+      .optional(),
+  })
+  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+
+/** Body for `POST /courier/location` (a GeoJSON-friendly lng/lat ping). */
+export const locationPingSchema = z.object({
+  lng: z.number().min(-180).max(180),
+  lat: z.number().min(-90).max(90),
+});
+
+/** Body for `POST /courier/active-vehicle`. */
+export const setActiveVehicleSchema = z.object({
+  vehicleId: z.string().trim().min(1),
+});
+
+// ---------------------------------------------------------------------------
+// Courier company (fleet) + members
+// ---------------------------------------------------------------------------
+
+/** A GeoJSON point `[lng, lat]`. */
+const geoPointSchema = z.object({
+  type: z.literal('Point'),
+  coordinates: z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]),
+});
+
+/** A company service area (circle around a center point). */
+const serviceAreaSchema = z.object({
+  center: geoPointSchema,
+  radiusM: z.number().positive(),
+});
+
+/** Body for `POST /admin/companies` (CreateCompanyInput). */
+export const createCompanySchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  description: z.string().max(5_000).optional(),
+  brandColor: z.string().trim().min(1).optional(),
+  logoFileId: z.string().trim().min(1).optional(),
+  coverFileId: z.string().trim().min(1).optional(),
+  defaultCurrency: currencySchema.optional(),
+  serviceAreas: z.array(serviceAreaSchema).optional(),
+});
+
+const companyRoleSchema = z.enum(['owner', 'dispatcher', 'driver']);
+const companyPermissionSchema = z.enum([
+  'company:manage',
+  'members:manage',
+  'fleet:write',
+  'jobs:read',
+  'jobs:dispatch',
+  'stats:read',
+]);
+
+/** Body for `PATCH /admin/companies/:companyId` (UpdateCompanyInput). */
+export const updateCompanySchema = z
+  .object({
+    name: z.string().trim().min(1).max(120).optional(),
+    description: z.string().max(5_000).optional(),
+    brandColor: z.string().trim().min(1).optional(),
+    logoFileId: z.string().trim().min(1).optional(),
+    coverFileId: z.string().trim().min(1).optional(),
+    defaultCurrency: currencySchema.optional(),
+    serviceAreas: z.array(serviceAreaSchema).optional(),
+    textTone: z.enum(['light', 'dark']).optional(),
+    status: z.enum(['active', 'suspended', 'closed']).optional(),
+  })
+  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+
+/** Body for `POST /admin/companies/:companyId/members` (InviteCompanyMemberInput). */
+export const inviteCompanyMemberSchema = z.object({
+  oxyUserId: z.string().trim().min(1),
+  role: companyRoleSchema,
+  permissions: z.array(companyPermissionSchema).optional(),
+});
+
+/** Body for `PATCH /admin/companies/:companyId/members/:oxyUserId` (UpdateCompanyMemberInput). */
+export const updateCompanyMemberSchema = z
+  .object({
+    role: companyRoleSchema.optional(),
+    permissions: z.array(companyPermissionSchema).optional(),
+  })
+  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });

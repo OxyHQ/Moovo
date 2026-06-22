@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticateToken } from '../../middleware/auth.js';
 import { makeRateLimiter } from '../../lib/rate-limit.js';
 import storesRouter from './stores.js';
+import companiesRouter from './companies.js';
 
 /**
  * Admin API root, mounted at `/admin`.
@@ -16,5 +17,6 @@ const router = Router();
 router.use(makeRateLimiter('admin'), authenticateToken);
 
 router.use('/stores', storesRouter);
+router.use('/companies', companiesRouter);
 
 export default router;

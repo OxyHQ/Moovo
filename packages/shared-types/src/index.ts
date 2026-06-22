@@ -40,3 +40,9 @@ export * from './order';
 
 // Review DTOs (Review, ReviewTargetType, CreateReviewInput, RatingAggregate, …).
 export * from './review';
+
+// Courier domain DTOs (Courier, CourierProfile, Vehicle, JobType, SizeClass, …).
+export * from './courier';
+
+// Courier company (fleet) admin-facing DTOs (Company, CompanyMember, CompanyRole, …).
+export * from './company';
