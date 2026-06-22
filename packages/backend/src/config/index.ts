@@ -155,6 +155,69 @@ export interface FairCoinConfig {
   readonly fallbackUsdPerFair: number;
 }
 
+export interface PricingConfig {
+  /**
+   * Flat base fare per shipment type, in FAIR minor units. Charged once per job
+   * regardless of distance or size.
+   */
+  readonly baseFairMinor: {
+    /** Base fare for a package shipment. */
+    readonly package: number;
+    /** Base fare for a food shipment. */
+    readonly food: number;
+    /** Base fare for a move shipment. */
+    readonly move: number;
+  };
+  /**
+   * Distance rate in FAIR minor units charged per kilometre travelled
+   * (pickup→dropoff great-circle distance), rounded to whole minor units.
+   */
+  readonly perKmFairMinor: number;
+  /**
+   * Additive size surcharge per parcel size class, in FAIR minor units. `small`
+   * is typically 0; larger parcels add a flat surcharge.
+   */
+  readonly sizeSurchargeFairMinor: {
+    /** Surcharge for a small parcel. */
+    readonly small: number;
+    /** Surcharge for a medium parcel. */
+    readonly medium: number;
+    /** Surcharge for a large parcel. */
+    readonly large: number;
+  };
+  /**
+   * Flat platform/service fee added to every internal quote, in FAIR minor
+   * units. Set to 0 to disable the fee component.
+   */
+  readonly serviceFeeFairMinor: number;
+}
+
+export interface QuotesConfig {
+  /**
+   * How long a generated quote stays bookable. After this window the quote
+   * `expiresAt` lapses and a TTL index reaps the doc.
+   */
+  readonly ttlMs: number;
+  /**
+   * Per-provider timeout for an external quote request. A slow provider must
+   * never block other providers' quotes (each runs under `Promise.allSettled`).
+   */
+  readonly providerTimeoutMs: number;
+}
+
+export interface JobsConfig {
+  /**
+   * Maximum number of recent courier location pings retained on a job. Older
+   * pings are dropped via a `$slice` on push so the doc stays bounded.
+   */
+  readonly maxLocationPings: number;
+  /**
+   * TTL of a booking idempotency claim in Redis. A replayed booking within this
+   * window converges on the original job instead of creating a duplicate.
+   */
+  readonly idempotencyTtlMs: number;
+}
+
 export interface AppConfig {
   readonly pagination: PaginationConfig;
   readonly catalog: CatalogConfig;
@@ -162,6 +225,9 @@ export interface AppConfig {
   readonly cart: CartConfig;
   readonly orders: OrdersConfig;
   readonly faircoin: FairCoinConfig;
+  readonly pricing: PricingConfig;
+  readonly quotes: QuotesConfig;
+  readonly jobs: JobsConfig;
 }
 
 /**
@@ -201,5 +267,27 @@ export const config: AppConfig = Object.freeze({
     requestTimeoutMs: intEnv('FAIRCOIN_RATE_REQUEST_TIMEOUT_MS', 5_000),
     usdToEurRate: floatEnv('FAIRCOIN_USD_TO_EUR_RATE', 0.92),
     fallbackUsdPerFair: floatEnv('FAIRCOIN_FALLBACK_USD_PER_FAIR', 0.49),
+  }),
+  pricing: Object.freeze({
+    baseFairMinor: Object.freeze({
+      package: intEnv('PRICING_BASE_PACKAGE_FAIR_MINOR', 500),
+      food: intEnv('PRICING_BASE_FOOD_FAIR_MINOR', 400),
+      move: intEnv('PRICING_BASE_MOVE_FAIR_MINOR', 2000),
+    }),
+    perKmFairMinor: intEnv('PRICING_PER_KM_FAIR_MINOR', 120),
+    sizeSurchargeFairMinor: Object.freeze({
+      small: intEnv('PRICING_SIZE_SURCHARGE_SMALL_FAIR_MINOR', 0),
+      medium: intEnv('PRICING_SIZE_SURCHARGE_MEDIUM_FAIR_MINOR', 300),
+      large: intEnv('PRICING_SIZE_SURCHARGE_LARGE_FAIR_MINOR', 900),
+    }),
+    serviceFeeFairMinor: intEnv('PRICING_SERVICE_FEE_FAIR_MINOR', 100),
+  }),
+  quotes: Object.freeze({
+    ttlMs: intEnv('QUOTE_TTL_MS', 15 * MINUTE_MS),
+    providerTimeoutMs: intEnv('QUOTE_PROVIDER_TIMEOUT_MS', 5_000),
+  }),
+  jobs: Object.freeze({
+    maxLocationPings: intEnv('JOB_MAX_LOCATION_PINGS', 100),
+    idempotencyTtlMs: intEnv('JOB_BOOKING_IDEMPOTENCY_TTL_MS', 10 * MINUTE_MS),
   }),
 });

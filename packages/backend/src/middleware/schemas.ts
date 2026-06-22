@@ -515,3 +515,118 @@ export const updateCompanyMemberSchema = z
     permissions: z.array(companyPermissionSchema).optional(),
   })
   .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+
+// ---------------------------------------------------------------------------
+// Shipments / quotes / jobs (transport domain)
+// ---------------------------------------------------------------------------
+
+const shipmentTypeSchema = z.enum(['package', 'food', 'move']);
+const sizeClassSchema = z.enum(['small', 'medium', 'large']);
+
+/** A shipment endpoint's postal address. */
+const shipmentAddressSchema = z.object({
+  line1: z.string().trim().min(1).max(300),
+  line2: z.string().trim().min(1).max(300).optional(),
+  city: z.string().trim().min(1).max(150),
+  region: z.string().trim().min(1).max(150).optional(),
+  postalCode: z.string().trim().min(1).max(40),
+  country: z.string().trim().min(2).max(2),
+});
+
+/** A shipment endpoint (location + address + contact). */
+const shipmentEndpointSchema = z.object({
+  location: geoPointSchema,
+  address: shipmentAddressSchema,
+  contactName: z.string().trim().min(1).max(200),
+  contactPhone: z.string().trim().min(1).max(40),
+  notes: z.string().trim().max(2000).optional(),
+});
+
+/** Parcel/cargo details of a shipment. */
+const parcelDetailsSchema = z.object({
+  weightKg: z.number().nonnegative(),
+  dimsCm: dimsCmSchema.optional(),
+  sizeClass: sizeClassSchema,
+  pieces: z.number().int().positive(),
+  fragile: z.boolean().optional(),
+});
+
+/** When the shipment should be fulfilled. */
+const schedulingSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('now') }),
+  z.object({ kind: z.literal('scheduled'), scheduledFor: z.string().datetime() }),
+]);
+
+/** A shipment reference photo (Oxy media file id). */
+const shipmentPhotoSchema = z.object({
+  fileId: z.string().trim().min(1),
+  alt: z.string().trim().min(1).max(300).optional(),
+  position: z.number().int().nonnegative(),
+});
+
+/** Body for `POST /shipments` (CreateShipmentInput). */
+export const createShipmentSchema = z.object({
+  type: shipmentTypeSchema,
+  pickup: shipmentEndpointSchema,
+  dropoff: shipmentEndpointSchema,
+  parcel: parcelDetailsSchema,
+  itemDescription: z.string().trim().max(2000),
+  photos: z.array(shipmentPhotoSchema).optional(),
+  scheduling: schedulingSchema.optional(),
+});
+
+/** Query for shipment list endpoints (`page`/`limit` + optional `status`/`type`). */
+export const shipmentListQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().optional(),
+    status: z
+      .enum(['draft', 'quoting', 'quoted', 'booked', 'cancelled', 'expired'])
+      .optional(),
+    type: shipmentTypeSchema.optional(),
+  })
+  .passthrough();
+
+/** Body for `POST /shipments/:id/book` (BookShipmentInput). */
+export const bookShipmentSchema = z.object({
+  quoteId: z.string().trim().min(1),
+  idempotencyKey: z.string().trim().min(1).max(200).optional(),
+});
+
+/** Query for job list endpoints (`page`/`limit` + optional `status`/`role`). */
+export const jobListQuerySchema = z
+  .object({
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().optional(),
+    status: z
+      .enum(['requested', 'accepted', 'picked_up', 'in_transit', 'delivered', 'cancelled'])
+      .optional(),
+    role: z.enum(['sender', 'courier']).optional(),
+  })
+  .passthrough();
+
+/** Body for the job lifecycle transitions that accept an optional location. */
+export const jobLocationSchema = z
+  .object({
+    lng: z.number().min(-180).max(180).optional(),
+    lat: z.number().min(-90).max(90).optional(),
+  })
+  .refine((o) => (o.lng === undefined) === (o.lat === undefined), {
+    message: 'lng and lat must be provided together',
+  });
+
+/** Body for `POST /jobs/:id/location` (a required lng/lat ping). */
+export const jobLocationPingSchema = z.object({
+  lng: z.number().min(-180).max(180),
+  lat: z.number().min(-90).max(90),
+});
+
+/** Body for `POST /jobs/:id/deliver` (DeliverInput + optional location). */
+export const deliverJobSchema = z.object({
+  photoFileId: z.string().trim().min(1).optional(),
+  signatureFileId: z.string().trim().min(1).optional(),
+  note: z.string().trim().max(2000).optional(),
+  recipientName: z.string().trim().min(1).max(200).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+  lat: z.number().min(-90).max(90).optional(),
+});

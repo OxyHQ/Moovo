@@ -23,6 +23,8 @@ import ordersRouter from './routes/orders.js';
 import reviewsRouter from './routes/reviews.js';
 import sellerRouter from './routes/seller.js';
 import courierRouter from './routes/courier.js';
+import shipmentsRouter from './routes/shipments.js';
+import jobsRouter from './routes/jobs.js';
 import adminRouter from './routes/admin/index.js';
 
 // Socket.io
@@ -134,6 +136,8 @@ app.use('/orders', ordersRouter);
 app.use('/reviews', reviewsRouter);
 app.use('/seller', sellerRouter);
 app.use('/courier', courierRouter);
+app.use('/shipments', shipmentsRouter);
+app.use('/jobs', jobsRouter);
 app.use('/admin', adminRouter);
 
 // Root route
@@ -156,6 +160,8 @@ app.get('/', (_req, res) => {
       '/reviews',
       '/seller',
       '/courier',
+      '/shipments',
+      '/jobs',
       '/admin',
     ]
   });
@@ -199,6 +205,17 @@ process.on('uncaughtException', (error) => {
 // Connect to MongoDB before starting the server
 connectDB()
   .then(() => {
+    // Register the built-in external-provider adapters, then idempotently seed an
+    // enabled Provider doc per mock carrier so quotes surface external options.
+    import('./services/providers/register-adapters.js')
+      .then(({ registerBuiltInAdapters }) => {
+        registerBuiltInAdapters();
+        return import('./services/providers/seed-providers.js').then(({ seedProviders }) =>
+          seedProviders(),
+        );
+      })
+      .catch((err) => log.general.error({ err }, 'Provider adapter registration/seed failed'));
+
     server.listen(PORT, '0.0.0.0', () => {
       log.general.info({ port: PORT }, `API Server running on http://0.0.0.0:${PORT}`);
       // Verify Redis connectivity (non-blocking)

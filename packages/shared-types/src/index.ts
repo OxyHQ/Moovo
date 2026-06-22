@@ -50,3 +50,16 @@ export * from './courier';
 
 // Courier company (fleet) admin-facing DTOs (Company, CompanyMember, CompanyRole, …).
 export * from './company';
+
+// Shipment DTOs (Shipment, ShipmentType, ShipmentStatus, ShipmentEndpoint, ParcelDetails, …).
+// NOTE: GeoPoint/DimensionsCm/SizeClass are reused from './courier' (not re-declared here).
+export * from './shipment';
+
+// Quote DTOs (Quote, QuoteSource, PriceBreakdown, DisplayPriceBreakdown, QuoteList, …).
+export * from './quote';
+
+// Job DTOs (Job, JobStatus, FulfillmentType, JobStatusEvent, BookShipmentInput, …).
+export * from './job';
+
+// External-provider DTOs (Provider, ProviderSummary, ProviderQuote).
+export * from './provider';

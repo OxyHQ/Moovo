@@ -13,8 +13,12 @@ import mongoose, { Schema, Model } from 'mongoose';
 const ORDER_COUNTER_ID = 'order';
 /** Prefix prepended to every order number. */
 const ORDER_NUMBER_PREFIX = 'MRC-';
-/** Zero-padding width of the numeric portion of an order number. */
-const ORDER_NUMBER_PAD = 6;
+/** The sequence name used for job numbers. */
+const JOB_COUNTER_ID = 'job';
+/** Prefix prepended to every job number. */
+const JOB_NUMBER_PREFIX = 'MOV-';
+/** Zero-padding width of the numeric portion of a sequence number. */
+const NUMBER_PAD = 6;
 
 export interface ICounter {
   /** The sequence name (e.g. `'order'`). */
@@ -43,5 +47,20 @@ export async function nextOrderNumber(): Promise<string> {
     { upsert: true, new: true },
   );
   const seq = doc?.seq ?? 0;
-  return `${ORDER_NUMBER_PREFIX}${String(seq).padStart(ORDER_NUMBER_PAD, '0')}`;
+  return `${ORDER_NUMBER_PREFIX}${String(seq).padStart(NUMBER_PAD, '0')}`;
+}
+
+/**
+ * Atomically allocate the next job number. Upserts + `$inc`s the `'job'` counter
+ * and formats the new value as `MOV-<zero-padded seq>`. Two concurrent bookings
+ * always receive distinct numbers.
+ */
+export async function nextJobNumber(): Promise<string> {
+  const doc = await Counter.findByIdAndUpdate(
+    JOB_COUNTER_ID,
+    { $inc: { seq: 1 } },
+    { upsert: true, new: true },
+  );
+  const seq = doc?.seq ?? 0;
+  return `${JOB_NUMBER_PREFIX}${String(seq).padStart(NUMBER_PAD, '0')}`;
 }

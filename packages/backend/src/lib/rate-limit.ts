@@ -31,7 +31,9 @@ export type RateLimitScope =
   | 'admin'
   | 'search'
   | 'courier'
-  | 'company';
+  | 'company'
+  | 'shipments'
+  | 'jobs';
 
 /**
  * Build a rate-limit middleware for a scope. The scope drives a unique
