@@ -20,10 +20,7 @@ const HEART_SIZE = 18;
 
 export interface ProductCardProps {
   product: ProductSummary;
-  /**
-   * Initial saved/favorited state. Overrides `product.saved` when provided;
-   * otherwise the card seeds from the DTO's `saved` flag.
-   */
+  /** Initial saved/favorited state for the local heart toggle (defaults to false). */
   saved?: boolean;
   onPress?: (id: string) => void;
   onToggleSave?: (id: string, nextSaved: boolean) => void;
@@ -37,7 +34,7 @@ function isOnSale(product: ProductSummary): boolean {
 }
 
 export function ProductCard({ product, saved, onPress, onToggleSave }: ProductCardProps) {
-  const [isSaved, setIsSaved] = useState(saved ?? product.saved ?? false);
+  const [isSaved, setIsSaved] = useState(saved ?? false);
   const onSale = isOnSale(product);
   const discountPercent =
     onSale && product.compareAtPrice

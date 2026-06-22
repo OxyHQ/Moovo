@@ -20,7 +20,7 @@ export * from './variant';
 // Listing domain entity, enums and request payloads.
 export * from './listing';
 
-// Product/merchant browse/feed DTOs (ProductSummary, MerchantSummary, FeedSection, Feed).
+// Product/merchant browse DTOs (ProductSummary, MerchantSummary, Category, CategoryPill).
 export * from './product';
 
 // Store (shop) admin-facing DTOs (Store, StoreMember, StoreRole, StorePermission).

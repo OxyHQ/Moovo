@@ -41,12 +41,12 @@ async function loadOwnedListing(listingId: string, oxyUserId: string): Promise<I
 }
 
 /** Hydrate a single listing by id into its `Listing` DTO. */
-async function hydrateById(listingId: string, viewerId: string): Promise<ListingDTO | undefined> {
+async function hydrateById(listingId: string): Promise<ListingDTO | undefined> {
   const doc = await Listing.findById(listingId).lean<IListing | null>();
   if (!doc) {
     return undefined;
   }
-  const [dto] = await hydrateListings([doc], { viewerId });
+  const [dto] = await hydrateListings([doc]);
   return dto;
 }
 
@@ -66,7 +66,7 @@ export async function listMyListings(req: Request, res: Response): Promise<void>
       Listing.countDocuments(filter),
     ]);
 
-    const data = await hydrateListings(docs, { viewerId: oxyUserId });
+    const data = await hydrateListings(docs);
     sendPaginated(res, data, buildPagination(page, limit, total));
   } catch (err) {
     log.general.error({ err }, 'Failed to list seller listings');
@@ -79,7 +79,7 @@ export async function createMyListing(req: Request, res: Response): Promise<void
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const listingId = await createP2PListing(oxyUserId, req.body as CreateP2PListingInput);
-    const dto = await hydrateById(listingId, oxyUserId);
+    const dto = await hydrateById(listingId);
     sendSuccess(res, dto, 201);
   } catch (err) {
     log.general.error({ err }, 'Failed to create seller listing');
@@ -93,7 +93,7 @@ export async function getMyListing(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     await loadOwnedListing(id, oxyUserId);
-    const dto = await hydrateById(id, oxyUserId);
+    const dto = await hydrateById(id);
     if (!dto) {
       throw notFound('Listing not found');
     }
@@ -111,7 +111,7 @@ export async function updateMyListing(req: Request, res: Response): Promise<void
     const oxyUserId = getRequiredOxyUserId(req);
     await loadOwnedListing(id, oxyUserId);
     await updateListing(id, req.body as UpdateListingInput);
-    const dto = await hydrateById(id, oxyUserId);
+    const dto = await hydrateById(id);
     sendSuccess(res, dto);
   } catch (err) {
     log.general.error({ err, listingId: id }, 'Failed to update seller listing');

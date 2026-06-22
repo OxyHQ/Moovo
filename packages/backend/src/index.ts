@@ -14,10 +14,8 @@ import authRouter from './routes/auth.js';
 import feedbackRouter from './routes/feedback.js';
 import notificationsRouter from './routes/notifications.js';
 import listingsRouter from './routes/listings.js';
-import feedRouter from './routes/feed.js';
 import categoriesRouter from './routes/categories.js';
 import storesRouter from './routes/stores.js';
-import favoritesRouter from './routes/favorites.js';
 import cartRouter from './routes/cart.js';
 import addressesRouter from './routes/addresses.js';
 import checkoutRouter from './routes/checkout.js';
@@ -126,10 +124,8 @@ app.use('/auth', authRouter);
 app.use('/feedback', feedbackRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/listings', listingsRouter);
-app.use('/feed', feedRouter);
 app.use('/categories', categoriesRouter);
 app.use('/stores', storesRouter);
-app.use('/favorites', favoritesRouter);
 app.use('/cart', cartRouter);
 app.use('/addresses', addressesRouter);
 app.use('/checkout', checkoutRouter);
@@ -149,10 +145,8 @@ app.get('/', (_req, res) => {
       '/feedback',
       '/notifications',
       '/listings',
-      '/feed',
       '/categories',
       '/stores',
-      '/favorites',
       '/cart',
       '/addresses',
       '/checkout',

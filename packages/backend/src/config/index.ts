@@ -52,18 +52,6 @@ export interface CatalogConfig {
 }
 
 export interface FeedConfig {
-  /** TTL (seconds) of the assembled home feed cached in Redis. */
-  readonly cacheTtlSeconds: number;
-  /** Number of products in the "New arrivals" shelf. */
-  readonly newArrivalsSize: number;
-  /** Number of products in the "On sale" shelf. */
-  readonly onSaleSize: number;
-  /** Number of stores in the "Worth the hype" merchant shelf. */
-  readonly merchantsSize: number;
-  /** Number of top-level categories shown in the "Shop by category" shelf. */
-  readonly categoriesSize: number;
-  /** Number of subcategory tiles shown per category card (2×2 grid). */
-  readonly categoryTilesPerCard: number;
   /** Number of thumbnails shown on a store/merchant card. */
   readonly storeCardThumbnails: number;
 }
@@ -133,12 +121,6 @@ export const config: AppConfig = Object.freeze({
     maxImagesPerListing: intEnv('MAX_IMAGES_PER_LISTING', 12),
   }),
   feed: Object.freeze({
-    cacheTtlSeconds: intEnv('FEED_CACHE_TTL_SECONDS', 60),
-    newArrivalsSize: intEnv('FEED_NEW_ARRIVALS_SIZE', 12),
-    onSaleSize: intEnv('FEED_ON_SALE_SIZE', 12),
-    merchantsSize: intEnv('FEED_MERCHANTS_SIZE', 8),
-    categoriesSize: intEnv('FEED_CATEGORIES_SIZE', 8),
-    categoryTilesPerCard: intEnv('FEED_CATEGORY_TILES_PER_CARD', 4),
     storeCardThumbnails: intEnv('FEED_STORE_CARD_THUMBNAILS', 3),
   }),
   cart: Object.freeze({

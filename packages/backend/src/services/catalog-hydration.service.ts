@@ -6,8 +6,7 @@
  *   1. batch-load every listing's variants,
  *   2. batch-load seller profiles (user listings) and stores (store listings),
  *   3. batch-load every owning user's Oxy profile in one `getProfiles` call,
- *   4. (optional) batch-load the viewer's favorites to set `saved`,
- *   5. assemble each DTO with derived price fields + owner identity + media.
+ *   4. assemble each DTO with derived price fields + owner identity + media.
  *
  * Media resolution is funneled through ONE chokepoint (`resolveMedia`): absolute
  * URLs pass through unchanged (e.g. seeded Shopify CDN assets), everything else
@@ -33,10 +32,8 @@ import { SellerProfile, type ISellerProfile } from '../models/seller-profile.js'
 import { Store, type IStore } from '../models/store.js';
 import type { IListing } from '../models/listing.js';
 import { config } from '../config/index.js';
-import { log } from '../lib/logger.js';
 import { oxyClient } from '../middleware/auth.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
-import { getFavoritedListingIds } from './favorite.service.js';
 
 /** Matches an absolute http(s) URL (seeded CDN assets pass through unchanged). */
 const ABSOLUTE_URL = /^https?:\/\//i;
@@ -201,27 +198,8 @@ export function toProductSummary(
 
 /** Options for hydrating listings. */
 export interface HydrateOptions {
-  /** When set, drives the `saved` flag from the viewer's favorites. */
-  viewerId?: string;
   /** Reserved for future linked-client injection; defaults to the shared client. */
   oxyClient?: OxyServices;
-}
-
-/**
- * Batch-load the set of listing ids the viewer has favorited (one query for the
- * whole batch — no per-listing lookups), delegating to `favorite.service`. With
- * no viewer or no ids this short-circuits to an empty set (`saved: false`).
- */
-async function loadSavedSet(viewerId: string | undefined, listingIds: string[]): Promise<Set<string>> {
-  if (!viewerId || listingIds.length === 0) {
-    return new Set();
-  }
-  try {
-    return await getFavoritedListingIds(viewerId, listingIds);
-  } catch (err) {
-    log.general.warn({ err }, 'Failed to load viewer favorites (treating all as unsaved)');
-    return new Set();
-  }
 }
 
 /**
@@ -282,9 +260,6 @@ export async function hydrateListings(
   // 3. Batch-load all owning users' Oxy profiles in one call.
   const oxyProfiles = await getProfiles(userOwnerIds);
 
-  // 4. (optional) Batch-load the viewer's favorites.
-  const savedSet = await loadSavedSet(opts.viewerId, listingIds);
-
   // For each store, the listings it owns within THIS batch (for thumbnails).
   const listingsByStore = new Map<string, IListing[]>();
   for (const l of rawListings) {
@@ -327,7 +302,6 @@ export async function hydrateListings(
       images: toListingImages(listing.images),
       tags: [...listing.tags],
       quantity,
-      saved: savedSet.has(id),
       createdAt: listing.createdAt.toISOString(),
       updatedAt: listing.updatedAt.toISOString(),
     };

@@ -59,7 +59,6 @@ export interface IListing {
   location?: IGeoPoint;
   rating: number;
   reviewCount: number;
-  favoriteCount: number;
   publishedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -111,7 +110,6 @@ const ListingSchema = new Schema<IListing>(
     },
     rating: { type: Number, default: 0 },
     reviewCount: { type: Number, default: 0 },
-    favoriteCount: { type: Number, default: 0 },
     publishedAt: { type: Date },
   },
   { timestamps: true },

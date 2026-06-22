@@ -3,8 +3,7 @@
  *
  * Reseeds ONLY the marketplace collections (Category, Store, SellerProfile,
  * Listing, ProductVariant). It NEVER touches Notification / Feedback / PushToken
- * collections. Mirrors the imagery + structure of `lib/mock-products.ts` so the
- * DB-backed `/feed` produces the same shelves the frontend already consumes.
+ * collections.
  *
  * Run from `packages/backend`:
  *   NODE_ENV=development bun src/scripts/seed.ts
@@ -32,7 +31,7 @@ function categoryAsset(file: string): string {
   return `https://shopify-assets.shopifycdn.com/shop-assets/static_uploads/shop-categories/${file}.png?width=640`;
 }
 
-/** Top-level categories + their child tiles, mirroring `SHOP_CATEGORIES`/pills. */
+/** Top-level categories + their child tiles. */
 const TAXONOMY: {
   name: string;
   slug: string;

@@ -80,7 +80,7 @@ export async function browseListings(req: Request, res: Response): Promise<void>
     if (query.sort === 'newest' && query.cursor) {
       const { limit } = parsePagination(req.query);
       const result = await searchListingsCursor(query, limit);
-      const data = await hydrateListings(result.listings, { viewerId: req.user?.id });
+      const data = await hydrateListings(result.listings);
       const page: CursorPage<Listing> = { data, hasMore: result.hasMore };
       if (result.nextCursor) {
         page.nextCursor = result.nextCursor;
@@ -92,7 +92,7 @@ export async function browseListings(req: Request, res: Response): Promise<void>
     // Offset path: default / price_* sort → PaginatedResponse.
     const { page, limit } = parsePagination(req.query);
     const result = await searchListingsOffset(query, page, limit);
-    const data = await hydrateListings(result.listings, { viewerId: req.user?.id });
+    const data = await hydrateListings(result.listings);
     sendPaginated(res, data, buildPagination(page, limit, result.total));
   } catch (err) {
     log.general.error({ err }, 'Failed to browse listings');
@@ -108,7 +108,7 @@ export async function getListingById(req: Request, res: Response): Promise<void>
     if (!doc || !PUBLICLY_VIEWABLE_STATUSES.includes(doc.status)) {
       throw notFound('Listing not found');
     }
-    const [dto] = await hydrateListings([doc], { viewerId: req.user?.id });
+    const [dto] = await hydrateListings([doc]);
     sendSuccess(res, dto);
   } catch (err) {
     log.general.error({ err, listingId: id }, 'Failed to load listing');

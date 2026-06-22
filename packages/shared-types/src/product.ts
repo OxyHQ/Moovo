@@ -1,12 +1,9 @@
 /**
- * Product/merchant browse/feed DTOs for the Moovo home feed.
+ * Product/merchant browse DTOs.
  *
- * A `Feed` is an ordered list of `sections`, each discriminated by `kind`:
- * `'products'` sections hold a row of `ProductSummary` cards, `'merchants'`
- * sections hold a row of `MerchantSummary` (shop) cards, and `'categories'`
- * sections hold a row of `Category` cards (each card a header + 2×2 subcategory
- * grid). These are the canonical server-serialized shapes consumed directly by
- * the frontend home screen.
+ * Canonical server-serialized card shapes consumed by the frontend browse
+ * surfaces: `ProductSummary` (product cards), `MerchantSummary` (shop cards)
+ * and the `Category`/`CategoryTile`/`CategoryPill` taxonomy display shapes.
  */
 
 import type { Money } from './money';
@@ -29,8 +26,6 @@ export interface ProductSummary {
   price: Money;
   /** Original price when the item is on sale (omitted when not discounted). */
   compareAtPrice?: Money;
-  /** Whether the current viewer has saved/favorited this product. */
-  saved?: boolean;
 }
 
 /** A compact product reference shown as a thumbnail inside a merchant card. */
@@ -94,38 +89,7 @@ export interface Category {
   subcategories: CategoryTile[];
 }
 
-/** A home-feed section holding a row of product cards. */
-export interface ProductFeedSection {
-  kind: 'products';
-  /** Stable section id (slug, e.g. `new-arrivals`). */
-  id: string;
-  /** Human-readable section heading. */
-  title: string;
-  /** Ordered products in this section. */
-  products: ProductSummary[];
-}
-
-/** A home-feed section holding a row of merchant (shop) cards. */
-export interface MerchantFeedSection {
-  kind: 'merchants';
-  /** Stable section id (slug, e.g. `worth-the-hype`). */
-  id: string;
-  /** Human-readable section heading. */
-  title: string;
-  /** Ordered merchants in this section. */
-  merchants: MerchantSummary[];
-}
-
-/** A home-feed section holding a row of category cards (each card brings its own header). */
-export interface CategoryFeedSection {
-  kind: 'categories';
-  /** Stable section id. */
-  id: string;
-  /** Ordered categories in this section. */
-  categories: Category[];
-}
-
-/** A small round category "pill" (circular image + label) shown above the feed. */
+/** A small round category "pill" (circular image + label). */
 export interface CategoryPill {
   /** Category id this pill links to. */
   id: string;
@@ -135,26 +99,4 @@ export interface CategoryPill {
   slug: string;
   /** Circular pill image URL. */
   imageUrl: string;
-}
-
-/** A home-feed section holding a single horizontal row of category pills. */
-export interface CategoryPillsFeedSection {
-  kind: 'category-pills';
-  /** Stable section id. */
-  id: string;
-  /** Ordered pills. */
-  pills: CategoryPill[];
-}
-
-/** A single home-feed section, discriminated by `kind`. */
-export type FeedSection =
-  | ProductFeedSection
-  | MerchantFeedSection
-  | CategoryFeedSection
-  | CategoryPillsFeedSection;
-
-/** The home feed: an ordered list of sections rendered top-to-bottom. */
-export interface Feed {
-  /** Ordered sections rendered top-to-bottom on the home screen. */
-  sections: FeedSection[];
 }

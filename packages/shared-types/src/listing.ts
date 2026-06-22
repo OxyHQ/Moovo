@@ -85,8 +85,6 @@ export interface Listing extends Timestamps {
   tags: string[];
   /** Total available quantity, summed across all variants. */
   quantity: number;
-  /** Whether the current viewer has saved/favorited this listing. */
-  saved?: boolean;
 }
 
 /** Payload accepted when an individual user creates a P2P (secondhand) listing. */

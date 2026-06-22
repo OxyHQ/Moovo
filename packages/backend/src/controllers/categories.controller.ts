@@ -78,7 +78,7 @@ export async function getCategoryListings(req: Request, res: Response): Promise<
     const { limit } = parsePagination(req.query);
     const cursor = typeof req.query.cursor === 'string' ? req.query.cursor : undefined;
     const result = await searchListingsCursor({ category: slug, sort: 'newest', cursor }, limit);
-    const data = await hydrateListings(result.listings, { viewerId: req.user?.id });
+    const data = await hydrateListings(result.listings);
 
     const page: CursorPage<Listing> = { data, hasMore: result.hasMore };
     if (result.nextCursor) {

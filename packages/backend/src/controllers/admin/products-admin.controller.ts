@@ -56,12 +56,12 @@ async function loadStoreProduct(req: Request): Promise<IListing> {
 }
 
 /** Hydrate a single listing by id into its `Listing` DTO. */
-async function hydrateById(listingId: string, viewerId: string): Promise<ListingDTO | undefined> {
+async function hydrateById(listingId: string): Promise<ListingDTO | undefined> {
   const doc = await Listing.findById(listingId).lean<IListing | null>();
   if (!doc) {
     return undefined;
   }
-  const [dto] = await hydrateListings([doc], { viewerId });
+  const [dto] = await hydrateListings([doc]);
   return dto;
 }
 
@@ -81,7 +81,7 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
       Listing.countDocuments(filter),
     ]);
 
-    const data = await hydrateListings(docs, { viewerId: req.userId });
+    const data = await hydrateListings(docs);
     sendPaginated(res, data, buildPagination(page, limit, total));
   } catch (err) {
     log.general.error({ err }, 'Failed to list store products');
@@ -94,7 +94,7 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
   try {
     const id = storeId(req);
     const listingId = await createStoreProduct(id, req.body as CreateStoreProductInput);
-    const dto = await hydrateById(listingId, req.userId ?? '');
+    const dto = await hydrateById(listingId);
     sendSuccess(res, dto, 201);
   } catch (err) {
     log.general.error({ err }, 'Failed to create store product');
@@ -106,7 +106,7 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
 export async function getProduct(req: Request, res: Response): Promise<void> {
   try {
     const listing = await loadStoreProduct(req);
-    const dto = await hydrateById(String((listing as { _id: unknown })._id), req.userId ?? '');
+    const dto = await hydrateById(String((listing as { _id: unknown })._id));
     sendSuccess(res, dto);
   } catch (err) {
     log.general.error({ err, productId: req.params.id }, 'Failed to load store product');
@@ -120,7 +120,7 @@ export async function patchProduct(req: Request, res: Response): Promise<void> {
     const listing = await loadStoreProduct(req);
     const listingId = String((listing as { _id: unknown })._id);
     await updateListing(listingId, req.body as UpdateListingInput);
-    const dto = await hydrateById(listingId, req.userId ?? '');
+    const dto = await hydrateById(listingId);
     sendSuccess(res, dto);
   } catch (err) {
     log.general.error({ err, productId: req.params.id }, 'Failed to update store product');
@@ -146,7 +146,7 @@ export async function createVariant(req: Request, res: Response): Promise<void> 
     const listing = await loadStoreProduct(req);
     const listingId = String((listing as { _id: unknown })._id);
     await addVariant(listingId, req.body as CreateStoreProductVariantInput);
-    const dto = await hydrateById(listingId, req.userId ?? '');
+    const dto = await hydrateById(listingId);
     sendSuccess(res, dto, 201);
   } catch (err) {
     log.general.error({ err, productId: req.params.id }, 'Failed to add variant');
@@ -160,7 +160,7 @@ export async function patchVariant(req: Request, res: Response): Promise<void> {
     const listing = await loadStoreProduct(req);
     const listingId = String((listing as { _id: unknown })._id);
     await updateVariant(listingId, routeParam(req, 'variantId'), req.body as UpdateVariantInput);
-    const dto = await hydrateById(listingId, req.userId ?? '');
+    const dto = await hydrateById(listingId);
     sendSuccess(res, dto);
   } catch (err) {
     log.general.error({ err, variantId: req.params.variantId }, 'Failed to update variant');
@@ -174,7 +174,7 @@ export async function deleteVariant(req: Request, res: Response): Promise<void> 
     const listing = await loadStoreProduct(req);
     const listingId = String((listing as { _id: unknown })._id);
     await removeVariant(listingId, routeParam(req, 'variantId'));
-    const dto = await hydrateById(listingId, req.userId ?? '');
+    const dto = await hydrateById(listingId);
     sendSuccess(res, dto);
   } catch (err) {
     log.general.error({ err, variantId: req.params.variantId }, 'Failed to remove variant');
@@ -189,7 +189,7 @@ export async function setVariantInventory(req: Request, res: Response): Promise<
     const listingId = String((listing as { _id: unknown })._id);
     const body = req.body as { available: number };
     await setAvailable(routeParam(req, 'variantId'), listingId, body.available);
-    const dto = await hydrateById(listingId, req.userId ?? '');
+    const dto = await hydrateById(listingId);
     sendSuccess(res, dto);
   } catch (err) {
     log.general.error({ err, variantId: req.params.variantId }, 'Failed to set inventory');

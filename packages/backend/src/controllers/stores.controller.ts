@@ -45,7 +45,7 @@ export async function getStoreByHandle(req: Request, res: Response): Promise<voi
       ListingModel.countDocuments(filter),
     ]);
 
-    const listings = await hydrateListings(listingDocs, { viewerId: req.user?.id });
+    const listings = await hydrateListings(listingDocs);
 
     const body: StorePageResponse = {
       store: toMerchantSummary(store, listingDocs),
