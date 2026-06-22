@@ -341,7 +341,7 @@ export async function listReviews(
   { targetType, targetId }: ReviewTarget,
   { page, limit }: ReviewListParams,
 ): Promise<ReviewPage> {
-  const filter = {
+  const filter: mongoose.QueryFilter<IReview> = {
     targetType,
     [targetIdField(targetType)]: targetId,
     status: 'published',
