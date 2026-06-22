@@ -1,0 +1,22 @@
+{
+  "name": "Moovo Hub",
+  "short_name": "Moovo Hub",
+  "description": "Moovo Hub — manage your delivery fleet, companies, and jobs.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#040711",
+  "theme_color": "#040711",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
