@@ -7,6 +7,11 @@
  * (pickup/dropoff/parcel) are mapped VERBATIM (frozen at booking); FAIR money is
  * projected to {@link DisplayMoney} at a rate fetched ONCE per request; proof-of-
  * delivery media is resolved through the SINGLE chokepoint (`resolveMedia`).
+ *
+ * The plaintext QR pickup/dropoff codes are surfaced ONLY when the caller passes
+ * `includeCodes` (the viewer is the OWNER/sender). The courier and every other
+ * viewer get the job WITHOUT the plaintext — they prove pickup/delivery by
+ * scanning, which validates against the stored hash, never the plaintext.
  */
 
 import mongoose from 'mongoose';
@@ -110,13 +115,24 @@ function toPaymentInfo(payment: IJobPaymentInfo): JobPaymentInfo {
   return dto;
 }
 
+/** Options controlling what a job hydration exposes. */
+export interface HydrateJobOptions {
+  /**
+   * Surface the plaintext QR pickup/dropoff codes — set ONLY when the viewer is
+   * the OWNER (sender). Couriers and all other viewers MUST omit/leave this false.
+   */
+  includeCodes?: boolean;
+}
+
 /**
  * Hydrate raw job docs into client-ready `JobView` DTOs with display-converted
  * prices. Preserves input order. The FAIR rate is fetched once for the batch.
+ * Plaintext QR codes are surfaced only when `opts.includeCodes` (owner-scoped).
  */
 export async function hydrateJobs(
   jobs: IJob[],
   displayCurrency: FiatCurrency,
+  opts: HydrateJobOptions = {},
 ): Promise<JobView[]> {
   if (jobs.length === 0) {
     return [];
@@ -140,6 +156,7 @@ export async function hydrateJobs(
       locationPings: job.locationPings.map(toLocationPing),
       payment: toPaymentInfo(job.payment),
       totals: toDisplayPriceBreakdown(job.totals, rate),
+      dispatchAttempts: job.dispatchAttempts ?? 0,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
     };
@@ -147,16 +164,25 @@ export async function hydrateJobs(
     if (job.companyId) view.companyId = String(job.companyId);
     if (job.providerRef) view.providerRef = job.providerRef;
     if (job.proofOfDelivery) view.proofOfDelivery = toProofOfDelivery(job.proofOfDelivery);
+    // Owner-only: surface the plaintext QR codes for the sender to show/relay.
+    if (opts.includeCodes) {
+      if (job.pickupCode) view.pickupCode = job.pickupCode;
+      if (job.dropoffCode) view.dropoffCode = job.dropoffCode;
+    }
     return view;
   });
 }
 
-/** Hydrate a single job doc into its `JobView`. */
+/**
+ * Hydrate a single job doc into its `JobView`. Pass `{ includeCodes: true }` ONLY
+ * for an owner-scoped (sender) response so the plaintext QR codes are surfaced.
+ */
 export async function hydrateJob(
   job: IJob,
   displayCurrency: FiatCurrency,
+  opts: HydrateJobOptions = {},
 ): Promise<JobView> {
-  const views = await hydrateJobs([job], displayCurrency);
+  const views = await hydrateJobs([job], displayCurrency, opts);
   const [view] = views;
   if (!view) {
     throw new Error('Job hydration produced no view');

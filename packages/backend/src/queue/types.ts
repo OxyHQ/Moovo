@@ -34,6 +34,15 @@ export interface LowInventoryAlertJob {
 /** Periodic reservation-sweep job — no payload. */
 export type ExpireReservationsJob = Record<string, never>;
 
+/** Periodic offer-expiry + re-dispatch sweep — no payload. */
+export type ExpireOffersJob = Record<string, never>;
+
+/** Dispatch (or re-dispatch) one job to a fresh wave of nearby couriers. */
+export interface DispatchWaveJob {
+  /** The job to (re-)dispatch. */
+  jobId: string;
+}
+
 /** Job names enqueued onto the events queue. */
 export type MarketplaceEventJobName =
   | 'recompute-aggregates'
@@ -43,6 +52,12 @@ export type MarketplaceEventJobName =
 /** Job names enqueued onto the maintenance (repeatable) queue. */
 export type MaintenanceJobName = 'expire-reservations' | 'recompute-aggregates-sweep';
 
+/** Job names enqueued onto the transport dispatch queue. */
+export type DispatchJobName = 'dispatch-wave';
+
+/** Job names enqueued onto the transport maintenance (repeatable) queue. */
+export type MoovoMaintenanceJobName = 'expire-offers';
+
 /** Union of every event-queue job payload. */
 export type MarketplaceEventJobData =
   | RecomputeAggregatesJob
@@ -51,3 +66,9 @@ export type MarketplaceEventJobData =
 
 /** Union of every maintenance-queue job payload. */
 export type MaintenanceJobData = ExpireReservationsJob | RecomputeAggregatesJob;
+
+/** Union of every transport dispatch-queue job payload. */
+export type DispatchJobData = DispatchWaveJob;
+
+/** Union of every transport maintenance-queue job payload. */
+export type MoovoMaintenanceJobData = ExpireOffersJob;

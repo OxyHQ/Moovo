@@ -11,7 +11,12 @@
  * `$slice` push. `idempotencyKey` is sparse-unique so a replayed booking
  * converges on the same job. FAIR money is stored via {@link FairMoneySchema}.
  *
- * Phase 2 has NO `offered` status — a booked job is `requested` until assignment.
+ * Phase 3 real-time dispatch adds the `offered` status, a `dispatchAttempts` wave
+ * counter, and the QR pickup/delivery proof. A booked `moovo_courier` job carries
+ * two codes per leg: a `*CodeHash` (the SHA-256 verify source the courier scans
+ * against — the courier never sees the plaintext) AND a `*Code` plaintext that is
+ * surfaced ONLY in OWNER-scoped DTOs (the sender, who relays the dropoff code to
+ * the recipient). See `hydrateJob`'s `includeCodes` gate.
  */
 
 import mongoose, { Schema, Model } from 'mongoose';
@@ -32,6 +37,7 @@ import type {
 
 const JOB_STATUSES: readonly JobStatus[] = [
   'requested',
+  'offered',
   'accepted',
   'picked_up',
   'in_transit',
@@ -98,6 +104,16 @@ export interface IJob {
   proofOfDelivery?: IProofOfDelivery;
   payment: IJobPaymentInfo;
   totals: IPriceBreakdown;
+  /** Number of dispatch waves attempted (real-time dispatch). */
+  dispatchAttempts: number;
+  /** SHA-256 hex hash the pickup scan is verified against (verify source). */
+  pickupCodeHash?: string;
+  /** SHA-256 hex hash the dropoff scan is verified against (verify source). */
+  dropoffCodeHash?: string;
+  /** Plaintext pickup code — surfaced ONLY to the OWNER (sender) at hydration. */
+  pickupCode?: string;
+  /** Plaintext dropoff code — surfaced ONLY to the OWNER (sender) at hydration. */
+  dropoffCode?: string;
   idempotencyKey?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -221,6 +237,11 @@ const JobSchema = new Schema<IJob>(
     proofOfDelivery: { type: ProofOfDeliverySchema },
     payment: { type: JobPaymentSchema, default: () => ({}) },
     totals: { type: PriceBreakdownSnapshotSchema, required: true },
+    dispatchAttempts: { type: Number, default: 0 },
+    pickupCodeHash: { type: String },
+    dropoffCodeHash: { type: String },
+    pickupCode: { type: String },
+    dropoffCode: { type: String },
     idempotencyKey: { type: String },
   },
   { timestamps: true },

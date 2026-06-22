@@ -26,6 +26,14 @@ export const NOTIFICATION_TYPES = [
   'low_inventory',
   // Transport (courier company / fleet).
   'company_member_invited',
+  // Transport (real-time dispatch + job lifecycle).
+  'job_offered',
+  'job_accepted',
+  'job_picked_up',
+  'job_in_transit',
+  'job_delivered',
+  'job_cancelled',
+  'dispatch_no_courier',
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

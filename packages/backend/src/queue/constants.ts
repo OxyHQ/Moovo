@@ -29,6 +29,18 @@ export const MARKETPLACE_EVENTS_QUEUE = 'marketplace-events';
  */
 export const MARKETPLACE_MAINTENANCE_QUEUE = 'marketplace-maintenance';
 
+/**
+ * Real-time dispatch fan-out work (re-dispatch waves). High-volume, short-lived.
+ * (Hyphen, NOT colon — BullMQ rejects `:` in a queue name.)
+ */
+export const MOOVO_DISPATCH_QUEUE = 'moovo-dispatch';
+
+/**
+ * Transport maintenance (repeatable jobs): the offer-expiry + re-dispatch sweep.
+ * Concurrency pinned to 1 so the sweep never overlaps itself.
+ */
+export const MOOVO_MAINTENANCE_QUEUE = 'moovo-maintenance';
+
 // --- Events worker tunables -------------------------------------------------
 
 /** Total attempts for an event job (1 initial + retries). */
@@ -78,6 +90,8 @@ export const AGGREGATE_SWEEP_CRON = '0 3 * * *';
  */
 export const SCHEDULER_EXPIRE_RESERVATIONS = 'maintenance:expire-reservations';
 export const SCHEDULER_RECOMPUTE_AGGREGATES = 'maintenance:recompute-aggregates';
+/** Repeatable offer-expiry + re-dispatch sweep (cadence from `config.dispatch`). */
+export const SCHEDULER_EXPIRE_OFFERS = 'maintenance:expire-offers';
 
 // --- Job names (colons allowed) ---------------------------------------------
 
@@ -91,3 +105,15 @@ export const JOB_LOW_INVENTORY_ALERT = 'low-inventory-alert';
 export const JOB_EXPIRE_RESERVATIONS = 'expire-reservations';
 /** Job name: daily full rating-aggregate sweep (repeatable). */
 export const JOB_RECOMPUTE_AGGREGATES_SWEEP = 'recompute-aggregates-sweep';
+/** Job name: expire stale offers + re-dispatch unaccepted jobs (repeatable). */
+export const JOB_EXPIRE_OFFERS = 'expire-offers';
+/** Job name: dispatch (or re-dispatch) a single job to a fresh wave. */
+export const JOB_DISPATCH_WAVE = 'dispatch-wave';
+
+// --- Dispatch worker tunables -----------------------------------------------
+
+/** Total attempts for a dispatch-wave job (1 initial + retries). */
+export const DISPATCH_JOB_ATTEMPTS = 3;
+
+/** Concurrency for the dispatch worker (per process). */
+export const DISPATCH_WORKER_CONCURRENCY = 5;

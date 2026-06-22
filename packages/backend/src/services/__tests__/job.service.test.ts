@@ -109,8 +109,12 @@ beforeEach(() => {
 
 describe('job.service.transition — legal transitions', () => {
   const legal: { from: JobStatus; to: JobStatus }[] = [
+    { from: 'requested', to: 'offered' },
     { from: 'requested', to: 'accepted' },
     { from: 'requested', to: 'cancelled' },
+    { from: 'offered', to: 'accepted' },
+    { from: 'offered', to: 'cancelled' },
+    { from: 'offered', to: 'requested' },
     { from: 'accepted', to: 'picked_up' },
     { from: 'accepted', to: 'cancelled' },
     { from: 'picked_up', to: 'in_transit' },
@@ -135,7 +139,10 @@ describe('job.service.transition — illegal transitions', () => {
   const illegal: { from: JobStatus; to: JobStatus }[] = [
     { from: 'requested', to: 'picked_up' },
     { from: 'requested', to: 'delivered' },
+    { from: 'offered', to: 'picked_up' },
+    { from: 'offered', to: 'delivered' },
     { from: 'accepted', to: 'in_transit' },
+    { from: 'accepted', to: 'offered' },
     { from: 'delivered', to: 'accepted' },
     { from: 'cancelled', to: 'accepted' },
     { from: 'in_transit', to: 'accepted' },

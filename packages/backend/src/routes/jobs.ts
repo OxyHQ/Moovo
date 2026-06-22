@@ -6,6 +6,7 @@ import {
   jobLocationSchema,
   jobLocationPingSchema,
   deliverJobSchema,
+  scanJobSchema,
 } from '../middleware/schemas.js';
 import {
   listMyJobs,
@@ -14,6 +15,7 @@ import {
   pickupJob,
   inTransitJob,
   deliverJob,
+  scanJobHandler,
   pingJobLocation,
   cancelJob,
 } from '../controllers/job.controller.js';
@@ -53,6 +55,13 @@ router.post(
   validateObjectId('id'),
   validateBody(deliverJobSchema),
   deliverJob,
+);
+router.post(
+  '/:id/scan',
+  makeRateLimiter('jobs'),
+  validateObjectId('id'),
+  validateBody(scanJobSchema),
+  scanJobHandler,
 );
 router.post(
   '/:id/location',

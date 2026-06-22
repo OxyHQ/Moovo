@@ -8,9 +8,11 @@
  * frozen SNAPSHOTS taken at booking time so a later shipment edit cannot mutate a
  * booked job. Money fields are FAIR {@link PriceBreakdown} values.
  *
- * Phase 2 assignment is DIRECT/manual: a booked job starts `requested` and moves
- * to `accepted` on assignment — there is NO `offered` state and no offer fan-out
- * (that is Phase 3 dispatch).
+ * Phase 3 adds real-time dispatch (Glovo-style): a booked Moovo-courier job is
+ * fanned out as time-boxed {@link JobOffer}s to nearby eligible couriers. The job
+ * moves `requested → offered` on the first dispatch wave and `offered → accepted`
+ * when a courier wins the offer race (atomic CAS — first writer wins). The legacy
+ * direct `requested → accepted` edge is retained for manual assignment.
  *
  * `GeoPoint` is reused from the courier domain; `PriceBreakdown`/`DisplayPriceBreakdown`
  * from the quote domain.
@@ -24,12 +26,17 @@ import type { PriceBreakdown, DisplayPriceBreakdown } from './quote';
 /**
  * Lifecycle status of a job.
  *
- * `requested` (booked, awaiting assignment/acceptance) → `accepted` → `picked_up`
- * → `in_transit` → `delivered`; `cancelled` is a terminal exit reachable from any
- * non-terminal state. NOTE: there is intentionally NO `offered` state in Phase 2.
+ * `requested` (booked, awaiting dispatch/assignment) → `offered` (fanned out to
+ * nearby couriers as time-boxed offers) → `accepted` → `picked_up` → `in_transit`
+ * → `delivered`; `cancelled` is a terminal exit reachable from any non-terminal
+ * state. A job may also revert `offered → requested` when all offers expire with
+ * no acceptance and the sweep re-dispatches. The direct `requested → accepted`
+ * edge is retained for manual assignment (Phase 3 courier acceptance is
+ * offer-gated, see {@link JobOffer}).
  */
 export type JobStatus =
   | 'requested'
+  | 'offered'
   | 'accepted'
   | 'picked_up'
   | 'in_transit'
@@ -38,6 +45,88 @@ export type JobStatus =
 
 /** Who fulfils a job: a Moovo courier or an external provider. */
 export type FulfillmentType = 'moovo_courier' | 'external_provider';
+
+/**
+ * Lifecycle status of a {@link JobOffer} — one fan-out offer of a job to a single
+ * candidate courier during real-time dispatch.
+ *
+ * `offered` (live, awaiting the courier's response within the TTL) →
+ * `accepted` (this courier won the offer race), `declined` (the courier passed),
+ * `expired` (the TTL elapsed with no response), or `superseded` (a SIBLING offer
+ * on the same job was accepted first, so this one is no longer claimable).
+ */
+export type JobOfferStatus = 'offered' | 'accepted' | 'declined' | 'expired' | 'superseded';
+
+/**
+ * A time-boxed dispatch offer of a job to a single candidate courier. Many offers
+ * may be live for one job at once (a "wave"); the first courier to accept wins via
+ * an atomic CAS on the job and all sibling offers are `superseded`.
+ */
+export interface JobOffer {
+  /** Stable offer id. */
+  id: string;
+  /** The job being offered. */
+  jobId: string;
+  /** The shipment the job fulfils (denormalized for the courier UI). */
+  shipmentId: string;
+  /** Oxy user id of the candidate courier this offer is addressed to. */
+  courierOxyUserId: string;
+  /** Owning company id, when the candidate belongs to a fleet. */
+  companyId?: string;
+  /** Current offer status. */
+  status: JobOfferStatus;
+  /** ISO-8601 time the offer was created. */
+  offeredAt: string;
+  /** ISO-8601 time after which the offer is no longer claimable. */
+  expiresAt: string;
+  /** 0-based rank of this candidate within its dispatch wave (nearest = 0). */
+  rank: number;
+  /** Great-circle distance from the courier to the pickup, in metres. */
+  distanceM: number;
+}
+
+/**
+ * The compact offer projection pushed to a candidate courier over the
+ * `job:offer` socket event — everything Moovo Go needs to render the offer card
+ * and accept/decline, without leaking the sender's identity or contact details.
+ */
+export interface JobOfferView {
+  /** Stable offer id. */
+  offerId: string;
+  /** The job being offered (the id the courier POSTs to accept). */
+  jobId: string;
+  /** The shipment the job fulfils. */
+  shipmentId: string;
+  /** What is being moved. */
+  type: ShipmentType;
+  /** Pickup city (coarse — full address is revealed on accept). */
+  pickupCity: string;
+  /** Dropoff city (coarse — full address is revealed on accept). */
+  dropoffCity: string;
+  /** Coarse parcel size class. */
+  sizeClass: SizeClass;
+  /** Job totals with both FAIR and a converted display amount. */
+  totals: DisplayPriceBreakdown;
+  /** Great-circle distance from the courier to the pickup, in metres. */
+  distanceM: number;
+  /** ISO-8601 time after which the offer is no longer claimable. */
+  expiresAt: string;
+}
+
+/**
+ * Body for `POST /jobs/:id/scan` — the assigned courier scans the sender's QR
+ * code (or types the code) to prove pickup (`pickup` leg) or delivery (`dropoff`
+ * leg). The code is verified against the job's stored hash; the plaintext is
+ * never echoed back on a mismatch.
+ */
+export interface ScanInput {
+  /** Which leg of the job this scan proves. */
+  leg: 'pickup' | 'dropoff';
+  /** The plaintext code read from the QR (or typed by the courier). */
+  code: string;
+  /** Optional Oxy media file id of a photo captured at the dropoff (POD). */
+  photoFileId?: string;
+}
 
 /** A single entry in a job's status history (audit trail of transitions). */
 export interface JobStatusEvent {
@@ -136,6 +225,18 @@ export interface Job extends Timestamps {
   payment: JobPaymentInfo;
   /** FAIR-priced totals snapshot of the selected quote. */
   totals: PriceBreakdown;
+  /** Number of dispatch waves attempted for this job (real-time dispatch). */
+  dispatchAttempts: number;
+  /**
+   * Plaintext pickup code, surfaced ONLY in OWNER-scoped responses (the sender)
+   * so the sender can show/relay it. Couriers and non-owners never receive it.
+   */
+  pickupCode?: string;
+  /**
+   * Plaintext dropoff code, surfaced ONLY in OWNER-scoped responses (the sender)
+   * so the sender can relay it to the recipient. Couriers/non-owners never see it.
+   */
+  dropoffCode?: string;
 }
 
 /** The output projection of a job with display-converted prices. */
@@ -178,6 +279,18 @@ export interface JobView {
   payment: JobPaymentInfo;
   /** Totals with both FAIR and a converted display amount. */
   totals: DisplayPriceBreakdown;
+  /** Number of dispatch waves attempted for this job (real-time dispatch). */
+  dispatchAttempts: number;
+  /**
+   * Plaintext pickup code — present ONLY in OWNER-scoped responses (the sender).
+   * Couriers and non-owners never receive it; they prove pickup by scanning.
+   */
+  pickupCode?: string;
+  /**
+   * Plaintext dropoff code — present ONLY in OWNER-scoped responses (the sender),
+   * who relays it to the recipient. Couriers/non-owners never receive it.
+   */
+  dropoffCode?: string;
   /** ISO-8601 creation time. */
   createdAt: string;
   /** ISO-8601 last-update time. */

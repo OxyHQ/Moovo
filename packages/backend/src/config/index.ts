@@ -60,7 +60,8 @@ function floatEnv(name: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-const MINUTE_MS = 60_000;
+const SECOND_MS = 1_000;
+const MINUTE_MS = 60 * SECOND_MS;
 
 export interface PaginationConfig {
   /** Default page size when the client does not specify a `limit`. */
@@ -218,6 +219,28 @@ export interface JobsConfig {
   readonly idempotencyTtlMs: number;
 }
 
+export interface DispatchConfig {
+  /**
+   * Base search radius for the FIRST dispatch wave, in metres. Each subsequent
+   * wave widens the radius by `radiusM * (wave + 1)` (1-based widening — wave 1
+   * uses `radiusM`, wave 2 `2 × radiusM`, …) so re-dispatch reaches farther.
+   */
+  readonly radiusM: number;
+  /** Max candidate couriers offered per wave. */
+  readonly waveSize: number;
+  /** How long a single offer stays claimable before it expires. */
+  readonly offerTtlMs: number;
+  /** Max dispatch waves before a job with no taker is cancelled (`no_courier`). */
+  readonly maxWaves: number;
+  /**
+   * A courier whose last location ping is older than this is considered stale and
+   * excluded from dispatch (their geo position can no longer be trusted).
+   */
+  readonly stalenessMs: number;
+  /** Cadence of the offer-expiry + re-dispatch sweep. */
+  readonly expireOffersIntervalMs: number;
+}
+
 export interface AppConfig {
   readonly pagination: PaginationConfig;
   readonly catalog: CatalogConfig;
@@ -228,6 +251,7 @@ export interface AppConfig {
   readonly pricing: PricingConfig;
   readonly quotes: QuotesConfig;
   readonly jobs: JobsConfig;
+  readonly dispatch: DispatchConfig;
 }
 
 /**
@@ -289,5 +313,13 @@ export const config: AppConfig = Object.freeze({
   jobs: Object.freeze({
     maxLocationPings: intEnv('JOB_MAX_LOCATION_PINGS', 100),
     idempotencyTtlMs: intEnv('JOB_BOOKING_IDEMPOTENCY_TTL_MS', 10 * MINUTE_MS),
+  }),
+  dispatch: Object.freeze({
+    radiusM: intEnv('DISPATCH_RADIUS_M', 5_000),
+    waveSize: intEnv('DISPATCH_WAVE_SIZE', 5),
+    offerTtlMs: intEnv('DISPATCH_OFFER_TTL_MS', 1 * MINUTE_MS),
+    maxWaves: intEnv('DISPATCH_MAX_WAVES', 3),
+    stalenessMs: intEnv('DISPATCH_COURIER_STALENESS_MS', 5 * MINUTE_MS),
+    expireOffersIntervalMs: intEnv('DISPATCH_EXPIRE_OFFERS_INTERVAL_MS', 30 * SECOND_MS),
   }),
 });

@@ -114,7 +114,9 @@ export async function bookShipmentHandler(req: Request, res: Response): Promise<
     const oxyUserId = getRequiredOxyUserId(req);
     const { quoteId, idempotencyKey } = req.body as BookShipmentInput;
     const job = await bookShipment(oxyUserId, id, quoteId, idempotencyKey);
-    const view = await hydrateJob(job, displayCurrencyFromQuery(req));
+    // The booker is the OWNER (sender): surface the plaintext QR codes so they
+    // can show the pickup code and relay the dropoff code to the recipient.
+    const view = await hydrateJob(job, displayCurrencyFromQuery(req), { includeCodes: true });
     sendSuccess(res, { job: view }, 201);
   } catch (err) {
     log.general.error({ err, shipmentId: id }, 'Failed to book shipment');

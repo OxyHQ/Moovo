@@ -9,16 +9,19 @@
  * maintenance concurrency pinned to 1 so it never overlaps itself).
  */
 
-import { getMaintenanceQueue } from './queues.js';
+import { getMaintenanceQueue, getMoovoMaintenanceQueue } from './queues.js';
 import { isQueueEnabled } from './connection.js';
 import {
   SCHEDULER_EXPIRE_RESERVATIONS,
   SCHEDULER_RECOMPUTE_AGGREGATES,
+  SCHEDULER_EXPIRE_OFFERS,
   RESERVATION_SWEEP_INTERVAL_MS,
   AGGREGATE_SWEEP_CRON,
   JOB_EXPIRE_RESERVATIONS,
   JOB_RECOMPUTE_AGGREGATES_SWEEP,
+  JOB_EXPIRE_OFFERS,
 } from './constants.js';
+import { config } from '../config/index.js';
 import { log } from '../lib/logger.js';
 
 /**
@@ -46,7 +49,17 @@ export async function registerSchedules(): Promise<void> {
     { name: JOB_RECOMPUTE_AGGREGATES_SWEEP, data: {} },
   );
 
-  log.general.info('Marketplace repeatable jobs registered');
+  // Transport: the offer-expiry + re-dispatch sweep (its own queue).
+  const moovoQueue = getMoovoMaintenanceQueue();
+  if (moovoQueue) {
+    await moovoQueue.upsertJobScheduler(
+      SCHEDULER_EXPIRE_OFFERS,
+      { every: config.dispatch.expireOffersIntervalMs },
+      { name: JOB_EXPIRE_OFFERS, data: {} },
+    );
+  }
+
+  log.general.info('Marketplace + transport repeatable jobs registered');
 }
 
 /**
@@ -58,9 +71,12 @@ export async function removeSchedules(): Promise<void> {
     return;
   }
   const queue = getMaintenanceQueue();
-  if (!queue) {
-    return;
+  if (queue) {
+    await queue.removeJobScheduler(SCHEDULER_EXPIRE_RESERVATIONS);
+    await queue.removeJobScheduler(SCHEDULER_RECOMPUTE_AGGREGATES);
   }
-  await queue.removeJobScheduler(SCHEDULER_EXPIRE_RESERVATIONS);
-  await queue.removeJobScheduler(SCHEDULER_RECOMPUTE_AGGREGATES);
+  const moovoQueue = getMoovoMaintenanceQueue();
+  if (moovoQueue) {
+    await moovoQueue.removeJobScheduler(SCHEDULER_EXPIRE_OFFERS);
+  }
 }

@@ -10,7 +10,7 @@
 
 import type { Request, Response } from 'express';
 import { getRequiredOxyUserId } from '@oxyhq/core/server';
-import type { JobStatus, DeliverInput, GeoPoint } from '@moovo/shared-types';
+import type { JobStatus, DeliverInput, ScanInput, GeoPoint } from '@moovo/shared-types';
 import {
   listForSender,
   listForCourier,
@@ -19,6 +19,7 @@ import {
   pickup,
   startTransit,
   deliver,
+  scanJob,
   pingLocation,
   cancel,
 } from '../services/job.service.js';
@@ -75,7 +76,9 @@ export async function getMyJob(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const job = await getVisible(oxyUserId, id);
-    const view = await hydrateJob(job, displayCurrencyFromQuery(req));
+    // Surface the plaintext QR codes ONLY to the owner (sender).
+    const includeCodes = String(job.senderOxyUserId) === oxyUserId;
+    const view = await hydrateJob(job, displayCurrencyFromQuery(req), { includeCodes });
     sendSuccess(res, view);
   } catch (err) {
     log.general.error({ err, jobId: id }, 'Failed to load job');
@@ -145,6 +148,25 @@ export async function deliverJob(req: Request, res: Response): Promise<void> {
   }
 }
 
+/**
+ * POST /jobs/:id/scan — an assigned courier scans the pickup/dropoff QR code to
+ * prove the leg. The courier never sees the plaintext (no `includeCodes`).
+ */
+export async function scanJobHandler(req: Request, res: Response): Promise<void> {
+  const id = routeParam(req, 'id');
+  try {
+    const oxyUserId = getRequiredOxyUserId(req);
+    const body = req.body as ScanInput;
+    const input: ScanInput = { leg: body.leg, code: body.code };
+    if (body.photoFileId) input.photoFileId = body.photoFileId;
+    const job = await scanJob(oxyUserId, id, input);
+    sendSuccess(res, await hydrateJob(job, displayCurrencyFromQuery(req)));
+  } catch (err) {
+    log.general.error({ err, jobId: id }, 'Failed to scan job code');
+    respondWithError(res, err, 'Failed to scan code');
+  }
+}
+
 /** POST /jobs/:id/location — a courier records a location ping on the assigned job. */
 export async function pingJobLocation(req: Request, res: Response): Promise<void> {
   const id = routeParam(req, 'id');
@@ -165,7 +187,9 @@ export async function cancelJob(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const job = await cancel(oxyUserId, id);
-    sendSuccess(res, await hydrateJob(job, displayCurrencyFromQuery(req)));
+    // Surface the plaintext QR codes ONLY to the owner (sender).
+    const includeCodes = String(job.senderOxyUserId) === oxyUserId;
+    sendSuccess(res, await hydrateJob(job, displayCurrencyFromQuery(req), { includeCodes }));
   } catch (err) {
     log.general.error({ err, jobId: id }, 'Failed to cancel job');
     respondWithError(res, err, 'Failed to cancel job');

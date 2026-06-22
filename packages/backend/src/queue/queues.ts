@@ -12,13 +12,21 @@ import { getQueueConnection, isQueueEnabled } from './connection.js';
 import {
   MARKETPLACE_EVENTS_QUEUE,
   MARKETPLACE_MAINTENANCE_QUEUE,
+  MOOVO_DISPATCH_QUEUE,
+  MOOVO_MAINTENANCE_QUEUE,
   EVENTS_JOB_ATTEMPTS,
   EVENTS_BACKOFF_BASE_MS,
   MAINTENANCE_JOB_ATTEMPTS,
+  DISPATCH_JOB_ATTEMPTS,
   REMOVE_ON_COMPLETE_COUNT,
   REMOVE_ON_FAIL_COUNT,
 } from './constants.js';
-import type { MarketplaceEventJobData, MaintenanceJobData } from './types.js';
+import type {
+  MarketplaceEventJobData,
+  MaintenanceJobData,
+  DispatchJobData,
+  MoovoMaintenanceJobData,
+} from './types.js';
 
 /** Shared default job options (retention + retry/backoff) for a queue. */
 function baseQueueOptions(attempts: number): QueueOptions {
@@ -35,6 +43,8 @@ function baseQueueOptions(attempts: number): QueueOptions {
 
 let eventsQueue: Queue<MarketplaceEventJobData> | null = null;
 let maintenanceQueue: Queue<MaintenanceJobData> | null = null;
+let dispatchQueue: Queue<DispatchJobData> | null = null;
+let moovoMaintenanceQueue: Queue<MoovoMaintenanceJobData> | null = null;
 
 /** Get the events queue, or null when Redis is not configured. */
 export function getEventsQueue(): Queue<MarketplaceEventJobData> | null {
@@ -64,14 +74,51 @@ export function getMaintenanceQueue(): Queue<MaintenanceJobData> | null {
   return maintenanceQueue;
 }
 
+/** Get the transport dispatch queue, or null when Redis is not configured. */
+export function getDispatchQueue(): Queue<DispatchJobData> | null {
+  if (!isQueueEnabled()) return null;
+  if (!dispatchQueue) {
+    dispatchQueue = new Queue<DispatchJobData>(
+      MOOVO_DISPATCH_QUEUE,
+      baseQueueOptions(DISPATCH_JOB_ATTEMPTS),
+    );
+  }
+  return dispatchQueue;
+}
+
+/**
+ * Get the transport maintenance (repeatable-job) queue, or null when Redis is
+ * not configured. The offer-expiry sweep is registered onto this queue by
+ * `scheduler.ts`.
+ */
+export function getMoovoMaintenanceQueue(): Queue<MoovoMaintenanceJobData> | null {
+  if (!isQueueEnabled()) return null;
+  if (!moovoMaintenanceQueue) {
+    moovoMaintenanceQueue = new Queue<MoovoMaintenanceJobData>(
+      MOOVO_MAINTENANCE_QUEUE,
+      baseQueueOptions(MAINTENANCE_JOB_ATTEMPTS),
+    );
+  }
+  return moovoMaintenanceQueue;
+}
+
 /** Close all open producer queues and null them. Used by {@link shutdownQueues}. */
 export async function closeQueues(): Promise<void> {
-  const open: Array<Queue<MarketplaceEventJobData> | Queue<MaintenanceJobData>> = [];
+  const open: Array<
+    | Queue<MarketplaceEventJobData>
+    | Queue<MaintenanceJobData>
+    | Queue<DispatchJobData>
+    | Queue<MoovoMaintenanceJobData>
+  > = [];
   if (eventsQueue) open.push(eventsQueue);
   if (maintenanceQueue) open.push(maintenanceQueue);
+  if (dispatchQueue) open.push(dispatchQueue);
+  if (moovoMaintenanceQueue) open.push(moovoMaintenanceQueue);
 
   await Promise.allSettled(open.map((q) => q.close()));
 
   eventsQueue = null;
   maintenanceQueue = null;
+  dispatchQueue = null;
+  moovoMaintenanceQueue = null;
 }

@@ -599,7 +599,7 @@ export const jobListQuerySchema = z
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().optional(),
     status: z
-      .enum(['requested', 'accepted', 'picked_up', 'in_transit', 'delivered', 'cancelled'])
+      .enum(['requested', 'offered', 'accepted', 'picked_up', 'in_transit', 'delivered', 'cancelled'])
       .optional(),
     role: z.enum(['sender', 'courier']).optional(),
   })
@@ -629,4 +629,11 @@ export const deliverJobSchema = z.object({
   recipientName: z.string().trim().min(1).max(200).optional(),
   lng: z.number().min(-180).max(180).optional(),
   lat: z.number().min(-90).max(90).optional(),
+});
+
+/** Body for `POST /jobs/:id/scan` (ScanInput — QR pickup/delivery proof). */
+export const scanJobSchema = z.object({
+  leg: z.enum(['pickup', 'dropoff']),
+  code: z.string().trim().min(1).max(200),
+  photoFileId: z.string().trim().min(1).optional(),
 });
