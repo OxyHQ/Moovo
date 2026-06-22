@@ -1,0 +1,89 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "nativewind/theme";
+
+@source "./app/**/*.{js,jsx,ts,tsx}";
+@source "./components/**/*.{js,jsx,ts,tsx}";
+@source "./lib/**/*.{js,jsx,ts,tsx}";
+@source "./hooks/**/*.{js,jsx,ts,tsx}";
+@source "../../node_modules/@oxyhq/services/lib/**/*.{js,jsx}";
+@source "../../node_modules/@oxyhq/bloom/lib/**/*.{js,jsx}";
+
+@theme {
+  --font-sans: Inter, sans-serif;
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: hsl(0 0% 100%);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+}
+
+@layer base {
+  :root {
+    --radius: 1rem;
+  }
+}
+
+/* Document-level scrolling (Shop-style). Expo / react-native-web automatically
+   inject a "recommended style reset" into the served HTML that locks
+   `html, body { height: 100%; overflow: hidden }` and `#root { height: 100% }`
+   for a native-like fixed viewport. (This is separate from <ScrollViewStyleReset />,
+   which is already omitted in app/+html.tsx — the reset comes from the framework
+   itself.) These plain, UNLAYERED rules override it so the DOCUMENT scrolls: the
+   body grows with its content and scrolling works from anywhere, including over
+   the sticky rail and gutter. `#root { min-height: 100vh }` is required so the
+   flex root does not collapse to 0 height when `height: auto` is applied. No
+   runtime JS. */
+/* NOTE: `overflow` MUST be `visible` on BOTH axes here. Setting one axis to
+   `hidden`/`clip`/`auto`/`scroll` triggers CSS "overflow promotion" — the other
+   `visible` axis computes to `auto`, turning body into a scroll container (so the
+   inner body scrolls and the DOCUMENT does not). Any wanted horizontal clipping
+   goes on a CHILD (the shell grid container via `overflow-x-clip`), never here. */
+html,
+body {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow: visible !important;
+}
+
+#root {
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+@layer utilities {
+  .squircle {
+    border-radius: 20%;
+  }
+}

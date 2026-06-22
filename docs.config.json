@@ -1,0 +1,11 @@
+{
+  "package": "moovo",
+  "displayName": "Moovo",
+  "shortName": "moovo",
+  "repo": "https://github.com/OxyHQ/Moovo",
+  "category": "app",
+  "versions": ["main"],
+  "defaultVersion": "main",
+  "docsPath": "docs/",
+  "description": "Moovo — courier/transport platform by Oxy: send packages, food, and moves."
+}
