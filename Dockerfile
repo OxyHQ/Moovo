@@ -53,10 +53,15 @@ COPY packages/shared-types/package.json ./packages/shared-types/package.json
 # the package's dist during `bun install`.
 COPY packages/shared-types ./packages/shared-types
 
-# Deterministic install from the lockfile, including devDependencies (esbuild,
-# TypeScript) required to bundle the API. The root postinstall builds
-# @moovo/shared-types.
-RUN bun install --frozen-lockfile
+# Install from the lockfile (devDependencies included — esbuild/TypeScript needed
+# to bundle the API; root postinstall builds @moovo/shared-types). NOT
+# --frozen-lockfile: this stage is alpine/musl-arm64, and the glibc-generated
+# bun.lock omits the musl-arm64 native optional deps the frontend workspaces pull
+# in (lightningcss, etc.) — a known Bun frozen-lockfile false-positive in
+# monorepos with native deps. The API bundle externalizes/inlines and never uses
+# those, so healing them here is harmless. Lockfile reproducibility IS enforced
+# upstream by the CI `test` job's `bun install --frozen-lockfile` on the host.
+RUN bun install
 
 # Copy the source needed to build the API.
 COPY packages/backend ./packages/backend
@@ -75,7 +80,7 @@ RUN test -f packages/backend/dist/index.js \
 # the deterministic equivalent). The API bundle inlines first-party code, so the
 # shared-types dist is no longer needed at runtime.
 RUN rm -rf node_modules \
- && bun install --frozen-lockfile --production
+ && bun install --production
 
 # ---------------------------------------------------------------------------
 # Stage 2: runner — minimal runtime with production deps and the bundle.
