@@ -1,5 +1,6 @@
 import {
   Home,
+  ClipboardList,
   Truck,
   Settings,
   type LucideIcon,
@@ -29,6 +30,13 @@ export interface NavItem {
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { key: "home", label: "Home", icon: Home, href: "/", available: true },
+  {
+    key: "jobs",
+    label: "Jobs",
+    icon: ClipboardList,
+    href: "/jobs",
+    available: true,
+  },
   {
     key: "vehicles",
     label: "Vehicles",

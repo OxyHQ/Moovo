@@ -28,6 +28,7 @@ export default function AppLayout() {
           <View className="flex-1 bg-background">
             <Stack screenOptions={SCREEN_OPTIONS}>
               <Stack.Screen name="index" />
+              <Stack.Screen name="jobs/index" />
               <Stack.Screen name="vehicles" />
               <Stack.Screen name="vehicles/new" />
               <Stack.Screen name="jobs/[id]" />
