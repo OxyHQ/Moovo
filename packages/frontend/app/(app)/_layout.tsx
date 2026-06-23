@@ -29,6 +29,7 @@ export default function AppLayout() {
             <Stack screenOptions={SCREEN_OPTIONS}>
               <Stack.Screen name="index" />
               <Stack.Screen name="send/index" />
+              <Stack.Screen name="orders" />
               <Stack.Screen name="shipments/[id]/quotes" />
               <Stack.Screen name="jobs/[id]" />
               <Stack.Screen name="settings/index" />

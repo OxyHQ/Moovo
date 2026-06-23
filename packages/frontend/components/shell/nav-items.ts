@@ -1,29 +1,26 @@
-import {
-  Home,
-  LayoutGrid,
-  ShoppingCart,
-  Tag,
-  Heart,
-  type LucideIcon,
-} from "lucide-react-native";
+import { Home, Send, ClipboardList, type LucideIcon } from "lucide-react-native";
 
 /**
- * Canonical navigation model for the Shop-style shell, shared by the desktop
+ * Canonical navigation model for the Moovo customer shell, shared by the desktop
  * {@link NavRail} and the mobile {@link BottomTabBar} so both render the exact
  * same set of destinations.
  *
- * `href` is the route this item is *intended* to point at. Only items whose
- * route already exists in the app (`available: true`) are navigable — pressing
- * an unavailable item is a safe no-op (no navigation to a missing route, no
- * stub route files). When the corresponding screens are built, flip
- * `available` to `true`; the press handler will start routing automatically.
+ * These are the customer (moovo.now) transport destinations:
+ *  - Home (`/`)         — the send hub + recent-activity landing.
+ *  - Send (`/send`)     — the create-a-shipment flow.
+ *  - Orders (`/orders`) — the customer's shipments + booked deliveries list.
+ *
+ * `href` is the route this item points at; every entry below is a real,
+ * navigable route (`available: true`). The trailing auth/avatar tab is rendered
+ * by the bars themselves (it is not a nav destination — it opens the sign-in
+ * modal or the account), so it is intentionally NOT in this list.
  */
 export interface NavItem {
   key: string;
   /** Accessible label / tooltip text. */
   label: string;
   icon: LucideIcon;
-  /** Intended route. Plain string so unavailable routes don't break typing. */
+  /** The route this item navigates to. */
   href: string;
   /** Whether `href` is a real, navigable route today. */
   available: boolean;
@@ -31,27 +28,20 @@ export interface NavItem {
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { key: "home", label: "Home", icon: Home, href: "/", available: true },
+  { key: "send", label: "Send", icon: Send, href: "/send", available: true },
   {
-    key: "explore",
-    label: "Explore",
-    icon: LayoutGrid,
-    href: "/categories",
-    available: false,
+    key: "orders",
+    label: "Orders",
+    icon: ClipboardList,
+    href: "/orders",
+    available: true,
   },
-  {
-    key: "cart",
-    label: "Cart",
-    icon: ShoppingCart,
-    href: "/cart",
-    available: false,
-  },
-  { key: "deals", label: "Deals", icon: Tag, href: "/offers", available: false },
-  { key: "saved", label: "Saved", icon: Heart, href: "/saved", available: false },
 ] as const;
 
 /**
  * Whether `pathname` (from expo-router's `usePathname()`) should mark the
- * given nav item as active. Home matches the root / group-index variants.
+ * given nav item as active. Home matches the root / group-index variants;
+ * other items match their route or any nested sub-route.
  */
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
   if (item.key === "home") {

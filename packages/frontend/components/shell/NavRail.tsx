@@ -156,9 +156,14 @@ export function NavRail() {
 
   const handlePress = useCallback(
     (item: NavItem) => {
-      // Only navigate to routes that actually exist. Unavailable destinations
-      // are intentional no-ops until their screens are built.
-      if (item.available && item.href === "/") router.push("/");
+      // Navigate to the item's route. Every nav item is a real, navigable
+      // route; the `available` guard is kept so a future placeholder entry
+      // stays a safe no-op rather than routing to a missing screen. `href` is a
+      // plain string (so a placeholder route never breaks typing), cast to the
+      // typed-routes Href the same way the settings/notifications nav does.
+      if (item.available) {
+        router.push(item.href as Parameters<typeof router.push>[0]);
+      }
     },
     [router]
   );

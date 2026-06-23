@@ -213,12 +213,16 @@ export function BottomTabBar() {
     borderRadius: INDICATOR_RADIUS,
   }));
 
-  // Tab-root switch. Only navigate to routes that actually exist today;
-  // pressing an unavailable item is a safe no-op (no missing-route navigation).
+  // Tab-root switch. Every nav item is a real, navigable route; the `available`
+  // guard is kept so a future placeholder entry stays a safe no-op rather than
+  // routing to a missing screen. `href` is a plain string, cast to the
+  // typed-routes Href the same way the settings/notifications nav does.
   const handlePress = useCallback(
     (item: NavItem) => {
       triggerHaptic();
-      if (item.available && item.href === "/") router.push("/");
+      if (item.available) {
+        router.push(item.href as Parameters<typeof router.push>[0]);
+      }
     },
     [router],
   );
