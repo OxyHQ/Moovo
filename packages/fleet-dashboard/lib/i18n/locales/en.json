@@ -41,6 +41,7 @@
   "companies": {
     "heading": "Your companies",
     "createCompany": "Create company",
+    "settingsLink": "Company settings",
     "membersCount": "{{count}} members",
     "loadError": "We couldn't load your companies.",
     "signInTitle": "Manage your delivery fleet",
@@ -53,6 +54,20 @@
       "suspended": "Suspended",
       "closed": "Closed"
     }
+  },
+  "account": {
+    "menuLabel": "Account",
+    "settings": "Account & settings",
+    "notifications": "Notifications"
+  },
+  "job": {
+    "title": "Job · Moovo Hub",
+    "header": "Job",
+    "loadError": "We couldn't load this job.",
+    "pickup": "Pickup",
+    "dropoff": "Dropoff",
+    "timeline": "Status timeline",
+    "total": "Total"
   },
   "nav": {
     "home": "Home",

@@ -3,7 +3,6 @@ import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { useNavigation } from "expo-router";
 import { useRouter } from "expo-router";
-import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { Menu, ArrowLeft } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -14,12 +13,22 @@ interface SettingsHeaderProps {
   onBack?: () => void;
 }
 
+/** A navigator that may (legacy drawer) or may not expose `toggleDrawer`. */
+interface MaybeDrawerNavigation {
+  toggleDrawer?: () => void;
+}
+
 export function SettingsHeader({ title, subtitle, showBack = false, onBack }: SettingsHeaderProps) {
-  const navigation = useNavigation<DrawerNavigationProp<any>>();
+  const navigation = useNavigation<MaybeDrawerNavigation>();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;
   const insets = useSafeAreaInsets();
+
+  // The Moovo Hub shell is a Stack navigator with NO drawer, so `toggleDrawer`
+  // is absent here; only render the menu button when a drawer actually exists
+  // (guards against a runtime crash from calling a missing method).
+  const hasDrawer = typeof navigation.toggleDrawer === "function";
 
   const handleBack = () => {
     if (onBack) {
@@ -31,11 +40,11 @@ export function SettingsHeader({ title, subtitle, showBack = false, onBack }: Se
 
   return (
     <View className="flex-row items-center gap-2 px-4 border-b border-border" style={{ paddingTop: insets.top, height: 56 + insets.top }}>
-      {!isLargeScreen && (
+      {!isLargeScreen && hasDrawer && (
         <Button
           variant="ghost"
           size="icon"
-          onPress={() => navigation.toggleDrawer()}
+          onPress={() => navigation.toggleDrawer?.()}
           className="h-9 w-9 rounded-full"
         >
           <Menu size={20} className="text-muted-foreground" />

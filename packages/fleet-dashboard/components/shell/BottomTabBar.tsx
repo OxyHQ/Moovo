@@ -20,8 +20,10 @@ import * as Haptics from "expo-haptics";
 
 import { UserAvatar } from "@/components/user-avatar";
 import { useColorScheme } from "@/lib/useColorScheme";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useTheme } from "@oxyhq/bloom/theme";
 import { useOxy, showSignInModal } from "@oxyhq/services";
+import { AccountMenu } from "./AccountMenu";
 import {
   NAV_ITEMS,
   isNavItemActive,
@@ -119,18 +121,23 @@ interface AuthTabProps {
 
 function AuthTab({ isActive }: AuthTabProps) {
   const { colors } = useColorScheme();
+  const { t } = useTranslation();
   const { isAuthenticated } = useOxy();
 
-  const label = isAuthenticated ? "Account" : "Sign in";
+  const label = isAuthenticated ? t("account.menuLabel") : t("companies.signInButton");
 
-  const onPress = useCallback(() => {
-    triggerHaptic();
-    if (!isAuthenticated) showSignInModal();
-  }, [isAuthenticated]);
-
-  return (
+  // Signed in: the avatar tab is the account-menu trigger (Settings /
+  // Notifications). Signed out: pressing opens the Oxy sign-in modal.
+  const trigger = (
     <Pressable
-      onPress={onPress}
+      onPress={
+        isAuthenticated
+          ? triggerHaptic
+          : () => {
+              triggerHaptic();
+              showSignInModal();
+            }
+      }
       style={tabStyle}
       accessibilityRole="tab"
       accessibilityLabel={label}
@@ -147,6 +154,8 @@ function AuthTab({ isActive }: AuthTabProps) {
       )}
     </Pressable>
   );
+
+  return isAuthenticated ? <AccountMenu>{trigger}</AccountMenu> : trigger;
 }
 
 /* ================================================================

@@ -41,6 +41,7 @@
   "companies": {
     "heading": "Tus empresas",
     "createCompany": "Crear empresa",
+    "settingsLink": "Ajustes de la empresa",
     "membersCount": "{{count}} miembros",
     "loadError": "No pudimos cargar tus empresas.",
     "signInTitle": "Gestiona tu flota de reparto",
@@ -53,6 +54,20 @@
       "suspended": "Suspendida",
       "closed": "Cerrada"
     }
+  },
+  "account": {
+    "menuLabel": "Cuenta",
+    "settings": "Cuenta y ajustes",
+    "notifications": "Notificaciones"
+  },
+  "job": {
+    "title": "Trabajo · Moovo Hub",
+    "header": "Trabajo",
+    "loadError": "No pudimos cargar este trabajo.",
+    "pickup": "Recogida",
+    "dropoff": "Entrega",
+    "timeline": "Historial de estado",
+    "total": "Total"
   },
   "nav": {
     "home": "Inicio",

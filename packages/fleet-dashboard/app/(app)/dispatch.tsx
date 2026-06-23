@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { View, ActivityIndicator } from "react-native";
+import { Link } from "expo-router";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { Info, Wifi, WifiOff } from "lucide-react-native";
 import type { JobSummary, JobView } from "@moovo/shared-types";
@@ -36,20 +37,22 @@ function DispatchRow({ job, detail }: { job: JobSummary; detail?: JobView }) {
     : t(jobTypeKey(job.type));
 
   return (
-    <View className="flex-row items-center gap-3 border-b border-border py-3">
-      <View className="min-w-0 flex-1">
-        <Text className="text-sm font-semibold text-surface-foreground" numberOfLines={1}>
-          {job.jobNumber}
+    <Link href={{ pathname: "/jobs/[id]", params: { id: job.id } }} asChild>
+      <View className="flex-row items-center gap-3 border-b border-border py-3 web:cursor-pointer web:hover:bg-accent/40">
+        <View className="min-w-0 flex-1">
+          <Text className="text-sm font-semibold text-surface-foreground" numberOfLines={1}>
+            {job.jobNumber}
+          </Text>
+          <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+            {route} · {formatTime(job.createdAt, locale)}
+          </Text>
+        </View>
+        <Text className="text-sm font-medium text-surface-foreground">
+          {formatMoney(job.totals.total)}
         </Text>
-        <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-          {route} · {formatTime(job.createdAt, locale)}
-        </Text>
+        <StatusChip status={job.status} />
       </View>
-      <Text className="text-sm font-medium text-surface-foreground">
-        {formatMoney(job.totals.total)}
-      </Text>
-      <StatusChip status={job.status} />
-    </View>
+    </Link>
   );
 }
 

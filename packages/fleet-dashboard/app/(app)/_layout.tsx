@@ -32,6 +32,7 @@ export default function AppLayout() {
               <Stack.Screen name="fleet" />
               <Stack.Screen name="members" />
               <Stack.Screen name="stats" />
+              <Stack.Screen name="jobs/[id]" />
               <Stack.Screen name="companies/new" />
               <Stack.Screen name="companies/settings" />
               <Stack.Screen name="settings/index" />

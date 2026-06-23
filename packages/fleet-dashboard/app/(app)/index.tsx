@@ -42,7 +42,7 @@ function RecentJobRow({ job }: { job: JobSummary }) {
   const { t } = useTranslation();
   const locale = useI18nStore((s) => s.locale);
   return (
-    <Link href={{ pathname: "/dispatch", params: { jobId: job.id } }} asChild>
+    <Link href={{ pathname: "/jobs/[id]", params: { id: job.id } }} asChild>
       <View className="flex-row items-center gap-3 border-b border-border px-1 py-3 web:cursor-pointer web:hover:bg-accent/40">
         <View className="min-w-0 flex-1">
           <Text className="text-sm font-semibold text-surface-foreground" numberOfLines={1}>

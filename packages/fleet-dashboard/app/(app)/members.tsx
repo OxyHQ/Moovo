@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { View, ActivityIndicator } from "react-native";
+import { Link } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useOxy } from "@oxyhq/services";
-import { UserPlus, Trash2 } from "lucide-react-native";
+import { UserPlus, Trash2, Settings } from "lucide-react-native";
 import type {
   Company,
   CompanyMember,
@@ -201,6 +202,7 @@ function MembersBody() {
 
   const companyId = ctx.selectedCompanyId;
   const canManage = ctx.can("members:manage");
+  const canManageCompany = ctx.can("company:manage");
 
   const membersQuery = useQuery({
     queryKey: companyId
@@ -261,6 +263,20 @@ function MembersBody() {
         companies={ctx.companies}
         selectedCompanyId={ctx.selectedCompanyId}
         onSelect={ctx.selectCompany}
+        action={
+          canManageCompany ? (
+            <Link href="/companies/settings" asChild>
+              <Button variant="outline" size="sm">
+                <View className="flex-row items-center gap-2">
+                  <Settings size={16} className="text-foreground" />
+                  <Text className="text-sm font-medium text-foreground">
+                    {t("companies.settingsLink")}
+                  </Text>
+                </View>
+              </Button>
+            </Link>
+          ) : undefined
+        }
       />
 
       {!canManage ? (

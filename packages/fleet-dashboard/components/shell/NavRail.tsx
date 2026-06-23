@@ -8,7 +8,9 @@ import { Logo } from "@/components/Logo";
 import { UserAvatar } from "@/components/user-avatar";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "@/hooks/useTranslation";
 import { useOxy, showSignInModal } from "@oxyhq/services";
+import { AccountMenu } from "./AccountMenu";
 import { NAV_ITEMS, isNavItemActive, type NavItem } from "./nav-items";
 
 const IS_WEB = Platform.OS === "web";
@@ -111,34 +113,37 @@ function NavRailItem({ icon: Icon, label, isActive, onPress }: NavRailItemProps)
 
 function AuthRailItem() {
   const { colors } = useColorScheme();
+  const { t } = useTranslation();
   const { isAuthenticated } = useOxy();
   const [anchor, setAnchor] = useState<AnchorRect | null>(null);
 
-  const label = isAuthenticated ? "Account" : "Sign in";
-  const onPress = useCallback(() => {
-    if (!isAuthenticated) showSignInModal();
-  }, [isAuthenticated]);
+  const label = isAuthenticated ? t("account.menuLabel") : t("companies.signInButton");
+
+  // Signed in: the avatar is the account-menu trigger (Settings / Notifications).
+  // Signed out: pressing opens the Oxy sign-in modal directly.
+  const trigger = (
+    <Pressable
+      onPress={isAuthenticated ? undefined : () => showSignInModal()}
+      onHoverIn={IS_WEB ? (e) => setAnchor(rectFromHover(e)) : undefined}
+      onHoverOut={IS_WEB ? () => setAnchor(null) : undefined}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className={cn(
+        "h-12 w-12 items-center justify-center rounded-2xl web:transition",
+        "active:bg-secondary web:hover:bg-secondary"
+      )}
+    >
+      {isAuthenticated ? (
+        <UserAvatar size={32} />
+      ) : (
+        <LogIn size={22} color={colors.foreground} style={{ opacity: 0.35 }} />
+      )}
+    </Pressable>
+  );
 
   return (
     <View className="items-center justify-center">
-      <Pressable
-        onPress={onPress}
-        onHoverIn={IS_WEB ? (e) => setAnchor(rectFromHover(e)) : undefined}
-        onHoverOut={IS_WEB ? () => setAnchor(null) : undefined}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        className={cn(
-          "h-12 w-12 items-center justify-center rounded-2xl web:transition",
-          "active:bg-secondary web:hover:bg-secondary"
-        )}
-      >
-        {isAuthenticated ? (
-          <UserAvatar size={32} />
-        ) : (
-          <LogIn size={22} color={colors.foreground} style={{ opacity: 0.35 }} />
-        )}
-      </Pressable>
-
+      {isAuthenticated ? <AccountMenu>{trigger}</AccountMenu> : trigger}
       <RailTooltip label={label} anchor={anchor} />
     </View>
   );
