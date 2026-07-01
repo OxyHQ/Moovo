@@ -37,11 +37,13 @@ function AuthSetup({ children }: { children: React.ReactNode }) {
 
   setTokenGetter(() => oxyServices.getAccessToken() || null);
 
-  // Resolve Oxy file IDs to thumbnail download URLs for any Bloom component
-  // that reads useImageResolver() (e.g. Avatar with a raw file id `source`).
+  // Resolve Oxy file IDs to download URLs for any Bloom component that reads
+  // useImageResolver() (e.g. Avatar with a raw file id `source`). Honors the
+  // requested variant (ProfileButton avatars request `'thumb'`), defaulting to
+  // the thumbnail rendition when a caller omits it.
   const resolveImageSource = useCallback(
-    (fileId: string): string | undefined => {
-      const url = oxyServices.getFileDownloadUrl(fileId, 'thumb');
+    (fileId: string, variant?: string): string | undefined => {
+      const url = oxyServices.getFileDownloadUrl(fileId, variant ?? 'thumb');
       return url && url.startsWith('http') ? url : undefined;
     },
     [oxyServices]
@@ -127,14 +129,11 @@ function RootLayout() {
           baseURL={OXY_API_URL}
           clientId={OXY_CLIENT_ID}
           authRedirectUri={Platform.OS !== 'web' ? AUTH_REDIRECT_URI : undefined}
-          // Moovo Go opens on a public landing: anonymous visitors must reach the
-          // home screen without being force-redirected to auth. Sign-in is only
-          // required to go online and accept jobs. `disableAutoSso` suppresses ONLY
-          // the terminal cold-boot SSO bounce for anonymous visitors; all session
-          // restore steps (callback consume, FedCM/silent, silent-iframe,
-          // stored-session, cookie restore) still run, so a returning signed-in
-          // courier is silently restored.
-          disableAutoSso
+          // Moovo Go opens on a public landing: anonymous visitors reach the home
+          // screen; sign-in is only required to go online and accept jobs. The SDK
+          // cold boot silently restores a returning signed-in courier (callback
+          // consume, FedCM/silent, silent-iframe, stored-session, cookie restore)
+          // without force-redirecting anonymous visitors to auth.
         >
           <AppContent />
         </OxyProvider>
