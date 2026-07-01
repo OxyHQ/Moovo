@@ -2,13 +2,12 @@ import React, { useCallback, useState } from "react";
 import { View, Pressable, Platform, type LayoutRectangle } from "react-native";
 import { createPortal } from "react-dom";
 import { useRouter, usePathname } from "expo-router";
-import { LogIn, type LucideIcon } from "lucide-react-native";
+import { type LucideIcon } from "lucide-react-native";
 import { Text } from "@/components/ui/text";
 import { Logo } from "@/components/Logo";
-import { UserAvatar } from "@/components/user-avatar";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { cn } from "@/lib/utils";
-import { useOxy, showSignInModal } from "@oxyhq/services";
+import { useAuth, ProfileButton } from "@oxyhq/services";
 import { NAV_ITEMS, isNavItemActive, type NavItem } from "./nav-items";
 
 const IS_WEB = Platform.OS === "web";
@@ -106,40 +105,32 @@ function NavRailItem({ icon: Icon, label, isActive, onPress }: NavRailItemProps)
 }
 
 /* ================================================================
-   Auth control (avatar when authenticated, sign-in otherwise)
+   Auth control — SDK ProfileButton
+
+   The collapsed rail footer renders the SDK's ProfileButton, which owns all
+   three auth states (undetermined skeleton, signed-in avatar + device-account
+   switcher menu, signed-out "Sign in") and its own popover — so the rail no
+   longer hand-rolls the avatar/sign-in trigger. Collapsed rail → bare avatar
+   (`expanded={false}`); the footer sits at the bottom, so the menu opens upward
+   (ProfileButton's default `placement`).
    ================================================================ */
 
-function AuthRailItem() {
-  const { colors } = useColorScheme();
-  const { isAuthenticated } = useOxy();
-  const [anchor, setAnchor] = useState<AnchorRect | null>(null);
+function ProfileButtonRail() {
+  const router = useRouter();
+  const { signIn } = useAuth();
 
-  const label = isAuthenticated ? "Account" : "Sign in";
-  const onPress = useCallback(() => {
-    if (!isAuthenticated) showSignInModal();
-  }, [isAuthenticated]);
+  const onNavigateManage = useCallback(() => router.push("/settings"), [router]);
+  const onAddAccount = useCallback(() => {
+    signIn().catch(() => {});
+  }, [signIn]);
 
   return (
     <View className="items-center justify-center">
-      <Pressable
-        onPress={onPress}
-        onHoverIn={IS_WEB ? (e) => setAnchor(rectFromHover(e)) : undefined}
-        onHoverOut={IS_WEB ? () => setAnchor(null) : undefined}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        className={cn(
-          "h-12 w-12 items-center justify-center rounded-2xl web:transition",
-          "active:bg-secondary web:hover:bg-secondary"
-        )}
-      >
-        {isAuthenticated ? (
-          <UserAvatar size={32} />
-        ) : (
-          <LogIn size={22} color={colors.foreground} style={{ opacity: 0.35 }} />
-        )}
-      </Pressable>
-
-      <RailTooltip label={label} anchor={anchor} />
+      <ProfileButton
+        expanded={false}
+        onNavigateManage={onNavigateManage}
+        onAddAccount={onAddAccount}
+      />
     </View>
   );
 }
@@ -197,7 +188,7 @@ export function NavRail() {
       </View>
 
       {/* Bottom — auth control */}
-      <AuthRailItem />
+      <ProfileButtonRail />
     </View>
   );
 }
