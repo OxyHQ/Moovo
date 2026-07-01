@@ -1,8 +1,11 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useCallback, useEffect } from 'react';
+import {
+  preventNativeSplashAutoHide,
+  useHideNativeSplashWhenReady,
+} from '@oxyhq/expo-splash';
+import { useCallback, useEffect, useState } from 'react';
 import { OxyProvider, useOxy } from '@oxyhq/services';
 import { BloomThemeProvider } from '@oxyhq/bloom/theme';
 import { ImageResolverProvider } from '@oxyhq/bloom/image-resolver';
@@ -27,7 +30,13 @@ export const unstable_settings = {
   initialRouteName: '(app)',
 };
 
-SplashScreen.preventAutoHideAsync();
+// Hold the native OS splash until the app is ready. The native OS splash — the
+// Oxy family "Instagram, from Meta" pattern: Moovo's own logo centered on the
+// dark brand background with the shared Oxy symbol pinned to the bottom
+// (configured by `@oxyhq/expo-splash` in app.config.js) — is the SINGLE splash
+// surface on native. On web this is a no-op (the shared helper guards
+// `Platform.OS === 'web'`); the custom <AppSplashScreen> covers the web boot.
+preventNativeSplashAutoHide();
 
 const OXY_API_URL = process.env.EXPO_PUBLIC_OXY_API_URL || 'https://api.oxy.so';
 const AUTH_REDIRECT_URI = Linking.createURL('/');
@@ -107,11 +116,23 @@ function RootLayout() {
     if (error) throw error;
   }, [error]);
 
+  // App readiness = fonts loaded. On NATIVE this flips from readiness ALONE (no
+  // custom-splash fade to wait on — the custom splash never renders on native),
+  // otherwise the held OS splash would hang forever.
+  const [appIsReady, setAppIsReady] = useState(false);
   useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
+    if (loaded) setAppIsReady(true);
   }, [loaded]);
 
-  if (!loaded) return null;
+  // NATIVE ONLY: hide the held OS splash once ready. No-op on web (the OS splash
+  // was never held there; the custom <AppSplashScreen> handles the web boot).
+  useHideNativeSplashWhenReady(appIsReady);
+
+  if (!appIsReady) {
+    // WEB: paint the custom splash while fonts load, so the boot isn't a blank
+    // frame. NATIVE: the held OS splash is on top, so render nothing underneath.
+    return Platform.OS === 'web' ? <AppSplashScreen /> : null;
+  }
 
   return (
     <AppErrorBoundary>
@@ -121,7 +142,10 @@ function RootLayout() {
         persistKey={BLOOM_THEME_PERSIST_KEY}
         storage={BLOOM_THEME_STORAGE}
         fonts={false}
-        onFontsLoading={<AppSplashScreen />}
+        // The custom React splash is WEB-ONLY. On native the OS splash (Oxy
+        // family pattern) is the single splash surface, so Bloom's font-loading
+        // fallback stays null there.
+        onFontsLoading={Platform.OS === 'web' ? <AppSplashScreen /> : null}
       >
         <OxyProvider
           baseURL={OXY_API_URL}
