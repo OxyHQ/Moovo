@@ -22,7 +22,7 @@ See `HANDOFF.md` for deferred work (infra, Oxy client registration, the Moovo co
 
 - **Frontend / Courier App / Dashboard**: Expo SDK 56, NativeWind 5 (Tailwind v4 + postcss), Reanimated, Zustand, TanStack Query, expo-router
 - **Backend**: Express, TypeScript, MongoDB/Mongoose, Redis (optional), Socket.IO
-- **Auth**: `@oxyhq/core` (incl. `@oxyhq/core/server`), `@oxyhq/services`, `@oxyhq/auth` (web SSO RP)
+- **Auth**: `@oxyhq/core` (incl. `@oxyhq/core/server`), `@oxyhq/services` (device-first web + native)
 - **UI**: `@oxyhq/bloom`
 - **Client ID**: `EXPO_PUBLIC_OXY_CLIENT_ID`; backend auth: `packages/backend/src/middleware/auth.ts`
 
