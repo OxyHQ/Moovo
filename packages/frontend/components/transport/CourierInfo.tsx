@@ -9,9 +9,10 @@ import { Text } from '@/components/ui/text';
  *
  * `JobView` exposes only `courierOxyUserId`; identity (display name + avatar) is
  * resolved live from Oxy via `getUserById` (a TanStack Query, not an effect).
- * Per the display-name contract we render `name.displayName` directly — no local
- * `displayName || username` fallback chain beyond the SDK's own absence. The Oxy
- * file-id avatar is resolved through the SDK's media chokepoint.
+ * We render `name.displayName` when present and fall back to the normalized
+ * handle when the federated/unresolved profile omits it (the sanctioned
+ * display-name coalesce). The Oxy file-id avatar is resolved through the SDK's
+ * media chokepoint.
  */
 export function CourierInfo({ courierOxyUserId }: { courierOxyUserId: string }) {
   const { oxyServices, isAuthenticated } = useOxy();
@@ -23,9 +24,10 @@ export function CourierInfo({ courierOxyUserId }: { courierOxyUserId: string }) 
     staleTime: 5 * 60 * 1000,
   });
 
-  // Render the canonical display name directly; a generic placeholder is used
-  // only while the courier profile is still loading.
-  const displayName = courier ? courier.name.displayName : 'Your courier';
+  // Render `name.displayName` when present; fall back to the normalized handle
+  // (username) when the profile omits it. A generic placeholder shows only while
+  // the courier profile is still loading.
+  const displayName = courier ? courier.name.displayName?.trim() || courier.username : 'Your courier';
   const avatarUrl = courier?.avatar
     ? oxyServices.getFileDownloadUrl(courier.avatar, 'thumb')
     : null;

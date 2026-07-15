@@ -1,10 +1,16 @@
 import * as React from 'react';
-import { Platform, TextInput } from 'react-native';
+import { Platform, TextInput, type TextStyle } from 'react-native';
 import { cn } from '@/lib/utils';
 
 interface TextareaProps extends React.ComponentPropsWithoutRef<typeof TextInput> {
   variant?: 'default' | 'ghost';
 }
+
+// `fieldSizing: 'content'` makes the web textarea auto-grow to fit its content.
+// It's a web-only CSS property that react-native-web forwards to the DOM but
+// that React Native's TextStyle does not declare.
+type AutoSizingTextStyle = TextStyle & { fieldSizing?: 'content' | 'fixed' };
+const webAutoGrowStyle: AutoSizingTextStyle = { fieldSizing: 'content' };
 
 const Textarea = React.forwardRef<TextInput, TextareaProps>(
   ({ className, placeholderClassName, style, variant = 'default', ...props }, ref) => {
@@ -26,7 +32,7 @@ const Textarea = React.forwardRef<TextInput, TextareaProps>(
         scrollEnabled={false}
         textAlignVertical="top"
         style={[
-          Platform.OS === 'web' ? ({ fieldSizing: 'content' } as any) : undefined,
+          Platform.OS === 'web' ? webAutoGrowStyle : undefined,
           style,
         ]}
         {...props}
