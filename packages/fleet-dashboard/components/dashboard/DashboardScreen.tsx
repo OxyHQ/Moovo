@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { View, ScrollView, Platform, ActivityIndicator } from "react-native";
 import Head from "expo-router/head";
-import { useOxy, showSignInModal } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxyhq/services";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { MoovoWordmark } from "@/components/ui/moovo-wordmark";
@@ -59,7 +59,7 @@ export function DashboardScreen({
         <Text className="max-w-md text-center text-base text-muted-foreground">
           {t("companies.signInSubtitle")}
         </Text>
-        <Button onPress={() => showSignInModal()} className="mt-2">
+        <Button onPress={() => openAccountDialog()} className="mt-2">
           <Text className="text-sm font-medium text-primary-foreground">
             {t("companies.signInButton")}
           </Text>

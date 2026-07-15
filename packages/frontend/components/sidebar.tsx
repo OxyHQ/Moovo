@@ -23,7 +23,7 @@ import { useRouter, usePathname, useNavigation } from "expo-router";
 import type { DrawerNavigationProp } from "@react-navigation/drawer";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
 import { UserAvatar } from "@/components/user-avatar";
-import { useOxy, showSignInModal } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxyhq/services";
 import { MoovoWordmark } from "@/components/ui/moovo-wordmark";
 import { Logo } from "@/components/Logo";
 import * as DropdownMenu from "@/components/ui/dropdown-menu";
@@ -138,7 +138,7 @@ const MainSidebar = React.memo(function MainSidebar() {
     logout();
     router.replace("/(app)");
   }, [router, logout]);
-  const handleLogin = React.useCallback(() => showSignInModal(), []);
+  const handleLogin = React.useCallback(() => openAccountDialog(), []);
 
   const isHome =
     pathname === "/" ||

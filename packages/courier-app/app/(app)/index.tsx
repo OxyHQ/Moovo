@@ -7,7 +7,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useOxy, showSignInModal } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxyhq/services";
 import type { JobSummary } from "@moovo/shared-types";
 import { ChevronRight } from "lucide-react-native";
 import { Text } from "@/components/ui/text";
@@ -49,7 +49,7 @@ function SignedOutPrompt() {
       <Text className="max-w-sm text-center text-base text-muted-foreground">
         Go online, accept jobs, get paid. Sign in to start driving.
       </Text>
-      <Button onPress={() => showSignInModal()} size="lg">
+      <Button onPress={() => openAccountDialog()} size="lg">
         <Text className="text-base font-semibold text-primary-foreground">
           Sign in
         </Text>

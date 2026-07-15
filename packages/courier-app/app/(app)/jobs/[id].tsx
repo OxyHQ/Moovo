@@ -3,7 +3,7 @@ import { View, ScrollView, ActivityIndicator, Pressable } from "react-native";
 import Head from "expo-router/head";
 import { useLocalSearchParams } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOxy, showSignInModal } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxyhq/services";
 import type { JobView, ScanInput, ShipmentEndpoint } from "@moovo/shared-types";
 import { MapPin, Flag, Navigation, Package, Phone } from "lucide-react-native";
 import { Text } from "@/components/ui/text";
@@ -310,7 +310,7 @@ export default function JobScreen() {
         <Text className="text-center text-base text-muted-foreground">
           Sign in to view this job.
         </Text>
-        <Pressable onPress={() => showSignInModal()}>
+        <Pressable onPress={() => openAccountDialog()}>
           <Text className="font-semibold text-primary">Sign in</Text>
         </Pressable>
       </View>

@@ -1,7 +1,7 @@
 import { View, ScrollView, Pressable, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
-import { useOxy, showSignInModal } from '@oxyhq/services';
+import { useOxy, openAccountDialog } from '@oxyhq/services';
 import { ChevronRight } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Footer } from '@/components/shell/Footer';
@@ -26,7 +26,7 @@ function SendCta() {
 
   const handlePick = (type: ShipmentType) => {
     if (!isAuthenticated) {
-      showSignInModal();
+      openAccountDialog();
       return;
     }
     router.push(`/send?type=${type}`);
@@ -167,7 +167,7 @@ function SignedOutPrompt() {
           Create a shipment above — we'll ask you to sign in to send it.
         </Text>
         <Pressable
-          onPress={() => showSignInModal()}
+          onPress={() => openAccountDialog()}
           accessibilityRole="button"
           className="mt-4 rounded-full bg-primary px-5 py-2.5 active:opacity-90"
         >

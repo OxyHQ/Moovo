@@ -21,7 +21,7 @@ import * as Haptics from "expo-haptics";
 import { UserAvatar } from "@/components/user-avatar";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { useTheme } from "@oxyhq/bloom/theme";
-import { useOxy, showSignInModal } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxyhq/services";
 import {
   NAV_ITEMS,
   isNavItemActive,
@@ -125,7 +125,7 @@ function AuthTab({ isActive }: AuthTabProps) {
 
   const onPress = useCallback(() => {
     triggerHaptic();
-    if (!isAuthenticated) showSignInModal();
+    if (!isAuthenticated) openAccountDialog();
   }, [isAuthenticated]);
 
   return (

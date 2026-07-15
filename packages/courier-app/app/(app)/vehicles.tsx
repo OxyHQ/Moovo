@@ -2,7 +2,7 @@ import { View, ScrollView, ActivityIndicator, Pressable } from "react-native";
 import Head from "expo-router/head";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOxy, showSignInModal } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxyhq/services";
 import type { Vehicle } from "@moovo/shared-types";
 import { Plus, Check, Trash2 } from "lucide-react-native";
 import { Text } from "@/components/ui/text";
@@ -147,7 +147,7 @@ function VehiclesBody() {
         <Text className="text-center text-base text-muted-foreground">
           Sign in to manage your vehicles.
         </Text>
-        <Button onPress={() => showSignInModal()}>
+        <Button onPress={() => openAccountDialog()}>
           <Text className="font-semibold text-primary-foreground">Sign in</Text>
         </Button>
       </View>

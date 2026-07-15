@@ -3,7 +3,7 @@ import { View, ScrollView, ActivityIndicator, Pressable } from "react-native";
 import Head from "expo-router/head";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { useOxy, showSignInModal } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxyhq/services";
 import type { JobSummary } from "@moovo/shared-types";
 import { ChevronRight } from "lucide-react-native";
 import { Text } from "@/components/ui/text";
@@ -133,7 +133,7 @@ function JobsBody() {
         <Text className="text-center text-base text-muted-foreground">
           Sign in to see your jobs.
         </Text>
-        <Button onPress={() => showSignInModal()}>
+        <Button onPress={() => openAccountDialog()}>
           <Text className="font-semibold text-primary-foreground">Sign in</Text>
         </Button>
       </View>

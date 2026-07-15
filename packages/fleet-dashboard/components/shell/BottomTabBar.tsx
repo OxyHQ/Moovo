@@ -22,7 +22,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useTheme } from "@oxyhq/bloom/theme";
-import { useOxy, showSignInModal } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxyhq/services";
 import { AccountMenu } from "./AccountMenu";
 import {
   NAV_ITEMS,
@@ -135,7 +135,7 @@ function AuthTab({ isActive }: AuthTabProps) {
           ? triggerHaptic
           : () => {
               triggerHaptic();
-              showSignInModal();
+              openAccountDialog();
             }
       }
       style={tabStyle}
