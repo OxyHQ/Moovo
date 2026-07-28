@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ColorPicker, COLOR_OPTIONS } from "@/components/ui/color-picker";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { FormScreen, Field } from "@/components/dashboard/FormScreen";
-import { toast } from "@/components/sonner";
+import { toast } from '@oxyhq/bloom/toast';
 import { createCompany } from "@/lib/api/companies";
 import { queryKeys } from "@/lib/hooks/query-keys";
 import { useCompanyStore } from "@/lib/stores/company-store";

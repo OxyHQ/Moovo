@@ -22,7 +22,7 @@ import {
   PermissionDenied,
 } from "@/components/dashboard/CompanyHeader";
 import { UserCell } from "@/components/dashboard/UserCell";
-import { toast } from "@/components/sonner";
+import { toast } from '@oxyhq/bloom/toast';
 import {
   fetchMembers,
   inviteMember,

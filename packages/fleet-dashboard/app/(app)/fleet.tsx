@@ -19,7 +19,7 @@ import {
 } from "@/components/dashboard/CompanyHeader";
 import { UserCell } from "@/components/dashboard/UserCell";
 import { VehicleDialog } from "@/components/dashboard/VehicleDialog";
-import { toast } from "@/components/sonner";
+import { toast } from '@oxyhq/bloom/toast';
 import {
   fetchVehicles,
   createVehicle,

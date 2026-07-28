@@ -11,7 +11,6 @@ import { Platform } from 'react-native';
 
 import { AppErrorBoundary } from '@/components/error-boundary';
 import AppSplashScreen from '@/components/AppSplashScreen';
-import { Toaster } from '@/components/sonner';
 import { KeyboardProvider } from '@/lib/keyboard';
 import { useColorScheme } from '@/lib/useColorScheme';
 import { setTokenGetter } from '@/lib/api/client';
@@ -92,7 +91,6 @@ function AppContent() {
           />
         </Stack>
       </KeyboardProvider>
-      <Toaster />
     </AuthSetup>
   );
 }

@@ -14,7 +14,7 @@ import { ColorPicker } from "@/components/ui/color-picker";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { FormScreen, Field } from "@/components/dashboard/FormScreen";
 import { PermissionDenied } from "@/components/dashboard/CompanyHeader";
-import { toast } from "@/components/sonner";
+import { toast } from '@oxyhq/bloom/toast';
 import { updateCompany } from "@/lib/api/companies";
 import { queryKeys } from "@/lib/hooks/query-keys";
 import { useCompanyContext } from "@/lib/hooks/use-company-context";
