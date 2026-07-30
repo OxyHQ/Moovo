@@ -7,21 +7,23 @@ await esbuild.build({
   target: 'node20',
   format: 'esm',
   outfile: 'dist/index.js',
-  // Keep node_modules external EXCEPT:
-  //   - @oxyhq/*       — their ESM builds have missing .js extensions, so bundle them
-  //   - @moovo/* — first-party workspace packages (e.g. shared-types); inline
-  //                      them so the runtime image has no dependency on their dist or
-  //                      build-time devDependencies.
+  // Keep every node_modules dependency external EXCEPT @moovo/* — first-party
+  // workspace packages (e.g. shared-types) are inlined so the runtime image has
+  // no dependency on their dist or their build-time devDependencies.
+  //
+  // @oxyhq/* MUST stay external. The @oxyhq/crowdsource* packages are published
+  // as CommonJS, and inlining CJS into this ESM bundle rewrites each of their
+  // internal require() calls into an esbuild shim that throws the moment it
+  // runs — the container died at startup with
+  //   Error: Dynamic require of "zod" is not supported
+  // and the API could not deploy (2026-07-30). Node's own ESM loader imports
+  // those CJS packages correctly, so leave the resolution to Node; the runtime
+  // image ships node_modules (see the Dockerfile), so they resolve there.
   plugins: [{
     name: 'externalize-third-party',
     setup(build) {
-      const inline = (path: string) =>
-        path.startsWith('@oxyhq/') || path.startsWith('@moovo/');
-      // Let first-party / @oxyhq packages be bundled.
-      build.onResolve({ filter: /^(@oxyhq|@moovo)\// }, () => undefined);
-      // Externalize all other bare imports (third-party node_modules).
       build.onResolve({ filter: /^[^./]/ }, args => {
-        if (inline(args.path)) return undefined;
+        if (args.path.startsWith('@moovo/')) return undefined;
         return { path: args.path, external: true };
       });
     },

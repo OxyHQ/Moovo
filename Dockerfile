@@ -67,8 +67,9 @@ RUN bun install
 COPY packages/backend ./packages/backend
 
 # Build shared-types then bundle the API with esbuild ->
-# packages/backend/dist/index.js (externalizes third-party node_modules, inlines
-# @oxyhq/* and @moovo/*; see packages/backend/build.ts).
+# packages/backend/dist/index.js (externalizes every node_modules dependency,
+# @oxyhq/* included, and inlines only @moovo/*; see packages/backend/build.ts).
+# The externals are resolved at runtime from the node_modules copied below.
 RUN bun run build:backend
 
 # Fail fast if the expected entry point was not emitted.
