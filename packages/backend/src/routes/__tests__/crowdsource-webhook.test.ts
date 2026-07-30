@@ -409,6 +409,31 @@ describe("the parser configuration the 'refused' test depends on", () => {
  *
  * Needs its own module registry because the config mock is module-level, hence
  * `resetModules` + `doMock` + a dynamic import rather than the shared import.
+ *
+ * ## Do NOT rewrite this to set `CROWDSOURCE_WEBHOOK_SECRET_PREVIOUS` in the env
+ *
+ * It would look simpler and it would make these tests VACUOUS. The SDK resolves
+ * the previous secret as `options.previousSecret ?? process.env[...]`, evaluated
+ * per request — so with the environment variable set, the middleware finds the
+ * secret on its own whether or not Moovo's route ever passed it. The tests would
+ * then be measuring the SDK's own fallback, and deleting Moovo's plumbing
+ * entirely would leave them green.
+ *
+ * Mocking the CONFIG MODULE instead is what keeps them honest: no environment
+ * variable exists, so the only way the middleware can see the previous secret is
+ * if the route passed it explicitly. Verified by mutation — deleting the
+ * `previousSecret` pass-through from `crowdsource-webhook.ts` is type-clean and
+ * fails exactly the first test below, while the other two correctly still pass
+ * (they do not depend on that plumbing).
+ *
+ * That distinction is worth stating because it is the difference between testing
+ * the GUARANTEE and testing MOOVO'S CONTRIBUTION to it, which look identical from
+ * outside. Moovo's config layer is also where the secret is length-validated, so
+ * a deployment leaning on the SDK's raw `process.env` read would silently accept
+ * a two-character secret that config rejects at boot.
+ *
+ * Credit: `allo`, whose own four rotation tests were vacuous for exactly this
+ * reason and who checked rather than assumed.
  */
 describe('secret rotation', () => {
   const PREVIOUS_SECRET = 'whsec_the_previous_secret';
