@@ -255,6 +255,111 @@ describe('the webhook mounted AFTER express.json (the mutation)', () => {
   });
 });
 
+/**
+ * Is the signature check actually LIVE?
+ *
+ * A different question from the raw-body one, and this file could not answer it
+ * until these tests existed. Every other test here would pass with signature
+ * verification deleted outright: the two acceptance tests send a valid signature
+ * and only assert the delivery was handled, and the refusal test fails at
+ * raw-body resolution, which happens BEFORE any signature is compared. Six green
+ * tests, and none of them touched the thing that authenticates the route.
+ *
+ * That matters more here than almost anywhere else in the app: nothing on this
+ * route is authenticated by Oxy. **The HMAC is the entire authentication.** An
+ * unverified webhook endpoint lets anyone POST a decision that suspends a
+ * courier.
+ *
+ * Credit: `alia-syra` for the question, relayed by `allo`, whose own file had
+ * the same hole.
+ */
+describe('the HMAC is the authentication', () => {
+  async function post(headers: Record<string, string>, body: string): Promise<Response> {
+    const app = express();
+    app.use('/webhooks', createCrowdSourceWebhookRoutes());
+    app.use(express.json());
+    const base = await listen(app);
+    return await fetch(`${base}/webhooks/crowdsource`, { method: 'POST', headers, body });
+  }
+
+  it('refuses a signature minted with the wrong secret', async () => {
+    const rawBody = JSON.stringify(envelope());
+    const timestamp = Math.floor(Date.now() / 1_000).toString();
+    const forged = createHmac('sha256', 'whsec_an_attackers_own_secret')
+      .update(buildWebhookSignedPayload(timestamp, rawBody), 'utf8')
+      .digest('hex');
+
+    const response = await post(
+      {
+        'content-type': 'application/json',
+        [WEBHOOK_EVENT_ID_HEADER]: EVENT_ID,
+        [WEBHOOK_TIMESTAMP_HEADER]: timestamp,
+        [WEBHOOK_SIGNATURE_HEADER]: `${WEBHOOK_SIGNATURE_VERSION}=${forged}`,
+      },
+      rawBody,
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ rejection: 'signature_mismatch' });
+    expect(recordDecisionEvent).not.toHaveBeenCalled();
+  });
+
+  it('refuses a body tampered with after signing', async () => {
+    // The signature is valid — for DIFFERENT bytes. This is the attack the
+    // digest exists to stop, and it is distinct from an unsigned request.
+    const signedBody = JSON.stringify(envelope());
+    const headers = signedHeaders(signedBody, EVENT_ID);
+    const tamperedBody = signedBody.replace('"case_1"', '"case_attacker"');
+    expect(tamperedBody).not.toBe(signedBody);
+
+    const response = await post(headers, tamperedBody);
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ rejection: 'signature_mismatch' });
+    expect(recordDecisionEvent).not.toHaveBeenCalled();
+  });
+
+  it('refuses a replayed delivery outside the freshness window', async () => {
+    // A signature valid last week is still cryptographically valid; freshness is
+    // the only thing that makes a replay detectable.
+    const rawBody = JSON.stringify(envelope());
+    const stale = (Math.floor(Date.now() / 1_000) - 3_600).toString();
+    const digest = createHmac('sha256', WEBHOOK_SECRET)
+      .update(buildWebhookSignedPayload(stale, rawBody), 'utf8')
+      .digest('hex');
+
+    const response = await post(
+      {
+        'content-type': 'application/json',
+        [WEBHOOK_EVENT_ID_HEADER]: EVENT_ID,
+        [WEBHOOK_TIMESTAMP_HEADER]: stale,
+        [WEBHOOK_SIGNATURE_HEADER]: `${WEBHOOK_SIGNATURE_VERSION}=${digest}`,
+      },
+      rawBody,
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ rejection: 'timestamp_out_of_window' });
+    expect(recordDecisionEvent).not.toHaveBeenCalled();
+  });
+
+  it('refuses a delivery carrying no signature at all', async () => {
+    const rawBody = JSON.stringify(envelope());
+    const response = await post(
+      {
+        'content-type': 'application/json',
+        [WEBHOOK_EVENT_ID_HEADER]: EVENT_ID,
+        [WEBHOOK_TIMESTAMP_HEADER]: Math.floor(Date.now() / 1_000).toString(),
+      },
+      rawBody,
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ rejection: 'missing_signature' });
+    expect(recordDecisionEvent).not.toHaveBeenCalled();
+  });
+});
+
 describe("the parser configuration the 'refused' test depends on", () => {
   /**
    * Why this exists, and it is not paranoia.
@@ -290,6 +395,108 @@ describe("the parser configuration the 'refused' test depends on", () => {
     expect(source).not.toMatch(/express\.json\(\{[^)]*verify/);
     // Nothing else may stash the raw body either, which would have the same effect.
     expect(source).not.toContain('rawBody');
+  });
+});
+
+/**
+ * `CROWDSOURCE_WEBHOOK_SECRET_PREVIOUS`, which nothing else here exercises.
+ *
+ * It is plumbed from config into the middleware and was, until this test,
+ * entirely unverified production code — the kind that is only ever exercised
+ * during the rotation it exists for, which is the worst moment to discover it
+ * was wired up wrong. A rotation with a broken previous-secret path drops every
+ * decision signed with the old key, silently, on a schedule somebody chose.
+ *
+ * Needs its own module registry because the config mock is module-level, hence
+ * `resetModules` + `doMock` + a dynamic import rather than the shared import.
+ */
+describe('secret rotation', () => {
+  const PREVIOUS_SECRET = 'whsec_the_previous_secret';
+
+  async function appAcceptingBothSecrets(): Promise<Express> {
+    vi.resetModules();
+    vi.doMock('../../config/index.js', () => ({
+      config: {
+        crowdSource: {
+          enabled: true,
+          serviceKey: 'app:cred:secret',
+          baseUrl: undefined,
+          webhookSecret: WEBHOOK_SECRET,
+          webhookPreviousSecret: PREVIOUS_SECRET,
+          outboxBatchSize: 50,
+          outboxPollIntervalMs: 5_000,
+          enforcementMode: 'observe',
+        },
+        web: { origin: 'https://moovo.now' },
+      },
+    }));
+    const { createCrowdSourceWebhookRoutes: createRoutes } = await import(
+      '../crowdsource-webhook.js'
+    );
+    const app = express();
+    app.use('/webhooks', createRoutes());
+    app.use(express.json());
+    return app;
+  }
+
+  function headersSignedWith(secret: string, rawBody: string): Record<string, string> {
+    const timestamp = Math.floor(Date.now() / 1_000).toString();
+    const digest = createHmac('sha256', secret)
+      .update(buildWebhookSignedPayload(timestamp, rawBody), 'utf8')
+      .digest('hex');
+    return {
+      'content-type': 'application/json',
+      [WEBHOOK_EVENT_ID_HEADER]: EVENT_ID,
+      [WEBHOOK_TIMESTAMP_HEADER]: timestamp,
+      [WEBHOOK_SIGNATURE_HEADER]: `${WEBHOOK_SIGNATURE_VERSION}=${digest}`,
+    };
+  }
+
+  afterEach(() => {
+    vi.doUnmock('../../config/index.js');
+    vi.resetModules();
+  });
+
+  it('accepts a delivery signed with the PREVIOUS secret during a rotation', async () => {
+    const base = await listen(await appAcceptingBothSecrets());
+    const rawBody = JSON.stringify(envelope());
+    const response = await fetch(`${base}/webhooks/crowdsource`, {
+      method: 'POST',
+      headers: headersSignedWith(PREVIOUS_SECRET, rawBody),
+      body: rawBody,
+    });
+
+    expect(response.status).toBe(200);
+    // A side-effect assertion: a 200 alone is also what an unhandled event gets.
+    expect(await response.json()).toMatchObject({ received: true, handled: true });
+  });
+
+  it('still accepts the CURRENT secret while the previous one is configured', async () => {
+    const base = await listen(await appAcceptingBothSecrets());
+    const rawBody = JSON.stringify(envelope());
+    const response = await fetch(`${base}/webhooks/crowdsource`, {
+      method: 'POST',
+      headers: headersSignedWith(WEBHOOK_SECRET, rawBody),
+      body: rawBody,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ received: true, handled: true });
+  });
+
+  it('still refuses a THIRD secret that is neither', async () => {
+    // Otherwise "accepts the previous secret" could be satisfied by accepting
+    // anything, which is the failure mode a rotation window invites.
+    const base = await listen(await appAcceptingBothSecrets());
+    const rawBody = JSON.stringify(envelope());
+    const response = await fetch(`${base}/webhooks/crowdsource`, {
+      method: 'POST',
+      headers: headersSignedWith('whsec_neither_of_the_two', rawBody),
+      body: rawBody,
+    });
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ rejection: 'signature_mismatch' });
   });
 });
 
