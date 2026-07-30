@@ -131,6 +131,79 @@ describe('enqueueModerationOutboxEvent against a real server', () => {
     expect(row?.updatedAt).toBeInstanceOf(Date);
   });
 
+  /**
+   * The OTHER half of the timestamps problem, and the one that survives the
+   * obvious fix.
+   *
+   * Dropping the explicit `createdAt`/`updatedAt` clears the path conflict, so
+   * the test above goes green — and leaves Mongoose's own `$set: { updatedAt }`
+   * on the update. That turns a repeated enqueue for a row that already exists
+   * into a real WRITE instead of a no-op, which takes a row lock the dispatcher
+   * is concurrently contending for.
+   *
+   * Measured before the fix: the second enqueue moved `updatedAt` by 38 ms, and
+   * a transaction re-enqueueing while an outside writer touched the same row
+   * failed with `MongoServerError: operation exceeded time limit`. A repeated
+   * enqueue is ordinary — a transaction retry, two concurrent duplicate
+   * submissions, a reconciliation sweep re-deriving an event — so this is not an
+   * exotic path.
+   */
+  it('leaves updatedAt UNTOUCHED on a repeat enqueue — a genuine no-op', async () => {
+    const eventId = reportSubmitEventId('report-real-noop');
+    const enqueue = () =>
+      inTransaction((session) =>
+        enqueueModerationOutboxEvent(
+          { eventId, kind: 'report.submit', payload: { reportId: 'report-real-noop' } },
+          session,
+        ),
+      );
+
+    await enqueue();
+    const first = await ModerationOutbox.findById(eventId).lean();
+    // Long enough that a rewritten timestamp is unambiguously different.
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    await enqueue();
+    const second = await ModerationOutbox.findById(eventId).lean();
+
+    expect(second?.updatedAt?.getTime()).toBe(first?.updatedAt?.getTime());
+    expect(second?.createdAt?.getTime()).toBe(first?.createdAt?.getTime());
+  });
+
+  it('does not block a concurrent writer on the same row', async () => {
+    // The consequence of the no-op above: with `$set: { updatedAt }` present the
+    // enqueue takes a write lock inside the transaction, and the dispatcher's
+    // lease update on the same row cannot proceed.
+    const eventId = reportSubmitEventId('report-real-lock');
+    await inTransaction((session) =>
+      enqueueModerationOutboxEvent(
+        { eventId, kind: 'report.submit', payload: { reportId: 'report-real-lock' } },
+        session,
+      ),
+    );
+
+    const session = await mongoose.startSession();
+    try {
+      session.startTransaction();
+      await enqueueModerationOutboxEvent(
+        { eventId, kind: 'report.submit', payload: { reportId: 'report-real-lock' } },
+        session,
+      );
+      // A dispatcher claiming the lease from outside the transaction, bounded so
+      // a regression surfaces as a failed assertion rather than a hung suite —
+      // a mutation whose failure mode is a timeout carries no information.
+      await ModerationOutbox.updateOne(
+        { _id: eventId },
+        { $set: { leaseOwner: 'dispatcher' } },
+      ).maxTimeMS(2_000);
+      await session.commitTransaction();
+    } finally {
+      await session.endSession();
+    }
+
+    const row = await ModerationOutbox.findById(eventId).lean();
+    expect(row?.leaseOwner).toBe('dispatcher');
+  });
+
   it('upserts idempotently: a second enqueue neither duplicates nor resets', async () => {
     const eventId = reportSubmitEventId('report-real-3');
     const enqueue = () =>
