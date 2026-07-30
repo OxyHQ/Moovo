@@ -55,6 +55,14 @@ export interface IReport {
   crowdSourceReportId?: string;
   crowdSourceCaseId?: string;
   crowdSourceMerged?: boolean;
+  /**
+   * The revision of the last decision written to this report.
+   *
+   * Present so a late or retried delivery of an EARLIER revision cannot overwrite
+   * a later one — see the guarded update in `moderation-decision.worker.ts`.
+   * Absent until the first decision arrives.
+   */
+  decisionRevision?: number;
   submittedAt?: Date;
   createdAt: Date;
   updatedAt: Date;

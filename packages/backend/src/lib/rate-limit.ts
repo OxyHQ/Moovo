@@ -33,7 +33,8 @@ export type RateLimitScope =
   | 'courier'
   | 'company'
   | 'shipments'
-  | 'jobs';
+  | 'jobs'
+  | 'reports';
 
 /**
  * Build a rate-limit middleware for a scope. The scope drives a unique

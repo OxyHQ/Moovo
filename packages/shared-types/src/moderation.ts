@@ -80,16 +80,30 @@ export type ModerationLocalStatus = (typeof MODERATION_LOCAL_STATUSES)[number];
 /**
  * What Moovo can actually do about a decision, reversibly.
  *
- * Deliberately small. Moovo holds three levers and no more, so a recommendation
- * it cannot carry out becomes `manual_review` and is RECORDED rather than
- * dropped — a recommendation Moovo declined must not look like one it never
- * received.
+ * Deliberately tiny, and the shortness is the finding rather than an omission.
+ * Moovo holds exactly ONE reversible lever — `CourierProfile.status`, a field the
+ * schema already defines and which this integration is the first code to write —
+ * so the honest action set is that lever, its inverse, and two ways of doing
+ * nothing.
+ *
+ * There is deliberately no `restrict_delivery`. A social app can unpublish a post
+ * and put it back unchanged, but a delivery is a physical event: a parcel that
+ * has been collected cannot be un-collected, and cancelling a job mid-transit
+ * strands a courier holding somebody's property. Inventing an action for it would
+ * mean recording an effect that did not happen, or automating a consequence with
+ * real-world weight from a webhook. A decision about a delivery therefore becomes
+ * `manual_review`, which is a human deciding whether to cancel, refund or refer —
+ * and that is the correct answer, not a placeholder for a better one.
+ *
+ * Moovo also has no customer-side lever at all: nothing in the schema can stop an
+ * account from booking. A recommendation aimed at a customer is recorded and
+ * queued for a human, because a recommendation Moovo declined must not look like
+ * one it never received.
  */
 export const MODERATION_ENFORCEMENT_ACTIONS = [
   'none',
   'suspend_courier',
-  'restrict_delivery',
-  'restore',
+  'reinstate_courier',
   'manual_review',
 ] as const;
 export type ModerationEnforcementAction = (typeof MODERATION_ENFORCEMENT_ACTIONS)[number];

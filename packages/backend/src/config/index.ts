@@ -284,7 +284,19 @@ export interface CrowdSourceConfig {
   readonly enforcementMode: ModerationEnforcementMode;
 }
 
+export interface WebConfig {
+  /**
+   * Where Moovo's own users see things — the customer app's origin.
+   *
+   * Used to build permalinks on outbound moderation reports. It must be a valid
+   * absolute HTTP origin because the contract validates permalinks as URLs and
+   * refuses the envelope otherwise.
+   */
+  readonly origin: string;
+}
+
 export interface AppConfig {
+  readonly web: WebConfig;
   readonly pagination: PaginationConfig;
   readonly catalog: CatalogConfig;
   readonly feed: FeedConfig;
@@ -351,6 +363,9 @@ const crowdSourceWebhookSecret = optionalSecretEnv('CROWDSOURCE_WEBHOOK_SECRET')
  * inlining magic numbers or reading `process.env` directly for tunables.
  */
 export const config: AppConfig = Object.freeze({
+  web: Object.freeze({
+    origin: strEnv('WEB_URL', 'https://moovo.now'),
+  }),
   pagination: Object.freeze({
     defaultPageSize: intEnv('PAGE_SIZE_DEFAULT', 20),
     maxPageSize: intEnv('PAGE_SIZE_MAX', 100),
