@@ -186,13 +186,26 @@ describe('the webhook mounted AFTER express.json (the mutation)', () => {
    * the delivery is refused. If this ever passes, the first test has stopped
    * proving anything about ordering.
    */
-  it('refuses the delivery, and does not record it', async () => {
+  it('refuses the delivery FOR THE RIGHT REASON, and does not record it', async () => {
     const app = express();
     app.use(express.json());
     app.use('/webhooks', createCrowdSourceWebhookRoutes());
-    // The SDK hands a configuration error to the error handler rather than
-    // verifying a re-serialisation, so the app needs one to answer at all.
-    app.use((_err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    /**
+     * The error is CAPTURED, not just answered.
+     *
+     * A status-only assertion cannot tell a configuration refusal apart from a
+     * schema rejection: a malformed envelope is answered 400 `malformed_event`,
+     * and a bad signature 401, either of which would make this test pass while
+     * proving only that the fixture was broken — and it would keep passing if
+     * the raw-body guard were deleted outright. Asserting the SPECIFIC failure
+     * is what makes it evidence about mount order rather than about the payload.
+     *
+     * Credit: `allo` and `mercaria`, who each found a refusal test in their own
+     * integration passing for the wrong reason.
+     */
+    let refusal: unknown;
+    app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      refusal = err;
       res.status(500).json({ error: 'configuration' });
     });
 
@@ -206,6 +219,39 @@ describe('the webhook mounted AFTER express.json (the mutation)', () => {
 
     expect(response.status).toBeGreaterThanOrEqual(400);
     expect(recordDecisionEvent).not.toHaveBeenCalled();
+    // It reached raw-body resolution and refused THERE.
+    expect(refusal).toBeInstanceOf(Error);
+    expect((refusal as Error).message).toMatch(/body parser ran before/i);
+  });
+
+  /**
+   * The sibling that gives the refusal its meaning, stated as its own test.
+   *
+   * A test asserting a request is REFUSED proves nothing unless the same request
+   * is otherwise ACCEPTED — otherwise it may only be proving the request was
+   * malformed. The "mounted BEFORE" tests are that sibling and share this
+   * fixture, so this asserts the property directly rather than leaving it an
+   * inference the reader has to make.
+   */
+  it('uses an envelope that IS accepted when the mount order is right', async () => {
+    const app = express();
+    app.use('/webhooks', createCrowdSourceWebhookRoutes());
+    app.use(express.json());
+
+    const base = await listen(app);
+    const rawBody = JSON.stringify(envelope());
+    const response = await fetch(`${base}/webhooks/crowdsource`, {
+      method: 'POST',
+      headers: signedHeaders(rawBody, EVENT_ID),
+      body: rawBody,
+    });
+
+    expect(response.status).toBe(200);
+    // A SIDE-EFFECT assertion, not a status code: an envelope the schema rejects
+    // is acknowledged 200 `{ handled: false }` with no handler run, so a
+    // status-only check agrees that an inert endpoint works.
+    expect(recordDecisionEvent).toHaveBeenCalledTimes(1);
+    expect(await response.json()).toMatchObject({ received: true, handled: true });
   });
 });
 
