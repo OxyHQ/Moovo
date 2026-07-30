@@ -30,6 +30,16 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # The moderation durability tests run against a real MongoDB replica set
+      # (mongodb-memory-server), because a mocked model accepts update documents
+      # the server rejects. Caching the downloaded mongod keeps that from being a
+      # cold network fetch on every run.
+      - name: Cache MongoDB binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}
+
       - name: Lint API
         run: bun run --filter @moovo/backend lint
 

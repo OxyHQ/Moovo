@@ -33,7 +33,11 @@ vi.mock('../../../models/shipment.js', () => ({
   Shipment: { findById: (...args: unknown[]) => shipmentFindById(...args) },
 }));
 
-import { buildDeliveryContext, buildDeliveryResource } from '../subjects/delivery-context.js';
+import {
+  buildDeliveryContext,
+  buildDeliveryResource,
+  DELIVERY_FACT_KEYS,
+} from '../subjects/delivery-context.js';
 import type { ModerationResource } from '../subjects/types.js';
 
 /**
@@ -127,6 +131,7 @@ function shipment(overrides: Record<string, unknown> = {}) {
     itemDescription: 'A sealed cardboard box, contents unknown',
     photos: [{ fileId: 'file-1', position: 0 }, { fileId: 'file-2', position: 1 }],
     type: 'package' as const,
+    distanceM: 12_400,
     ...overrides,
   };
 }
@@ -135,6 +140,38 @@ beforeEach(() => {
   vi.clearAllMocks();
   jobFindById.mockReturnValue(query(job()));
   shipmentFindById.mockReturnValue(query(shipment()));
+});
+
+describe('the exact key set a delivery may carry', () => {
+  /**
+   * The assertion that matters most in this file.
+   *
+   * An exact set comparison, not a list of `not.toHaveProperty` calls. Those only
+   * fail when a field they already name goes missing — they are silent about a
+   * field ADDED, which is the direction every real leak arrives from: somebody
+   * passes an object through, or spreads a document, and a `contactPhone` rides
+   * along. A test naming the forbidden fields cannot catch the one nobody has
+   * thought of yet. This one catches all of them, including fields that do not
+   * exist on the model today.
+   *
+   * When this fails after you added a field, the fix is not to append the key to
+   * `DELIVERY_FACT_KEYS` — it is to decide whether an anonymous stranger reviewing
+   * a case may see it, and only then to write it down.
+   */
+  it('emits nothing outside DELIVERY_FACT_KEYS', async () => {
+    const emitted = Object.keys(facts(await buildDeliveryResource(job()))).sort();
+    expect(emitted).toEqual([...DELIVERY_FACT_KEYS].sort());
+  });
+
+  it('holds every optional key too, so the comparison above is not partial', async () => {
+    // The fixture is deliberately fully populated: notes on both endpoints, a
+    // proof-of-delivery note, a fragile parcel, a distance, an assigned courier.
+    // If it were sparse, the set comparison would silently exempt whichever keys
+    // it failed to produce.
+    expect(DELIVERY_FACT_KEYS.length).toBe(16);
+    const emitted = Object.keys(facts(await buildDeliveryResource(job())));
+    expect(emitted).toHaveLength(DELIVERY_FACT_KEYS.length);
+  });
 });
 
 describe('buildDeliveryResource', () => {
