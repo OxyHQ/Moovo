@@ -209,6 +209,44 @@ describe('the webhook mounted AFTER express.json (the mutation)', () => {
   });
 });
 
+describe("the parser configuration the 'refused' test depends on", () => {
+  /**
+   * Why this exists, and it is not paranoia.
+   *
+   * `readRawBody` in `@oxyhq/crowdsource-express` prefers a Buffer on
+   * `req.rawBody` before it reads the stream. So the consequence of mounting the
+   * webhook LATE depends on middleware this integration does not own:
+   *
+   *   * plain `express.json()` — `req.body` is a parsed object, the handler
+   *     REFUSES. Loud. This is Moovo today, and it is what the "mounted after"
+   *     test above observes.
+   *   * `express.json({ verify })` stashing the raw Buffer on `req.rawBody` — a
+   *     late mount VERIFIES the parser-supplied bytes and answers **200**. Silent
+   *     success, and the "mounted after" test would start failing for a reason
+   *     that has nothing to do with what it is named after.
+   *
+   * Three apps in this ecosystem have three different behaviours here for the
+   * same invariant. So the assumption is pinned explicitly rather than left
+   * implicit in a test whose name does not mention it. If somebody adds a
+   * `verify` to capture raw bytes for some other webhook, this fails and says
+   * exactly which other test's meaning changed.
+   *
+   * The guard this file actually relies on — the `typeof req.body === 'undefined'`
+   * probe, plus the `index.ts` ordering assertion — is independent of all of
+   * this, which is why those two are the primary evidence and the refusal test
+   * is corroboration.
+   */
+  it('uses a plain express.json with no verify hook', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(join(here, '..', '..', 'index.ts'), 'utf8');
+
+    expect(source).toContain("app.use(express.json({ limit: '10mb' }));");
+    expect(source).not.toMatch(/express\.json\(\{[^)]*verify/);
+    // Nothing else may stash the raw body either, which would have the same effect.
+    expect(source).not.toContain('rawBody');
+  });
+});
+
 describe('index.ts mount order', () => {
   /**
    * The tests above build their own apps, so neither can notice if the REAL

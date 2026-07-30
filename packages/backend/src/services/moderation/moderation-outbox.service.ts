@@ -121,6 +121,35 @@ export async function enqueueModerationOutboxEvent(
   }
 
   const now = new Date();
+  /**
+   * `timestamps: false` on the operation, with BOTH timestamps written
+   * explicitly. Two distinct reasons, and the second is why this is not
+   * interchangeable with simply dropping the explicit fields.
+   *
+   * **It has to be one or the other.** The schema declares `timestamps: true`,
+   * so on an upsert Mongoose adds `createdAt` to `$setOnInsert` and `updatedAt`
+   * to `$set` itself. Naming either field here as well puts one path under two
+   * operators and the server rejects the WHOLE write — "Updating the path
+   * 'updatedAt' would create a conflict at 'updatedAt'" — which, inside intake's
+   * transaction, aborts the report too. Every report submission fails, from the
+   * first one. It is a server-side update validation, so nothing in the schema,
+   * the types, or a mocked driver reveals it.
+   *
+   * **And it has to be THIS one.** Letting Mongoose own the timestamps instead
+   * leaves its `$set: { updatedAt }` on the update, which turns a repeated
+   * enqueue for an event that already exists into a real WRITE rather than a
+   * no-op. Measured on a replica set: the second enqueue moved `updatedAt`, and
+   * a transaction that re-enqueues while the dispatcher touches the same row
+   * blocks on the row lock and fails. A repeated enqueue is ORDINARY — a
+   * transaction retry, two concurrent duplicate submissions, a reconciliation
+   * sweep re-deriving an event — and the dispatcher is concurrently claiming,
+   * renewing and completing leases on these same rows. Writing both fields
+   * explicitly keeps the upsert a genuine no-op for a row that already exists,
+   * which is the property the deterministic event id exists to provide.
+   *
+   * Credit: `homiio` raised this refinement from the Homiio integration; it is
+   * the shape `@oxyhq/crowdsource-app` settled on (CrowdSource PR #34).
+   */
   await ModerationOutbox.updateOne(
     { _id: input.eventId },
     {
@@ -132,9 +161,11 @@ export async function enqueueModerationOutboxEvent(
         attempts: 0,
         availableAt: now,
         expiresAt: new Date(now.getTime() + MODERATION_OUTBOX_RETENTION_SECONDS * 1_000),
+        createdAt: now,
+        updatedAt: now,
       },
     },
-    { upsert: true, session },
+    { upsert: true, session, timestamps: false },
   );
   return input.eventId;
 }
