@@ -31,7 +31,61 @@ const JOB_PROJECTION =
   'jobNumber shipmentId senderOxyUserId courierOxyUserId type fulfillmentType status ' +
   'pickupSnapshot dropoffSnapshot parcelSnapshot statusHistory proofOfDelivery.note createdAt';
 
-const SHIPMENT_PROJECTION = 'itemDescription photos type';
+const SHIPMENT_PROJECTION = 'itemDescription photos type distanceM';
+
+/**
+ * The keys a delivery description is allowed to carry. THE list, not a sample.
+ *
+ * Asserted as an exact set by `delivery-context.test.ts`, which fails when a key
+ * is ADDED as well as when one is removed — and added is the direction that
+ * matters, because a leak arrives as a new field somebody passed through, never
+ * as a missing one. A list of "must not contain X" assertions cannot catch a
+ * field nobody thought to forbid; an exact comparison catches every field at
+ * once, including the one that has not been invented yet.
+ *
+ * Optional keys are absent rather than null when they have no value, so the test
+ * compares against the subset a fully-populated delivery produces.
+ */
+export const DELIVERY_FACT_KEYS = Object.freeze([
+  'deliveryType',
+  'status',
+  'fulfillment',
+  'itemDescription',
+  'parcelSizeClass',
+  'parcelWeightKg',
+  'parcelPieces',
+  'parcelFragile',
+  'pickupArea',
+  'dropoffArea',
+  'distanceKm',
+  'pickupNotes',
+  'dropoffNotes',
+  'deliveryNote',
+  'photoCount',
+  'courierAssigned',
+] as const);
+
+/** Metres per kilometre, and the rounding the jury sees. */
+const METRES_PER_KM = 1_000;
+
+/**
+ * How far the parcel travelled, to the nearest kilometre.
+ *
+ * A DERIVED scalar, which is the only form geography may take here. Two precise
+ * points identify two homes; one distance answers the questions a jury actually
+ * has — "the courier claims the address was unreachable", "the customer says
+ * they took a two-hour detour" — and identifies nothing, because a distance is
+ * translation-invariant. Rounding to a whole kilometre removes the last of the
+ * re-identification value while leaving the number useful.
+ *
+ * Absent when Moovo never computed one, which is normal for a job booked before
+ * the distance was known.
+ */
+function distanceKm(shipment: SnapshotShipment | null): number | undefined {
+  const metres = shipment?.distanceM;
+  if (typeof metres !== 'number' || !Number.isFinite(metres) || metres < 0) return undefined;
+  return Math.round(metres / METRES_PER_KM);
+}
 
 type SnapshotJob = Pick<
   IJob,
@@ -50,7 +104,10 @@ type SnapshotJob = Pick<
   | 'createdAt'
 > & { proofOfDelivery?: { note?: string } };
 
-type SnapshotShipment = Pick<IShipment, '_id' | 'itemDescription' | 'photos' | 'type'>;
+type SnapshotShipment = Pick<
+  IShipment,
+  '_id' | 'itemDescription' | 'photos' | 'type' | 'distanceM'
+>;
 
 export async function loadSnapshotJob(jobId: string): Promise<SnapshotJob | null> {
   if (!mongoose.isValidObjectId(jobId)) return null;
@@ -82,6 +139,7 @@ function deliveryFacts(job: SnapshotJob, shipment: SnapshotShipment | null): Rec
   const dropoff = redactEndpoint(job.dropoffSnapshot);
   const itemDescription = note(shipment?.itemDescription);
   const proofNote = note(job.proofOfDelivery?.note);
+  const distance = distanceKm(shipment);
 
   return {
     // What kind of delivery, and how it ended. A cancelled job and a delivered one
@@ -98,6 +156,8 @@ function deliveryFacts(job: SnapshotJob, shipment: SnapshotShipment | null): Rec
     // Coarse place labels only — city/region/country, never a street or a postcode.
     ...(pickup.locationLabel === undefined ? {} : { pickupArea: pickup.locationLabel }),
     ...(dropoff.locationLabel === undefined ? {} : { dropoffArea: dropoff.locationLabel }),
+    // Geography as ONE derived scalar. Never two points — see `distanceKm`.
+    ...(distance === undefined ? {} : { distanceKm: distance }),
     // The user's own instructions, which is material a jury may need to read.
     ...(pickup.notes === undefined ? {} : { pickupNotes: pickup.notes }),
     ...(dropoff.notes === undefined ? {} : { dropoffNotes: dropoff.notes }),
