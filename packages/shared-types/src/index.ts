@@ -63,3 +63,7 @@ export * from './job';
 
 // External-provider DTOs (Provider, ProviderSummary, ProviderQuote).
 export * from './provider';
+
+// Moderation DTOs (ReportedType, ReportCategory, ModerationLocalStatus, …) — the
+// report surface Moovo exposes and the status axes a report carries.
+export * from './moderation';

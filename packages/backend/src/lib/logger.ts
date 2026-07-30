@@ -90,6 +90,10 @@ export function sanitizeForLog(value: string): string {
 export const log = {
   auth: createLogger('auth'),
   health: createLogger('health'),
+  // Reports, deliveries, decisions and enforcement. Its own subsystem because a
+  // dead-lettered report is moderation work nobody will do, and finding those
+  // must not mean grepping the whole application's output.
+  moderation: createLogger('moderation'),
   general: rootLogger,
 };
 

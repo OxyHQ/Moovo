@@ -25,7 +25,10 @@ import sellerRouter from './routes/seller.js';
 import courierRouter from './routes/courier.js';
 import shipmentsRouter from './routes/shipments.js';
 import jobsRouter from './routes/jobs.js';
+import reportsRouter from './routes/reports.js';
 import adminRouter from './routes/admin/index.js';
+import { createCrowdSourceWebhookRoutes } from './routes/crowdsource-webhook.js';
+import { startModerationOutboxDispatcher } from './services/moderation/moderation-outbox.dispatcher.js';
 
 // Socket.io
 import { initSocket } from './socket.js';
@@ -114,6 +117,24 @@ app.use((_req, res, next) => {
   next();
 });
 
+/**
+ * CrowdSource decisions — MOUNTED BEFORE THE JSON PARSER, DELIBERATELY.
+ *
+ * The webhook signature covers the raw bytes that arrived. Once `express.json()`
+ * has consumed the stream those bytes are gone, and the verifier would be handed
+ * a re-serialisation that no longer matches the signature — so it refuses instead,
+ * and a correct integration would start rejecting every genuine decision.
+ *
+ * Moving this line below the parser is therefore a silent break of the inbound
+ * half of moderation: reports keep going out and nothing ever comes back. It is
+ * guarded by a test that asserts `typeof req.body === 'undefined'` inside the
+ * route, which is the only thing that actually proves no parser ran ahead of it.
+ *
+ * It is also ahead of the global rate limiter: a burst of legitimate decisions
+ * must not be shed as though it were abuse.
+ */
+app.use('/webhooks', createCrowdSourceWebhookRoutes());
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -139,6 +160,7 @@ app.use('/seller', sellerRouter);
 app.use('/courier', courierRouter);
 app.use('/shipments', shipmentsRouter);
 app.use('/jobs', jobsRouter);
+app.use('/reports', reportsRouter);
 app.use('/admin', adminRouter);
 
 // Root route
@@ -163,6 +185,7 @@ app.get('/', (_req, res) => {
       '/courier',
       '/shipments',
       '/jobs',
+      '/reports',
       '/admin',
     ]
   });
@@ -241,6 +264,16 @@ connectDB()
           log.general.info('Marketplace queue disabled (REDIS_URL not set) — async jobs run inline');
         }
       }).catch((err) => log.general.error({ err }, 'Queue connection import failed'));
+
+      /**
+       * Drains the moderation outbox on EVERY task, not on a leader.
+       *
+       * Claims are Mongo leases with an owner check, so N tasks share the work
+       * and a dead task's lease is reclaimed. It no-ops when CrowdSource is
+       * disabled — the loop is gated, never the durable record, so reports taken
+       * while the integration is off deliver when it is switched on.
+       */
+      startModerationOutboxDispatcher();
     });
 
     // Graceful shutdown handler
@@ -270,6 +303,18 @@ connectDB()
           await new Promise<void>((resolve) => io.close(() => resolve()));
           log.general.info('Socket.IO closed');
         }
+
+        /**
+         * Stop claiming moderation work, and let the batch in flight reach a
+         * durable state. An event abandoned mid-delivery is not lost — its lease
+         * expires and another task reclaims it — but finishing cleanly avoids a
+         * lease-length delay on every deploy.
+         */
+        const { stopModerationOutboxDispatcher } = await import(
+          './services/moderation/moderation-outbox.dispatcher.js'
+        );
+        await stopModerationOutboxDispatcher();
+        log.general.info('Moderation outbox dispatcher stopped');
 
         // Stop marketplace queue workers BEFORE closing Redis.
         const { shutdownQueues } = await import('./queue/workers.js');

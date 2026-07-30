@@ -9,6 +9,11 @@
  * deeply frozen so no code can mutate config at runtime.
  */
 
+import {
+  MODERATION_ENFORCEMENT_MODES,
+  type ModerationEnforcementMode,
+} from '@moovo/shared-types';
+
 /**
  * Parse an integer environment variable, falling back to `fallback` when the
  * variable is unset, empty, or not a finite integer.
@@ -241,7 +246,57 @@ export interface DispatchConfig {
   readonly expireOffersIntervalMs: number;
 }
 
+/**
+ * The CrowdSource moderation integration.
+ *
+ * The names come from the `@oxyhq/crowdsource*` packages, not from a plan's
+ * table, and the packages win.
+ *
+ * **There is no `CROWDSOURCE_APP_ID`, and one must never be added.** The
+ * `applicationId` is read off the service credential; a variable holding it could
+ * only ever disagree with the credential, and a surface able to carry an
+ * `applicationId` is exactly the cross-tenant write the tenancy model exists to
+ * prevent. The SDK offers no option, field or parameter through which one could
+ * be passed.
+ */
+export interface CrowdSourceConfig {
+  /**
+   * Whether to DELIVER. Never whether to record.
+   *
+   * Reports are stored and queued regardless, so turning this on delivers the
+   * backlog instead of stranding it. Only the dispatcher loop is gated.
+   */
+  readonly enabled: boolean;
+  /** `applicationId:credentialId:secret` — ONE opaque value. */
+  readonly serviceKey: string | undefined;
+  /** Optional; the SDK defaults to the one deployment. */
+  readonly baseUrl: string | undefined;
+  readonly webhookSecret: string | undefined;
+  /** Both secrets are accepted during a rotation. */
+  readonly webhookPreviousSecret: string | undefined;
+  readonly outboxBatchSize: number;
+  readonly outboxPollIntervalMs: number;
+  /**
+   * How much of a decision is carried out. Defaults to `observe`, which plans and
+   * RECORDS every action with `applied: false` and changes nothing — so the audit
+   * trail proves what will happen before it is allowed to happen.
+   */
+  readonly enforcementMode: ModerationEnforcementMode;
+}
+
+export interface WebConfig {
+  /**
+   * Where Moovo's own users see things — the customer app's origin.
+   *
+   * Used to build permalinks on outbound moderation reports. It must be a valid
+   * absolute HTTP origin because the contract validates permalinks as URLs and
+   * refuses the envelope otherwise.
+   */
+  readonly origin: string;
+}
+
 export interface AppConfig {
+  readonly web: WebConfig;
   readonly pagination: PaginationConfig;
   readonly catalog: CatalogConfig;
   readonly feed: FeedConfig;
@@ -252,13 +307,65 @@ export interface AppConfig {
   readonly quotes: QuotesConfig;
   readonly jobs: JobsConfig;
   readonly dispatch: DispatchConfig;
+  readonly crowdSource: CrowdSourceConfig;
 }
+
+/**
+ * Read an optional secret: unset and empty are the SAME thing.
+ *
+ * `strEnv` would hand back a default; here there is no sensible default and an
+ * empty string must not read as "configured". A blank `CROWDSOURCE_SERVICE_KEY`
+ * is how a placeholder secret (`-`, ``, `TODO`) reaches production, and it must
+ * fail the enabled check below rather than build a client that 401s every
+ * delivery.
+ */
+function optionalSecretEnv(name: string): string | undefined {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === '') {
+    return undefined;
+  }
+  return raw.trim();
+}
+
+/**
+ * The enforcement mode, or `observe`.
+ *
+ * Validated against the shared union rather than cast: an unrecognised value must
+ * not silently become the most permissive mode. Anything unknown reads as
+ * `observe`, which changes nothing.
+ */
+function enforcementModeEnv(): ModerationEnforcementMode {
+  const raw = process.env.CROWDSOURCE_ENFORCEMENT_MODE?.trim().toLowerCase();
+  return MODERATION_ENFORCEMENT_MODES.find((mode) => mode === raw) ?? 'observe';
+}
+
+/**
+ * `CROWDSOURCE_ENABLED=true` requires BOTH the service key and the webhook
+ * secret.
+ *
+ * A half-configured integration is the worst of the three states: it sends
+ * reports that can never come back, so cases open, juries decide them, and every
+ * decision is dropped on the floor with nothing logging an error. Refusing to
+ * enable is the only honest reading of a missing half.
+ */
+function crowdSourceEnabled(serviceKey: string | undefined, webhookSecret: string | undefined): boolean {
+  if (!boolEnv('CROWDSOURCE_ENABLED', false)) {
+    return false;
+  }
+  return serviceKey !== undefined && webhookSecret !== undefined;
+}
+
+const crowdSourceServiceKey = optionalSecretEnv('CROWDSOURCE_SERVICE_KEY');
+const crowdSourceWebhookSecret = optionalSecretEnv('CROWDSOURCE_WEBHOOK_SECRET');
 
 /**
  * The single, frozen application config. Import this everywhere instead of
  * inlining magic numbers or reading `process.env` directly for tunables.
  */
 export const config: AppConfig = Object.freeze({
+  web: Object.freeze({
+    origin: strEnv('WEB_URL', 'https://moovo.now'),
+  }),
   pagination: Object.freeze({
     defaultPageSize: intEnv('PAGE_SIZE_DEFAULT', 20),
     maxPageSize: intEnv('PAGE_SIZE_MAX', 100),
@@ -321,5 +428,15 @@ export const config: AppConfig = Object.freeze({
     maxWaves: intEnv('DISPATCH_MAX_WAVES', 3),
     stalenessMs: intEnv('DISPATCH_COURIER_STALENESS_MS', 5 * MINUTE_MS),
     expireOffersIntervalMs: intEnv('DISPATCH_EXPIRE_OFFERS_INTERVAL_MS', 30 * SECOND_MS),
+  }),
+  crowdSource: Object.freeze({
+    enabled: crowdSourceEnabled(crowdSourceServiceKey, crowdSourceWebhookSecret),
+    serviceKey: crowdSourceServiceKey,
+    baseUrl: optionalSecretEnv('CROWDSOURCE_BASE_URL'),
+    webhookSecret: crowdSourceWebhookSecret,
+    webhookPreviousSecret: optionalSecretEnv('CROWDSOURCE_WEBHOOK_SECRET_PREVIOUS'),
+    outboxBatchSize: intEnv('CROWDSOURCE_OUTBOX_BATCH_SIZE', 50),
+    outboxPollIntervalMs: intEnv('CROWDSOURCE_OUTBOX_POLL_INTERVAL_MS', 5 * SECOND_MS),
+    enforcementMode: enforcementModeEnv(),
   }),
 });
