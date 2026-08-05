@@ -1,7 +1,7 @@
 {
   "name": "moovo-monorepo",
   "version": "1.0.0",
-  "description": "Moovo — buy/sell marketplace by Oxy",
+  "description": "Moovo: courier and transport platform by Oxy. Packages, food and moves, fulfilled by Moovo couriers or external providers.",
   "private": true,
   "workspaces": [
     "packages/*"
