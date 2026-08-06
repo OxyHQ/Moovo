@@ -35,7 +35,7 @@ export function Footer() {
       {/* (TM) and never (R): neither mark is registered yet, and using (R)
           before a registration issues is unlawful in several jurisdictions. */}
       <Text className="mt-4 text-xs text-muted-foreground">
-        © {year} Moovo&trade; by Oxy&trade;. Trademarks of The Oxy Collective Inc.
+        © {year} Moovo&trade; by Oxy&trade;. Trademarks of The Oxy Collective, Inc.
       </Text>
     </View>
   );
