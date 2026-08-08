@@ -58,25 +58,50 @@ jobs:
           role-to-assume: arn:aws:iam::237343248947:role/oxy-github-deploy
           aws-region: ${{ env.AWS_REGION }}
 
+      # The secrets are enumerated one at a time, on purpose.
+      #
+      # This step used to expand the entire `secrets` context with
+      # `toJSON(secrets)`, and that is what holds deploys. A workflow that walks
+      # every repository secret into a shell loop is shaped exactly like an
+      # exfiltration payload, so GitHub creates the run with conclusion
+      # `action_required` and ZERO jobs until a human clicks "Approve and run"
+      # in the UI. The REST approve endpoint only serves fork pull requests, so
+      # it cannot be automated, and the approval is per run — every deploy needs
+      # a person.
+      #
+      # Enumerating is also least privilege. The old loop copied every secret
+      # visible to the repo, so the org-wide CI credentials (NPM_TOKEN,
+      # CLOUDFLARE_API_TOKEN, ADD_TO_PROJECT_TOKEN) ended up in this app's SSM
+      # namespace, and this repo could overwrite the /oxy/_shared/* parameters
+      # that other services read.
+      #
+      # The list is the secrets the `moovo` task definition actually consumes.
+      # Adding a new one means adding it here, or it never reaches SSM.
       - name: Sync GitHub secrets -> SSM (GitHub is the source of truth)
         env:
-          SECRETS_JSON: ${{ toJSON(secrets) }}
+          APP_MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          SHARED_REDIS_URL: ${{ secrets.REDIS_URL }}
         run: |
-          SHARED="AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY REDIS_URL LIVEKIT_API_KEY LIVEKIT_API_SECRET"
-          echo "$SECRETS_JSON" | jq -r 'to_entries[] | select((.key|ascii_upcase) as $k | ($k=="GITHUB_TOKEN" or ($k|startswith("ACTIONS_")))|not) | [.key,.value]|@tsv' | \
-          while IFS=$'\t' read -r k v; do
-            [ -z "$k" ] && continue
-            if [ -z "$v" ] || [ "$v" = "-" ]; then
-              echo "::warning::skip empty/placeholder secret $k; SSM unchanged"
-              continue
+          sync_secret() {
+            name="$1"; value="$2"; path="$3"
+            if [ -z "$value" ] || [ "$value" = "-" ]; then
+              echo "::warning::skip empty/placeholder secret $name; SSM unchanged"
+              return 0
             fi
-            if [ "$k" = "REDIS_URL" ] && ! printf '%s' "$v" | grep -q '\.usw2\.cache\.amazonaws\.com'; then
-              echo "::warning::skip REDIS_URL because it does not point at the us-west-2 Valkey endpoint; SSM unchanged"
-              continue
-            fi
-            case " $SHARED " in *" $k "*) path="/oxy/_shared/$k";; *) path="/oxy/$APP/$k";; esac
-            aws ssm put-parameter --name "$path" --value "$v" --type SecureString --overwrite >/dev/null && echo "synced -> $path"
-          done
+            aws ssm put-parameter --name "$path" --value "$value" --type SecureString --overwrite >/dev/null
+            echo "synced -> $path"
+          }
+
+          sync_secret MONGODB_URI "$APP_MONGODB_URI" "/oxy/$APP/MONGODB_URI"
+
+          # Valkey lives in the cluster's region; a URL from another region
+          # leaves the service silently without a cache, so it is rejected.
+          if [ -n "$SHARED_REDIS_URL" ] && [ "$SHARED_REDIS_URL" != "-" ] &&
+             ! printf '%s' "$SHARED_REDIS_URL" | grep -q '\.usw2\.cache\.amazonaws\.com'; then
+            echo "::warning::skip REDIS_URL because it does not point at the us-west-2 Valkey endpoint; SSM unchanged"
+          else
+            sync_secret REDIS_URL "$SHARED_REDIS_URL" "/oxy/_shared/REDIS_URL"
+          fi
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
