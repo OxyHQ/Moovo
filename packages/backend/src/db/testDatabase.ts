@@ -32,6 +32,24 @@ export const TEST_ADMIN_URL = process.env.TEST_DATABASE_URL;
 /** Whether the real-database suites can run at all in this environment. */
 export const POSTGRES_TESTS_ENABLED = Boolean(TEST_ADMIN_URL);
 
+/**
+ * Whether this environment REQUIRES them to run — set in CI.
+ *
+ * Skipping is right on a laptop with no container up, and wrong in CI, where a
+ * skipped suite and a passing suite are the same colour: a container that
+ * failed to start or a renamed variable would leave the build green while
+ * nothing was tested against a database.
+ *
+ * This lives here rather than as a grep over the runner's output in the
+ * workflow, which is where it started. That version could not work: vitest's
+ * default reporter prints a per-file line only for FAILING files, so a grep for
+ * the harness file finds nothing precisely when everything passed — the gate
+ * failed every green run. A check whose correctness depends on a reporter's
+ * formatting is the wrong shape; the suite asserting its own prerequisite is
+ * not.
+ */
+export const POSTGRES_TESTS_REQUIRED = process.env.MOOVO_REQUIRE_POSTGRES_TESTS === '1';
+
 export interface SuiteDatabase {
   readonly db: Database;
   readonly client: postgres.Sql;

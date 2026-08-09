@@ -19,20 +19,41 @@ import {
  */
 
 /**
- * Extensions this schema depends on: NONE.
+ * Extensions this schema depends on.
  *
- * Measured rather than assumed — the collection survey found no geography
- * column and no text-search index, and ids are generated in the application.
- * Stated as an explicit empty list because `runMigrations` requires the
- * decision, and because an empty list is a fact rather than a forgotten one.
+ * MEASURED against the source, not assumed — and the first draft of this file
+ * asserted "NONE", which was wrong. Moovo declares four `2dsphere` indexes
+ * (courier `currentLocation`, listing `location`, shipment `pickup.location`
+ * and `dropoff.location`) and, more decisively, RUNS geo queries:
+ * `dispatch.service.ts` finds couriers with `$nearSphere` — that is courier
+ * dispatch, the core of the product — and `search.service.ts` uses `$near`.
  *
- * An extension can NOT be added later by writing `CREATE EXTENSION IF NOT
- * EXISTS` into a migration: that short-circuits on the exists check BEFORE the
- * privilege check, so it is a silent no-op where the extension is present and a
- * hard failure where it is not. Extensions are a database prerequisite,
- * installed once per database by a privileged role.
+ * Those become a `geography` column with a GiST index, which needs PostGIS.
+ *
+ * The `text` index on listings (`title`/`description`/`tags`) does NOT need an
+ * extension: Postgres full-text search is built in (`tsvector` + GIN).
+ *
+ * PostGIS is a PRIVILEGED prerequisite, not something this migrator can create.
+ * `CREATE EXTENSION postgis` fails with `permission denied` even for the role
+ * that OWNS the database — it is not a trusted extension — so it is installed
+ * once per database by the RDS master user BEFORE any migration references the
+ * type. Declaring it here is what makes a missing install fail loudly and
+ * early, rather than at the first migration that names `geography`.
+ *
+ * A `CREATE EXTENSION IF NOT EXISTS` inside a migration is NOT an alternative:
+ * it short-circuits on the exists check before the privilege check, so it is a
+ * silent no-op where the extension is present and a hard failure where it is
+ * not — protection in appearance only.
  */
-const REQUIRED_EXTENSIONS: readonly RequiredExtension[] = [];
+const REQUIRED_EXTENSIONS: readonly RequiredExtension[] = [
+  {
+    name: 'postgis',
+    reason:
+      'Courier dispatch and listing search answer "near this point" queries — ' +
+      '`$nearSphere` in dispatch.service.ts and `$near` in search.service.ts — ' +
+      'which become a geography column with a GiST index.',
+  },
+];
 
 /**
  * Where the generated SQL lives.

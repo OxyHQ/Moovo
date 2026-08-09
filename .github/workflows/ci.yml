@@ -60,23 +60,17 @@ jobs:
         # TEST_DATABASE_URL names the ADMIN database: each test file creates its
         # own throwaway database on that server and drops it afterwards.
         #
-        # The skip check runs on THIS run's output rather than in a second step,
-        # because a second `bun test` invocation would double the job's time to
-        # re-learn something the first run already printed.
-        #
-        # It matters because a skipped suite and a passing suite are the same
-        # colour: the harness suite skips itself when TEST_DATABASE_URL is
-        # absent, so a container that failed to start or a renamed variable
-        # would leave CI green while nothing was tested against a database.
+        # MOOVO_REQUIRE_POSTGRES_TESTS turns "skip when unavailable" into a hard
+        # failure here. Skipping is right on a laptop with no container up and
+        # wrong in CI, where a skipped suite and a passing suite are the same
+        # colour. The assertion lives in the suite rather than in a grep over
+        # this step's output — measured: vitest prints a per-file line only for
+        # FAILING files, so a grep for the harness file finds nothing exactly
+        # when everything passed.
         env:
           TEST_DATABASE_URL: postgres://moovo:moovo@127.0.0.1:5437/postgres
-        run: |
-          set -euo pipefail
-          bun run --filter @moovo/backend test 2>&1 | tee test-output.txt
-          if grep -qE '[0-9]+ skipped' test-output.txt; then
-            echo "::error::A suite skipped. The real-database tests must RUN in CI, never skip."
-            exit 1
-          fi
+          MOOVO_REQUIRE_POSTGRES_TESTS: '1'
+        run: bun run --filter @moovo/backend test
 
   build-api:
     name: Build API
