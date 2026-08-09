@@ -1,0 +1,75 @@
+import { createDatabase } from '@oxyhq/db';
+import { createTestDatabase, dropTestDatabase } from '@oxyhq/db/testing';
+import type postgres from 'postgres';
+import { main as runMigrateEntrypoint } from './migrate';
+import { setDatabaseForTesting, type Database } from './postgres';
+import * as schema from './schema';
+
+/**
+ * A throwaway, fully migrated database for ONE test file.
+ *
+ * Per file rather than per run: a database shared across files makes every
+ * suite's rows visible to every other suite, and the contention that produces
+ * — `too many clients already`, and rows one file deleted that another was
+ * counting — reads exactly like a regression in the code under test. That
+ * misattribution is the expensive failure, not the few hundred milliseconds a
+ * fresh database costs.
+ *
+ * The migration runs through `db/migrate.ts`'s own `main`, NOT a second
+ * composition of `runMigrations`. A harness that assembles its own migration
+ * call drifts from the entrypoint production uses, and then the suite is
+ * testing a schema no deployment ever gets.
+ */
+
+/**
+ * Where throwaway databases are created — the ADMIN database, not one any suite
+ * connects to. No default: a guessed local server would create databases
+ * somewhere nobody intended, and on this machine every Oxy app keeps its own
+ * server, so a guess would likely land on another product's.
+ */
+export const TEST_ADMIN_URL = process.env.TEST_DATABASE_URL;
+
+/** Whether the real-database suites can run at all in this environment. */
+export const POSTGRES_TESTS_ENABLED = Boolean(TEST_ADMIN_URL);
+
+export interface SuiteDatabase {
+  readonly db: Database;
+  readonly client: postgres.Sql;
+  readonly databaseUrl: string;
+}
+
+export async function createSuiteDatabase(): Promise<SuiteDatabase> {
+  if (!TEST_ADMIN_URL) {
+    throw new Error(
+      'TEST_DATABASE_URL is not set. Start the local server with ' +
+        '`docker compose -f docker-compose.postgres.yml up -d --wait` and export ' +
+        'TEST_DATABASE_URL=postgres://moovo:moovo@127.0.0.1:5437/postgres',
+    );
+  }
+
+  const databaseUrl = await createTestDatabase({
+    adminUrl: TEST_ADMIN_URL,
+    migrate: async (url) => {
+      // `all` is correct for a fresh database: `pre` and `post` describe the two
+      // sides of a rolling deploy, and a database created a moment ago has no
+      // previous image to stay compatible with.
+      const name = new URL(url).pathname.slice(1);
+      await runMigrateEntrypoint(
+        [`--target-database=${name}`, '--phase=all'],
+        { ...process.env, DATABASE_URL: url },
+      );
+    },
+  });
+
+  const { db, client } = createDatabase({ databaseUrl, schema });
+  setDatabaseForTesting({ db, client });
+  return { db, client, databaseUrl };
+}
+
+/** Close the handle and drop the database. Safe to call after a failed setup. */
+export async function destroySuiteDatabase(suite: SuiteDatabase | null): Promise<void> {
+  if (!suite) return;
+  setDatabaseForTesting(null);
+  await suite.client.end({ timeout: 5 });
+  await dropTestDatabase(suite.databaseUrl);
+}

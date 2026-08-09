@@ -46,8 +46,37 @@ jobs:
       - name: Typecheck API
         run: bun run --filter @moovo/backend typecheck
 
+      # Started from the SAME compose file a developer uses, deliberately, rather
+      # than from a `services:` block: a `services:` block would restate the
+      # image pin, giving CI and a developer two places to disagree about the
+      # version under test. `--wait` rather than a sleep, because the compose
+      # file carries a `pg_isready` healthcheck and a suite that starts before
+      # the server accepts connections fails as a connection error — which reads
+      # like a broken harness rather than a container that was not up yet.
+      - name: Start PostgreSQL
+        run: docker compose -f docker-compose.postgres.yml up -d --wait postgres
+
       - name: Run API tests
-        run: bun run --filter @moovo/backend test
+        # TEST_DATABASE_URL names the ADMIN database: each test file creates its
+        # own throwaway database on that server and drops it afterwards.
+        #
+        # The skip check runs on THIS run's output rather than in a second step,
+        # because a second `bun test` invocation would double the job's time to
+        # re-learn something the first run already printed.
+        #
+        # It matters because a skipped suite and a passing suite are the same
+        # colour: the harness suite skips itself when TEST_DATABASE_URL is
+        # absent, so a container that failed to start or a renamed variable
+        # would leave CI green while nothing was tested against a database.
+        env:
+          TEST_DATABASE_URL: postgres://moovo:moovo@127.0.0.1:5437/postgres
+        run: |
+          set -euo pipefail
+          bun run --filter @moovo/backend test 2>&1 | tee test-output.txt
+          if grep -qE '[0-9]+ skipped' test-output.txt; then
+            echo "::error::A suite skipped. The real-database tests must RUN in CI, never skip."
+            exit 1
+          fi
 
   build-api:
     name: Build API
