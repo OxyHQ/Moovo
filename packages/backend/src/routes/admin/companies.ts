@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateBody, validateObjectId } from '../../middleware/validate.js';
+import { validateBody, validateEntityId } from '../../middleware/validate.js';
 import { loadCompany, requireCompanyPermission } from '../../middleware/company-authz.js';
 import { createCompanySchema, updateCompanySchema } from '../../middleware/schemas.js';
 import {
@@ -27,7 +27,7 @@ router.post('/', validateBody(createCompanySchema), createCompanyHandler);
 router.get('/', listMyCompanies);
 
 // Company-scoped: load + authorize the company for every nested route.
-router.use('/:companyId', validateObjectId('companyId'), loadCompany);
+router.use('/:companyId', validateEntityId('companyId'), loadCompany);
 
 router.get('/:companyId', getCompanyHandler);
 router.patch(

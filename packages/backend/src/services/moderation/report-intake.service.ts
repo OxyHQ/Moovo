@@ -24,6 +24,7 @@
  * inferred from a missing row.
  */
 
+import { isLiveEntityId } from '@oxyhq/db';
 import mongoose, { type ClientSession } from 'mongoose';
 import {
   REPORTED_TYPES,
@@ -144,7 +145,7 @@ async function resolveContextJobId(
   contextJobId: string | undefined,
 ): Promise<string | undefined> {
   if (contextJobId === undefined) return undefined;
-  if (!mongoose.isValidObjectId(contextJobId)) return undefined;
+  if (!isLiveEntityId(contextJobId)) return undefined;
 
   const job = await Job.findOne({
     _id: contextJobId,

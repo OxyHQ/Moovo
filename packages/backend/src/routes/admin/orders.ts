@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateBody, validateObjectId, validateQuery } from '../../middleware/validate.js';
+import { validateBody, validateEntityId, validateQuery } from '../../middleware/validate.js';
 import { requireStorePermission } from '../../middleware/store-authz.js';
 import { orderListQuerySchema, orderStatusPatchSchema } from '../../middleware/schemas.js';
 import {
@@ -23,11 +23,11 @@ const router = Router({ mergeParams: true });
 
 router.get('/', requireStorePermission('orders:read'), validateQuery(orderListQuerySchema), listStoreOrders);
 router.get('/stats', requireStorePermission('stats:read'), getStoreStats);
-router.get('/:id', requireStorePermission('orders:read'), validateObjectId('id'), getStoreOrder);
+router.get('/:id', requireStorePermission('orders:read'), validateEntityId('id'), getStoreOrder);
 router.patch(
   '/:id/status',
   requireStorePermission('orders:fulfill'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   validateBody(orderStatusPatchSchema),
   patchStoreOrderStatusHandler,
 );

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { validateBody, validateObjectId } from '../../middleware/validate.js';
+import { validateBody, validateEntityId } from '../../middleware/validate.js';
 import { requireCompanyPermission } from '../../middleware/company-authz.js';
 import { createVehicleSchema, updateVehicleSchema } from '../../middleware/schemas.js';
 import {
@@ -29,14 +29,14 @@ router.post(
 router.patch(
   '/:id',
   requireCompanyPermission('fleet:write'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   validateBody(updateVehicleSchema),
   updateCompanyVehicle,
 );
 router.delete(
   '/:id',
   requireCompanyPermission('fleet:write'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   deleteCompanyVehicle,
 );
 
