@@ -140,13 +140,18 @@ describeIfPostgres('the expiry sweep', () => {
     });
   });
 
-  describe('job offers — the TTL is a BACKSTOP, never the mechanism', () => {
-    it('never reaps a still-offered offer, however long expired', async () => {
-      // The source is explicit that the semantic `offered → expired` flip runs
-      // FIRST and the TTL only mops up afterwards. In Mongo that held by luck
-      // — the reaper ran at most once a minute. Here it is structural:
-      // `reapable_since` is NULL while the offer is still `offered`, so no
-      // scheduling relationship between the flip and the sweep is required.
+  describe('job offers — the BACKSTOP reaps unconditionally', () => {
+    it('reaps every offer past its expiry, whatever its status', async () => {
+      // Deliberately NOT the `notifications` shape. That index carried a
+      // partial filter; this one does not — Mongo reaps ANY offer past
+      // `expiresAt`, and this is the bounded-growth backstop BEHIND the
+      // semantic `offered → expired` flip.
+      //
+      // Narrowing it to already-flipped rows was tried and reverted: while the
+      // flip runs both behave identically, and when it is wedged the narrowed
+      // version keeps stale rows forever — removing the protection in the one
+      // situation a backstop is for. A row past `expiresAt` is expired and
+      // merely unflipped, not live.
       await suite!.client`
         INSERT INTO shipments (
           id, sender_oxy_user_id, type,
@@ -181,17 +186,21 @@ describeIfPostgres('the expiry sweep', () => {
         INSERT INTO job_offers (id, job_id, shipment_id, courier_oxy_user_id, status,
                                 offered_at, expires_at, rank, distance_m)
         VALUES
-          ('o-live', 'job-o', 'ship-o', 'oxy-c1', 'offered',
+          ('o-unflipped', 'job-o', 'ship-o', 'oxy-c1', 'offered',
            now() - interval '2 days', now() - interval '1 day', 1, 100),
           ('o-settled', 'job-o', 'ship-o', 'oxy-c2', 'declined',
-           now() - interval '2 days', now() - interval '1 day', 2, 200)
+           now() - interval '2 days', now() - interval '1 day', 2, 200),
+          ('o-future', 'job-o', 'ship-o', 'oxy-c3', 'offered',
+           now(), now() + interval '1 day', 3, 300)
       `);
 
       await sweepExpiredRowsOnce();
 
       const rows = await suite!.client<{ id: string }[]>`SELECT id FROM job_offers ORDER BY id`;
-      // The settled one is reaped; the expired-but-unflipped one survives.
-      expect(rows.map((row) => row.id)).toEqual(['o-live']);
+      // Both expired rows go — including the one still marked `offered`, which
+      // is the backstop doing its job. The unexpired offer stays, which is what
+      // stops this passing for a sweep that simply deletes everything.
+      expect(rows.map((row) => row.id)).toEqual(['o-future']);
     });
   });
 

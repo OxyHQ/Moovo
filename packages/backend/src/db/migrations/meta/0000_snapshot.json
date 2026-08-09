@@ -1,5 +1,5 @@
 {
-  "id": "774fed4c-8e7b-448b-bef3-b929b65d99d2",
+  "id": "57e099a0-af09-4205-884e-b5a2c4114543",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -4903,16 +4903,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "date_trunc('milliseconds', now())"
-        },
-        "reapable_since": {
-          "name": "reapable_since",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false,
-          "generated": {
-            "as": "case when status <> 'offered' then expires_at end",
-            "type": "stored"
-          }
         }
       },
       "indexes": {
@@ -4958,11 +4948,11 @@
           "method": "btree",
           "with": {}
         },
-        "job_offers_reapable_since_idx": {
-          "name": "job_offers_reapable_since_idx",
+        "job_offers_expires_at_idx": {
+          "name": "job_offers_expires_at_idx",
           "columns": [
             {
-              "expression": "reapable_since",
+              "expression": "expires_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

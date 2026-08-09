@@ -153,8 +153,14 @@ bug report three months later.
   refuses a `''` default schema-wide, because `''` is a value standing in for
   absence. The affected columns stay NOT NULL with no database default, so an
   omitted description fails loudly rather than being invented.
-- **Two partial-reap rules become GENERATED COLUMNS** — see the expiry section
-  above.
+- **The one partial-reap rule becomes a GENERATED COLUMN.** `notifications`
+  carried a `partialFilterExpression`, and `ExpirySweepTarget` has no predicate
+  field, so the condition became `dismissed_since`. The other four targets are
+  flat — and `job_offers` is flat DELIBERATELY: its source index carries no
+  partial filter, and an earlier version that narrowed it to already-flipped
+  rows was reverted, because that disables the bounded-growth backstop in the
+  one situation a backstop exists for (a wedged `offered → expired` sweep).
+  Fidelity, and the same reasoning that keeps search on its declared sort.
 
 ## Geo queries: which ordering each caller actually gets
 

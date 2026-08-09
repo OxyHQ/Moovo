@@ -474,39 +474,37 @@ export const jobOffers = pgTable(
     updatedAt: updatedAt(),
 
     /**
-     * When this offer becomes safe to DELETE — and the reason it is a
-     * generated column rather than plain `expiresAt`.
+     * The expiry deadline, swept UNCONDITIONALLY — deliberately unlike
+     * `notifications`, and the difference is worth stating because the two
+     * look like the same problem and are not.
      *
-     * The source is explicit that its TTL index is a bounded-growth BACKSTOP,
-     * not the mechanism: the maintenance sweep performs the semantic
-     * `offered → expired` flip FIRST, so the reaper never removes a still-live
-     * offer. In Mongo that ordering held by luck — the TTL monitor runs at
-     * most once a minute and the flip usually won the race.
+     * `notifications` carried a `partialFilterExpression`, so its sweep has a
+     * condition to PRESERVE and that condition became a generated column.
+     * This index — `{expiresAt: 1}, {expireAfterSeconds: 0}` — carries no
+     * partial filter at all: Mongo reaps ANY offer past `expiresAt`, whatever
+     * its status.
      *
-     * A sweep this schema drives runs on its own schedule and has no such
-     * grace, so the guarantee is made structural instead: this is `expires_at`
-     * only once the offer has LEFT `offered`, and NULL while it is still live.
-     * `NULL <= now()` is never true, so a live offer cannot be deleted however
-     * late the flip runs, and no ordering between the two jobs is required.
-     *
-     * The trade-off, stated rather than discovered: if the flip stops running
-     * entirely, expired-but-unflipped offers accumulate instead of being
-     * reaped. That is the right side to fail on — unbounded growth is visible
-     * and recoverable, while deleting an offer a courier is looking at is not.
+     * An earlier version of this schema narrowed the sweep to
+     * `status <> 'offered'`, reasoning that it would protect a live offer.
+     * That was wrong twice. A row past `expiresAt` is not live — it is expired
+     * and merely unflipped, and the accept path refuses it either way. And the
+     * narrowing disabled the BACKSTOP in precisely the situation a backstop
+     * exists for: while the semantic `offered → expired` sweep runs, both
+     * versions behave identically, and when it is wedged, Mongo still reaps
+     * the stale row while the narrowed version keeps it forever. A change
+     * invisible while everything works and absent when it does not is the
+     * wrong change.
      */
-    reapableSince: timestamptz().generatedAlwaysAs(
-      sql`case when status <> 'offered' then expires_at end`,
-    ),
   },
   (table) => [
     closedSet('job_offers_status_check', table.status, JOB_OFFER_STATUSES),
     index('job_offers_job_status_idx').on(table.jobId, table.status),
     index('job_offers_courier_status_idx').on(table.courierOxyUserId, table.status),
     /**
-     * The sweep's supporting index — on the GENERATED column the sweep
-     * actually reads, not on `expiresAt`. Indexing the wrong one would leave
-     * the sweep doing a full scan while looking correctly indexed.
+     * The sweep's supporting index. Must be a LEADING btree on the swept
+     * column or the sweep is a sequential scan on a timer — a cost that never
+     * fails, just grows every week.
      */
-    index('job_offers_reapable_since_idx').on(table.reapableSince),
+    index('job_offers_expires_at_idx').on(table.expiresAt),
   ],
 );

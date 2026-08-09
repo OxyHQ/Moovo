@@ -553,7 +553,6 @@ CREATE TABLE "job_offers" (
 	"distance_m" double precision NOT NULL,
 	"created_at" timestamp with time zone DEFAULT date_trunc('milliseconds', now()) NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT date_trunc('milliseconds', now()) NOT NULL,
-	"reapable_since" timestamp with time zone GENERATED ALWAYS AS (case when status <> 'offered' then expires_at end) STORED,
 	CONSTRAINT "job_offers_status_check" CHECK ("job_offers"."status" in ('offered', 'accepted', 'declined', 'expired', 'superseded'))
 );
 --> statement-breakpoint
@@ -841,7 +840,7 @@ CREATE INDEX "stores_status_created_idx" ON "stores" USING btree ("status","crea
 CREATE INDEX "job_location_pings_job_at_idx" ON "job_location_pings" USING btree ("job_id","at","id");--> statement-breakpoint
 CREATE INDEX "job_offers_job_status_idx" ON "job_offers" USING btree ("job_id","status");--> statement-breakpoint
 CREATE INDEX "job_offers_courier_status_idx" ON "job_offers" USING btree ("courier_oxy_user_id","status");--> statement-breakpoint
-CREATE INDEX "job_offers_reapable_since_idx" ON "job_offers" USING btree ("reapable_since");--> statement-breakpoint
+CREATE INDEX "job_offers_expires_at_idx" ON "job_offers" USING btree ("expires_at");--> statement-breakpoint
 CREATE INDEX "job_status_events_job_at_idx" ON "job_status_events" USING btree ("job_id","at","id");--> statement-breakpoint
 CREATE UNIQUE INDEX "jobs_job_number_key" ON "jobs" USING btree ("job_number");--> statement-breakpoint
 CREATE INDEX "jobs_sender_created_idx" ON "jobs" USING btree ("sender_oxy_user_id","created_at");--> statement-breakpoint

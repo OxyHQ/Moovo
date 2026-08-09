@@ -16,13 +16,18 @@
  *
  * ## Two of the five carry a PARTIAL filter, and neither can lose it
  *
+ * ## ONE of the five carries a PARTIAL filter, and it cannot lose it
+ *
  * `ExpirySweepTarget` is `{table, column, retentionSeconds}` — there is no
  * predicate field, so a partial filter has nowhere to live as a sweep
- * argument. Both are therefore folded into a GENERATED COLUMN on the table
- * itself (`notifications.dismissedSince`, `jobOffers.reapableSince`), which
- * is NULL for any row that must not be reaped. `NULL <= now() - interval` is
- * never true, so the filter cannot be omitted by a caller — there is no
- * argument to omit. See those columns' own comments for the full reasoning.
+ * argument. `notifications` is folded into a GENERATED COLUMN on the table
+ * itself (`dismissedSince`), which is NULL for any row that must not be
+ * reaped. `NULL <= now() - interval` is never true, so the filter cannot be
+ * omitted by a caller — there is no argument to omit.
+ *
+ * The other four are flat, and `jobOffers` is flat ON PURPOSE: its source
+ * index carries no partial filter, and narrowing it would disable a backstop
+ * in the only case a backstop matters. See its column comment.
  */
 
 import { sweepAllExpiredRows, type ExpirySweepResult, type ExpirySweepTarget } from '@oxyhq/db/expiry';
@@ -52,13 +57,14 @@ export const EXPIRY_TARGETS: readonly ExpirySweepTarget[] = [
   },
   {
     table: jobOffers,
-    column: jobOffers.reapableSince,
+    column: jobOffers.expiresAt,
     retentionSeconds: DEADLINE_IS_THE_COLUMN,
     reason:
-      'A settled offer (accepted, declined, expired or superseded) is dispatch ' +
-      'bookkeeping, not history — the job carries the outcome. A STILL-OFFERED ' +
-      'row is never reaped: `reapableSince` is NULL until the semantic flip ' +
-      'moves it out of `offered`.',
+      'A lapsed offer is dispatch bookkeeping, not history — the job carries ' +
+      'the outcome. Swept UNCONDITIONALLY, exactly as the source index does: ' +
+      'this is the bounded-growth BACKSTOP behind the semantic ' +
+      '`offered → expired` flip, so narrowing it to already-flipped rows would ' +
+      'remove the protection in the one case it exists for — a wedged flip.',
   },
   {
     table: moderationEvents,
@@ -117,6 +123,16 @@ async function runOnce(): Promise<void> {
     const deleted = results.filter((result) => result.deleted > 0 || result.truncated);
     if (deleted.length > 0) {
       log.db.info({ results: deleted }, '[Expiry] swept expired rows');
+    } else {
+      // Unconditional, and the case that matters most. "Swept nothing" and
+      // "never ran" are indistinguishable from outside the process, and the
+      // moment anyone asks the difference it will be during an incident where
+      // a table is growing and nobody can tell which is happening. One line
+      // per run, naming the tables examined, makes it answerable.
+      log.db.debug(
+        { tables: results.map((result) => result.table) },
+        '[Expiry] sweep ran; nothing was due',
+      );
     }
   } catch (error: unknown) {
     // The loop must survive anything one sweep throws: an unhandled rejection
