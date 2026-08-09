@@ -24,24 +24,26 @@ import {
  * created — so the evidence that the migrator really ran is its own
  * target-database guard firing against a real connection.
  *
- * KNOWN GAP, stated rather than left to be discovered. Mutation-tested: making
- * `testDatabase.ts` skip the migration call entirely still passes every test
- * here. It has to — with an empty journal there is no DDL whose absence could
- * be observed, so "migrated" and "did not migrate" produce identical databases.
+ * BOTH KNOWN GAPS ARE NOW CLOSED, by the first migration (`0000`).
  *
- * The gap closes the moment the FIRST migration lands, and closing it is part
- * of that change, not a follow-up: assert the table it creates exists, and
- * re-run this same mutation to confirm skipping the migration now fails.
- * Until then this suite proves the migrator ENTRYPOINT is correct (its guards
- * fire, it is idempotent) but not that the harness calls it.
+ * They are recorded here rather than deleted, because the mutations that prove
+ * them closed are the maintenance instructions for this file.
  *
- * The same zero-migration short-circuit means the declared `postgis` extension
- * is NOT created in these throwaway databases yet — measured: `pg_extension` has
- * no row for it. `runMigrations` returns on an empty journal BEFORE it reaches
- * `ensureExtensions`. That is the right order for the first real migration (with
- * migrations pending, extensions are ensured BEFORE the DDL that names
- * `geography`), so nothing is broken — but do not read a passing suite here as
- * evidence that PostGIS works. The first migration is what proves that too.
+ * GAP 1 — "does the harness actually call the migrator?" Previously
+ * unanswerable: with an empty journal there was no DDL whose absence could be
+ * observed, so making `testDatabase.ts` skip the migration call entirely still
+ * passed every test. Now closed by `it('applied the first migration')` below,
+ * which asserts a real table exists. RE-MEASURED after `0000` landed: deleting
+ * the `runMigrateEntrypoint(...)` call from `testDatabase.ts` fails that test
+ * (`relation "listings" does not exist`), where before it failed nothing.
+ *
+ * GAP 2 — "is PostGIS really there?" Previously it was NOT created in these
+ * throwaway databases at all: `runMigrations` returns on an empty journal
+ * BEFORE reaching `ensureExtensions`, so `pg_extension` had no row for it.
+ * With a migration pending that short-circuit no longer applies, extensions
+ * are ensured BEFORE the DDL naming `geography`, and the assertion below
+ * measures the extension rather than assuming the order. Verified against the
+ * real server: `postgis` 3.5.2 is present in a freshly migrated database.
  */
 
 const describeIfPostgres = POSTGRES_TESTS_ENABLED ? describe : describe.skip;
@@ -64,8 +66,44 @@ describe('the real-database suites', () => {
 describeIfPostgres('the Postgres test harness', () => {
   let suite: SuiteDatabase | null = null;
 
+  /**
+   * The state of the database AS THE HARNESS HANDED IT OVER, captured before
+   * any test in this file has run.
+   *
+   * This indirection is load-bearing, and it was added because the mutation
+   * caught it: `it('migrates cleanly when the target matches')` below calls
+   * the migrator ITSELF, so a later assertion that "the schema exists" is
+   * satisfied by that test's side effect rather than by the harness. With the
+   * migration call deleted from `testDatabase.ts` the suite still passed —
+   * the same false green the gap was supposed to close, one step further on.
+   *
+   * Capturing in `beforeAll` makes the assertion independent of what any other
+   * test does, and of the order they run in.
+   */
+  let schemaAtSetup: { hasListings: boolean; ledgerRows: number; postgis: string | null } | null =
+    null;
+
   beforeAll(async () => {
     suite = await createSuiteDatabase();
+
+    const [listings] = await suite.client<{ exists: boolean }[]>`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = 'listings'
+      ) AS exists
+    `;
+    const [ledger] = await suite.client<{ count: number }[]>`
+      SELECT count(*)::int AS count FROM drizzle.__drizzle_migrations
+    `.catch(() => [{ count: 0 }]);
+    const [extension] = await suite.client<{ extversion: string }[]>`
+      SELECT extversion FROM pg_extension WHERE extname = 'postgis'
+    `;
+
+    schemaAtSetup = {
+      hasListings: listings?.exists ?? false,
+      ledgerRows: ledger?.count ?? 0,
+      postgis: extension?.extversion ?? null,
+    };
   });
 
   afterAll(async () => {
@@ -122,6 +160,39 @@ describeIfPostgres('the Postgres test harness', () => {
         DATABASE_URL: suite!.databaseUrl,
       }),
     ).resolves.toBeUndefined();
+  });
+
+  it('applied the first migration — which is what proves the harness migrates at all', async () => {
+    // GAP 1, closed. Before `0000` existed this assertion had no subject: an
+    // empty journal creates no DDL and no ledger table, so a harness that
+    // skipped the migration entirely produced a database indistinguishable
+    // from one that ran it.
+    //
+    // `listings` is a good witness because it is created by `0000` and by
+    // nothing else — not by `CREATE DATABASE`, not by PostGIS, not by drizzle's
+    // own bookkeeping (which lives in the `drizzle` schema, not `public`).
+    //
+    // Read from the SETUP snapshot, never live: see `schemaAtSetup`.
+    expect(schemaAtSetup?.hasListings).toBe(true);
+
+    // And the ledger now exists too, which it could not before.
+    expect(schemaAtSetup?.ledgerRows).toBeGreaterThan(0);
+  });
+
+  it('created the PostGIS extension the schema depends on', async () => {
+    // GAP 2, closed. `runMigrations` returns on an empty journal BEFORE it
+    // reaches `ensureExtensions`, so with no migrations this row did not
+    // exist — measured, not assumed. With `0000` pending, extensions are
+    // ensured first, which they must be: `0000` names `geography` in nine
+    // generated columns and would fail outright without them.
+    expect(schemaAtSetup?.postgis).toBeTruthy();
+
+    // The type is not merely declared but USABLE — an extension row with a
+    // broken install would still satisfy the query above.
+    const [point] = await suite!.client<{ srid: number }[]>`
+      SELECT ST_SRID(ST_SetSRID(ST_MakePoint(0, 0), 4326)::geography) AS srid
+    `;
+    expect(point?.srid).toBe(4326);
   });
 
   it('points getDb() at the throwaway database', async () => {

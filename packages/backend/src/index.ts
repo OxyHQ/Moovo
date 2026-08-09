@@ -29,6 +29,7 @@ import reportsRouter from './routes/reports.js';
 import adminRouter from './routes/admin/index.js';
 import { createCrowdSourceWebhookRoutes } from './routes/crowdsource-webhook.js';
 import { startModerationOutboxDispatcher } from './services/moderation/moderation-outbox.dispatcher.js';
+import { startExpirySweeper, stopExpirySweeper } from './db/expiry.js';
 
 // Socket.io
 import { initSocket } from './socket.js';
@@ -274,6 +275,31 @@ connectDB()
        * while the integration is off deliver when it is switched on.
        */
       startModerationOutboxDispatcher();
+
+      /**
+       * Reaps the rows Mongo's five TTL indexes used to reap.
+       *
+       * This call is the half of the expiry work that `@oxyhq/db` cannot
+       * supply and whose absence is undetectable by reading `db/expiry.ts`:
+       * the registry there lists every table and every retention and deletes
+       * nothing at all without something invoking it. A registry with no
+       * caller is why another Oxy service served expired rows for hours while
+       * every code search found a complete-looking implementation.
+       *
+       * Gated on `DATABASE_URL` because the sweep has no database to open
+       * without one, and this service still boots against Mongo. Announced
+       * rather than skipped silently — "expiry is not running" must be a line
+       * in the log, not an absence of one.
+       */
+      if (process.env.DATABASE_URL) {
+        startExpirySweeper();
+      } else {
+        log.db.warn(
+          'Expiry sweeper NOT started: DATABASE_URL is unset, so there is no ' +
+            'Postgres database to sweep. Nothing reaps the rows that Mongo TTL ' +
+            'indexes used to reap.',
+        );
+      }
     });
 
     // Graceful shutdown handler
@@ -315,6 +341,11 @@ connectDB()
         );
         await stopModerationOutboxDispatcher();
         log.general.info('Moderation outbox dispatcher stopped');
+
+        // Let a sweep in flight finish. Its DELETEs are bounded batches, so
+        // this is short; abandoning one mid-batch is safe (the next run picks
+        // the remainder up) but finishing avoids a half-run in the logs.
+        await stopExpirySweeper();
 
         // Stop marketplace queue workers BEFORE closing Redis.
         const { shutdownQueues } = await import('./queue/workers.js');
