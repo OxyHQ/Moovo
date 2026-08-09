@@ -7,6 +7,10 @@
  * end to end rather than alongside it. A schema and an unproven harness landing
  * together means a failure has two candidate causes and neither is ruled out.
  *
+ * Binding decisions for everything in this directory — the PostGIS prerequisite,
+ * ids and foreign keys, closed value sets, the hooks that become CHECKs, and the
+ * expiry sweep — are in `CONVENTIONS.md` beside this file. Read it first.
+ *
  * `drizzle-kit generate` reads THIS file, so a table is only migrated once it is
  * exported here. A table defined in a sibling module and not re-exported is
  * invisible to the generator and produces no migration — and the omission looks
