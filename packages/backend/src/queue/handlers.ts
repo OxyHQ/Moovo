@@ -10,7 +10,7 @@
  * notification failure is logged and never aborts the rest of the job.
  */
 
-import type { NotificationType } from '../models/notification.js';
+import type { NotificationType } from '../lib/notification-service.js';
 import { Order, type IOrder } from '../models/order.js';
 import { Store, type IStore, type IStoreMember } from '../models/store.js';
 import { Review } from '../models/review.js';

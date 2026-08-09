@@ -13,47 +13,66 @@
  */
 
 import Expo from 'expo-server-sdk';
-import { Notification, type INotification } from '../models/notification.js';
-import { PushToken } from '../models/push-token.js';
-import { WebPushSubscription } from '../models/web-push-subscription.js';
+import {
+  countNotificationsForUser,
+  listNotificationsForUser,
+  type NotificationRow,
+} from '../db/notifications/notificationRepository.js';
+import {
+  deactivatePushTokenForUser,
+  deactivateWebPushSubscriptionForUser,
+  upsertPushToken,
+  upsertWebPushSubscription,
+} from '../db/notifications/pushRepository.js';
 import {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
   dismissNotification,
+  type NotificationPriority,
+  type NotificationStatus,
+  type NotificationType,
 } from '../lib/notification-service.js';
 import { notFound, validationError } from '../lib/errors/error-codes.js';
 
 /** A single notification as returned on the wire. */
 export interface NotificationDTO {
   id: string;
-  type: INotification['type'];
+  type: NotificationType;
   title: string;
   body: string;
   data?: Record<string, unknown>;
-  status: INotification['status'];
-  priority: INotification['priority'];
+  status: NotificationStatus;
+  priority: NotificationPriority;
   conversationId?: string;
   readAt?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-/** Serialize an `INotification` document to the wire `NotificationDTO`. */
-function toDTO(doc: INotification): NotificationDTO {
+/**
+ * Serialize a stored row to the wire `NotificationDTO`.
+ *
+ * `!== null`, not `!== undefined`: Mongo OMITTED an unset optional field while
+ * Postgres returns `null`, and the old test passes for `null` — so a straight
+ * translation would start emitting `{"data": null, "conversationId": null,
+ * "readAt": null}` on every notification that has none of them. Nothing fails;
+ * clients simply begin receiving three fields that never existed.
+ */
+function toDTO(row: NotificationRow): NotificationDTO {
   const dto: NotificationDTO = {
-    id: String(doc._id),
-    type: doc.type,
-    title: doc.title,
-    body: doc.body,
-    status: doc.status,
-    priority: doc.priority,
-    createdAt: doc.createdAt.toISOString(),
-    updatedAt: doc.updatedAt.toISOString(),
+    id: row.id,
+    type: row.type as NotificationType,
+    title: row.title,
+    body: row.body,
+    status: row.status as NotificationStatus,
+    priority: row.priority as NotificationPriority,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
-  if (doc.data !== undefined) dto.data = doc.data;
-  if (doc.conversationId !== undefined) dto.conversationId = doc.conversationId;
-  if (doc.readAt !== undefined) dto.readAt = doc.readAt.toISOString();
+  if (row.data !== null) dto.data = row.data as Record<string, unknown>;
+  if (row.conversationId !== null) dto.conversationId = row.conversationId;
+  if (row.readAt !== null) dto.readAt = row.readAt.toISOString();
   return dto;
 }
 
@@ -67,21 +86,17 @@ export async function listNotifications(
   opts: { page: number; limit: number; status?: string; type?: string },
 ): Promise<{ data: NotificationDTO[]; total: number; unreadCount: number }> {
   const { page, limit, status, type } = opts;
-  const filter: Record<string, unknown> = { oxyUserId };
-  if (status) filter.status = status;
-  if (type) filter.type = type;
+  // ONE filter object feeding both the page and its total — two spellings can
+  // disagree, and the symptom is a paginator whose count never matches its rows.
+  const filter = { status: status || undefined, type: type || undefined };
 
-  const [docs, total, unreadCount] = await Promise.all([
-    Notification.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean<INotification[]>(),
-    Notification.countDocuments(filter),
+  const [rows, total, unreadCount] = await Promise.all([
+    listNotificationsForUser(oxyUserId, filter, { limit, offset: (page - 1) * limit }),
+    countNotificationsForUser(oxyUserId, filter),
     getUnreadCount(oxyUserId),
   ]);
 
-  return { data: docs.map(toDTO), total, unreadCount };
+  return { data: rows.map(toDTO), total, unreadCount };
 }
 
 /** The user's live unread-notification count. */
@@ -123,26 +138,22 @@ export async function registerPushToken(
     throw validationError('Invalid Expo push token format');
   }
 
-  const pushToken = await PushToken.findOneAndUpdate(
-    { oxyUserId, token: input.token },
-    {
-      $set: {
-        active: true,
-        ...(input.deviceId ? { deviceId: input.deviceId } : {}),
-        ...(input.platform ? { platform: input.platform } : {}),
-      },
-      $setOnInsert: { oxyUserId, token: input.token },
-    },
-    { upsert: true, new: true },
-  );
+  const pushToken = await upsertPushToken({
+    oxyUserId,
+    token: input.token,
+    deviceId: input.deviceId,
+    platform: input.platform,
+  });
 
-  return { id: String(pushToken._id) };
+  return { id: pushToken.id };
 }
 
 /** Deactivate an Expo push token (logout / uninstall), or throw NOT_FOUND. */
 export async function removePushToken(oxyUserId: string, token: string): Promise<void> {
-  const result = await PushToken.updateOne({ oxyUserId, token }, { $set: { active: false } });
-  if (result.matchedCount === 0) {
+  // `matchedCount` semantics: deactivating an ALREADY-inactive token succeeds,
+  // exactly as it does today. A repeated logout must not 404.
+  const existed = await deactivatePushTokenForUser(oxyUserId, token);
+  if (!existed) {
     throw notFound('Push token not found');
   }
 }
@@ -155,19 +166,14 @@ export async function registerWebPushSubscription(
   oxyUserId: string,
   input: { endpoint: string; keys: { p256dh: string; auth: string } },
 ): Promise<{ id: string }> {
-  const subscription = await WebPushSubscription.findOneAndUpdate(
-    { oxyUserId, endpoint: input.endpoint },
-    {
-      $set: {
-        active: true,
-        keys: { p256dh: input.keys.p256dh, auth: input.keys.auth },
-      },
-      $setOnInsert: { oxyUserId, endpoint: input.endpoint },
-    },
-    { upsert: true, new: true },
-  );
+  const subscription = await upsertWebPushSubscription({
+    oxyUserId,
+    endpoint: input.endpoint,
+    keyP256dh: input.keys.p256dh,
+    keyAuth: input.keys.auth,
+  });
 
-  return { id: String(subscription._id) };
+  return { id: subscription.id };
 }
 
 /** Deactivate a browser web-push subscription, or throw NOT_FOUND. */
@@ -175,11 +181,8 @@ export async function removeWebPushSubscription(
   oxyUserId: string,
   endpoint: string,
 ): Promise<void> {
-  const result = await WebPushSubscription.updateOne(
-    { oxyUserId, endpoint },
-    { $set: { active: false } },
-  );
-  if (result.matchedCount === 0) {
+  const existed = await deactivateWebPushSubscriptionForUser(oxyUserId, endpoint);
+  if (!existed) {
     throw notFound('Subscription not found');
   }
 }

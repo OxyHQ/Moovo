@@ -17,7 +17,7 @@
 
 import type { JobStatus } from '@moovo/shared-types';
 import type { IJob } from '../models/job.js';
-import type { NotificationType } from '../models/notification.js';
+import type { NotificationType } from '../lib/notification-service.js';
 import { EVENTS, type JobSocketEvent } from '../lib/socket-events.js';
 import { getIO } from '../socket.js';
 import { sendNotification } from '../lib/notification-service.js';
