@@ -11,7 +11,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { isValidObjectId } from 'mongoose';
+import { isLiveEntityId } from '@oxyhq/db';
 import { z } from 'zod';
 import { sendError, ErrorCodes } from '../utils/api-response.js';
 
@@ -55,12 +55,29 @@ export function validateQuery<T extends z.ZodType>(schema: T) {
 }
 
 /**
- * Ensure `req.params[paramName]` is a valid MongoDB ObjectId. Responds 400 when
- * the param is missing or malformed.
+ * Ensure `req.params[paramName]` is a live entity id. Responds 400 when the
+ * param is missing or malformed.
+ *
+ * This accepts BOTH id shapes a Moovo row can have, which is the whole point:
+ * a primary key is `text` holding a 24-char ObjectId hex for every row that
+ * existed before the Postgres cutover, and a uuid v7 for every row created
+ * after it. Both are live simultaneously and permanently, because a backfill
+ * copies the original id verbatim rather than reassigning it.
+ *
+ * It was `isValidObjectId` until the port. Left alone, every route guarded by
+ * it would answer 400 for every row created after its domain moved — a clean
+ * rejection of a perfectly valid id, on the happy path, discoverable only by
+ * creating a row and then fetching it. The widening is safe to land early
+ * because an ObjectId hex still passes; what it adds is the shape that does not
+ * exist yet.
+ *
+ * Deliberately NOT a loose "is this a non-empty string" check: it rejects uuid
+ * v4, short hex, and anything with punctuation, so a route param still cannot
+ * carry an arbitrary string into a query.
  *
  * @param paramName - The route param to validate (default `'id'`).
  */
-export function validateObjectId(paramName = 'id') {
+export function validateEntityId(paramName = 'id') {
   return (req: Request, res: Response, next: NextFunction): void => {
     const raw = req.params[paramName];
     // Express params can be string[] when a path repeats a segment name.
@@ -69,7 +86,7 @@ export function validateObjectId(paramName = 'id') {
       sendError(res, ErrorCodes.VALIDATION_ERROR, `${paramName} parameter is required`, 400);
       return;
     }
-    if (!isValidObjectId(id)) {
+    if (!isLiveEntityId(id)) {
       sendError(res, ErrorCodes.VALIDATION_ERROR, `Invalid ${paramName} format`, 400);
       return;
     }

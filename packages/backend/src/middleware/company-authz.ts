@@ -14,7 +14,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { isValidObjectId } from 'mongoose';
+import { isLiveEntityId } from '@oxyhq/db';
 import type { CompanyRole, CompanyPermission } from '@moovo/shared-types';
 import { CourierCompany, type ICompany, type ICompanyMember } from '../models/courier-company.js';
 import { sendError, ErrorCodes } from '../utils/api-response.js';
@@ -85,7 +85,7 @@ export async function loadCompany(req: Request, res: Response, next: NextFunctio
   const raw = req.params.companyId;
   const companyId = Array.isArray(raw) ? raw[0] : raw;
 
-  if (!companyId || !isValidObjectId(companyId)) {
+  if (!companyId || !isLiveEntityId(companyId)) {
     sendError(res, ErrorCodes.VALIDATION_ERROR, 'Invalid companyId', 400);
     return;
   }

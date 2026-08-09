@@ -14,7 +14,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { isValidObjectId } from 'mongoose';
+import { isLiveEntityId } from '@oxyhq/db';
 import type { StoreRole, StorePermission } from '@moovo/shared-types';
 import { Store, type IStore, type IStoreMember } from '../models/store.js';
 import { sendError, ErrorCodes } from '../utils/api-response.js';
@@ -93,7 +93,7 @@ export async function loadStore(req: Request, res: Response, next: NextFunction)
   const raw = req.params.storeId;
   const storeId = Array.isArray(raw) ? raw[0] : raw;
 
-  if (!storeId || !isValidObjectId(storeId)) {
+  if (!storeId || !isLiveEntityId(storeId)) {
     sendError(res, ErrorCodes.VALIDATION_ERROR, 'Invalid storeId', 400);
     return;
   }

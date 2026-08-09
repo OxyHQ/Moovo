@@ -14,6 +14,7 @@
  *    have Moovo package a stranger's delivery into a case for a jury to read.
  */
 
+import { uuidv7 } from '@oxyhq/db';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const reportCreate = vi.fn();
@@ -250,6 +251,33 @@ describe('the delivery-context ownership check', () => {
       contextJobId: 'not-an-object-id',
     });
     expect(jobFindOne).not.toHaveBeenCalled();
+  });
+
+  it('looks up a uuid v7 job id — the shape every job created after the cutover has', async () => {
+    // The case every OTHER fixture in this file cannot express. `VALID_JOB_ID`
+    // is an ObjectId hex, so the id guard being `isValidObjectId` or
+    // `isLiveEntityId` makes no difference to any of them — they all sit on the
+    // same side of the distinction the guard exists to make.
+    //
+    // It matters because this guard fails SILENTLY by design: an id it rejects
+    // drops the delivery context and still stores the report, so a courier
+    // reported for conduct on a post-cutover job would reach the jury with no
+    // delivery attached and nothing logged to say why.
+    const postCutoverJobId = uuidv7();
+    jobFindOne.mockReturnValue(jobQuery({ _id: postCutoverJobId }));
+
+    const result = await createReport({
+      reporter: 'reporter-1',
+      reportedType: 'courier',
+      reportedId: 'courier-1',
+      categories: ['harassment'],
+      contextJobId: postCutoverJobId,
+    });
+
+    expect(jobFindOne).toHaveBeenCalledTimes(1);
+    expect(result.report).toBeDefined();
+    const [[docs]] = reportCreate.mock.calls as [[Record<string, unknown>[]]];
+    expect(docs[0]?.contextJobId).toBe(postCutoverJobId);
   });
 });
 

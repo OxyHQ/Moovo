@@ -12,7 +12,7 @@
  * transaction between two people at two street addresses.
  */
 
-import mongoose from 'mongoose';
+import { isLiveEntityId } from '@oxyhq/db';
 import { Job, type IJob } from '../../../models/job.js';
 import { Shipment, type IShipment } from '../../../models/shipment.js';
 import { note, redactEndpoint } from './redaction.js';
@@ -110,12 +110,12 @@ type SnapshotShipment = Pick<
 >;
 
 export async function loadSnapshotJob(jobId: string): Promise<SnapshotJob | null> {
-  if (!mongoose.isValidObjectId(jobId)) return null;
+  if (!isLiveEntityId(jobId)) return null;
   return await Job.findById(jobId).select(JOB_PROJECTION).lean<SnapshotJob | null>();
 }
 
 async function loadShipment(shipmentId: string | undefined): Promise<SnapshotShipment | null> {
-  if (shipmentId === undefined || !mongoose.isValidObjectId(shipmentId)) return null;
+  if (shipmentId === undefined || !isLiveEntityId(shipmentId)) return null;
   return await Shipment.findById(shipmentId)
     .select(SHIPMENT_PROJECTION)
     .lean<SnapshotShipment | null>();

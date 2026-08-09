@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { makeRateLimiter } from '../lib/rate-limit.js';
-import { validateBody, validateObjectId } from '../middleware/validate.js';
+import { validateBody, validateEntityId } from '../middleware/validate.js';
 import {
   jobLocationSchema,
   jobLocationPingSchema,
@@ -32,44 +32,44 @@ const router = Router();
 router.use(authenticateToken);
 
 router.get('/', makeRateLimiter('jobs'), listMyJobs);
-router.get('/:id', makeRateLimiter('jobs'), validateObjectId('id'), getMyJob);
+router.get('/:id', makeRateLimiter('jobs'), validateEntityId('id'), getMyJob);
 
-router.post('/:id/accept', makeRateLimiter('jobs'), validateObjectId('id'), acceptJob);
+router.post('/:id/accept', makeRateLimiter('jobs'), validateEntityId('id'), acceptJob);
 router.post(
   '/:id/pickup',
   makeRateLimiter('jobs'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   validateBody(jobLocationSchema),
   pickupJob,
 );
 router.post(
   '/:id/in-transit',
   makeRateLimiter('jobs'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   validateBody(jobLocationSchema),
   inTransitJob,
 );
 router.post(
   '/:id/deliver',
   makeRateLimiter('jobs'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   validateBody(deliverJobSchema),
   deliverJob,
 );
 router.post(
   '/:id/scan',
   makeRateLimiter('jobs'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   validateBody(scanJobSchema),
   scanJobHandler,
 );
 router.post(
   '/:id/location',
   makeRateLimiter('jobs'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   validateBody(jobLocationPingSchema),
   pingJobLocation,
 );
-router.post('/:id/cancel', makeRateLimiter('jobs'), validateObjectId('id'), cancelJob);
+router.post('/:id/cancel', makeRateLimiter('jobs'), validateEntityId('id'), cancelJob);
 
 export default router;

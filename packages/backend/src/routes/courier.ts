@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import { makeRateLimiter } from '../lib/rate-limit.js';
-import { validateBody, validateObjectId } from '../middleware/validate.js';
+import { validateBody, validateEntityId } from '../middleware/validate.js';
 import {
   courierPrefsSchema,
   createVehicleSchema,
@@ -61,14 +61,14 @@ router.post(
 router.patch(
   '/vehicles/:id',
   makeRateLimiter('courier'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   validateBody(updateVehicleSchema),
   updateMyVehicle,
 );
 router.delete(
   '/vehicles/:id',
   makeRateLimiter('courier'),
-  validateObjectId('id'),
+  validateEntityId('id'),
   deleteMyVehicle,
 );
 

@@ -16,7 +16,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { isValidObjectId } from 'mongoose';
+import { isLiveEntityId } from '@oxyhq/db';
 import { getRequiredOxyUserId } from '@oxyhq/core/server';
 import {
   REPORTED_TYPES,
@@ -53,7 +53,7 @@ const createReportSchema = z.object({
    * route-level check would be one more place that has to stay correct, and this
    * one is a security boundary rather than a formatting rule.
    */
-  contextJobId: z.string().refine(isValidObjectId, 'must be a valid id').optional(),
+  contextJobId: z.string().refine(isLiveEntityId, 'must be a valid id').optional(),
 });
 
 const router = Router();
