@@ -339,7 +339,7 @@ export const createReviewSchema = z
 // Feedback
 // ---------------------------------------------------------------------------
 
-/** Body for `POST /feedback` (CreateFeedbackInput). Mirrors the `IFeedback` model. */
+/** Body for `POST /feedback` (CreateFeedbackInput). Mirrors the `feedback` table. */
 export const feedbackSchema = z.object({
   type: z.enum(['bug', 'feature', 'improvement', 'other']),
   rating: z.number().int().min(1).max(5).optional(),
