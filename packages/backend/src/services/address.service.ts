@@ -5,6 +5,12 @@
  * here: promoting an address to `isDefault: true` first clears the previous
  * default for that user, so at most one default ever exists. The first address
  * a user creates becomes their default automatically.
+ *
+ * Promotion and deletion each take TWO statements, and this is the first domain
+ * of the port where that matters: between "clear the others" and "set this one"
+ * the user has no default at all, and between "delete" and "promote the newest
+ * survivor" the same. Both run inside `db.transaction(...)` and thread the
+ * handle down, so a crash cannot leave an account with two defaults or none.
  */
 
 import type {
@@ -12,72 +18,94 @@ import type {
   CreateAddressInput,
   UpdateAddressInput,
 } from '@moovo/shared-types';
-import { Address, type IAddress } from '../models/address.js';
+import {
+  clearDefaultAddresses,
+  deleteAddressForUser,
+  findAddressForUser,
+  findNewestAddressForUser,
+  insertAddress,
+  listAddressesForUser,
+  setAddressDefault,
+  updateAddressForUser,
+  userHasAnyAddress,
+  type AddressRow,
+} from '../db/addresses/addressRepository.js';
+import { getDb } from '../db/postgres.js';
 import { notFound } from '../lib/errors/error-codes.js';
 
-/** Serialize an `IAddress` document to the wire `Address` DTO. */
-function toDTO(doc: IAddress): AddressDTO {
+/**
+ * Serialize a stored row to the wire `Address` DTO.
+ *
+ * `!== null`, not `!== undefined`: Mongo omitted an unset optional while
+ * Postgres returns `null`, and the old test passes for `null` — so a straight
+ * translation would start emitting `{"label": null, "line2": null, ...}` where
+ * the API emitted nothing.
+ */
+function toDTO(row: AddressRow): AddressDTO {
   const dto: AddressDTO = {
-    id: String(doc._id),
-    recipientName: doc.recipientName,
-    line1: doc.line1,
-    city: doc.city,
-    postalCode: doc.postalCode,
-    country: doc.country,
-    isDefault: doc.isDefault,
-    createdAt: doc.createdAt.toISOString(),
-    updatedAt: doc.updatedAt.toISOString(),
+    id: row.id,
+    recipientName: row.recipientName,
+    line1: row.line1,
+    city: row.city,
+    postalCode: row.postalCode,
+    country: row.country,
+    isDefault: row.isDefault,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
-  if (doc.label !== undefined) dto.label = doc.label;
-  if (doc.line2 !== undefined) dto.line2 = doc.line2;
-  if (doc.region !== undefined) dto.region = doc.region;
-  if (doc.phone !== undefined) dto.phone = doc.phone;
+  if (row.label !== null) dto.label = row.label;
+  if (row.line2 !== null) dto.line2 = row.line2;
+  if (row.region !== null) dto.region = row.region;
+  if (row.phone !== null) dto.phone = row.phone;
   return dto;
-}
-
-/** Clear the `isDefault` flag on every OTHER address of the user. */
-async function clearOtherDefaults(oxyUserId: string, exceptId?: string): Promise<void> {
-  const filter: Record<string, unknown> = { oxyUserId, isDefault: true };
-  if (exceptId) {
-    filter._id = { $ne: exceptId };
-  }
-  await Address.updateMany(filter, { $set: { isDefault: false } });
 }
 
 /** List the buyer's addresses, default first then newest. */
 export async function list(oxyUserId: string): Promise<AddressDTO[]> {
-  const docs = await Address.find({ oxyUserId })
-    .sort({ isDefault: -1, createdAt: -1 })
-    .lean<IAddress[]>();
-  return docs.map(toDTO);
+  const rows = await listAddressesForUser(oxyUserId);
+  return rows.map(toDTO);
 }
 
 /**
  * Create an address for the buyer. The user's FIRST address becomes their
  * default automatically; subsequent ones default to non-default.
+ *
+ * The existence check and the insert run in ONE transaction. That narrows the
+ * window the source already had — it read and then wrote on separate
+ * connections — but does NOT close it: under READ COMMITTED two concurrent
+ * first-time creates can both observe no rows and both claim the default. The
+ * only real fix is a partial unique index on `(oxy_user_id) WHERE is_default`,
+ * which is a schema decision with its own migration and its own consequences
+ * for the promotion path below (which is briefly in a state that index would
+ * reject unless the two statements are ordered clear-then-set, as they are).
+ * Recording it rather than half-fixing it: a transaction here reads like the
+ * race is handled, and it is not.
  */
 export async function create(
   oxyUserId: string,
   input: CreateAddressInput,
 ): Promise<AddressDTO> {
-  const hasExisting = await Address.exists({ oxyUserId });
-  const isDefault = hasExisting === null;
-
-  const doc = await Address.create({
-    oxyUserId,
-    label: input.label,
-    recipientName: input.recipientName,
-    line1: input.line1,
-    line2: input.line2,
-    city: input.city,
-    region: input.region,
-    postalCode: input.postalCode,
-    country: input.country,
-    phone: input.phone,
-    isDefault,
+  const row = await getDb().transaction(async (tx) => {
+    const isDefault = !(await userHasAnyAddress(oxyUserId, tx));
+    return await insertAddress(
+      {
+        oxyUserId,
+        label: input.label,
+        recipientName: input.recipientName,
+        line1: input.line1,
+        line2: input.line2,
+        city: input.city,
+        region: input.region,
+        postalCode: input.postalCode,
+        country: input.country,
+        phone: input.phone,
+        isDefault,
+      },
+      tx,
+    );
   });
 
-  return toDTO(doc.toObject());
+  return toDTO(row);
 }
 
 /**
@@ -90,30 +118,43 @@ export async function update(
   addressId: string,
   patch: UpdateAddressInput,
 ): Promise<AddressDTO> {
-  const doc = await Address.findOne({ _id: addressId, oxyUserId });
-  if (!doc) {
-    throw notFound('Address not found');
-  }
+  const row = await getDb().transaction(async (tx) => {
+    const existing = await findAddressForUser(oxyUserId, addressId, tx);
+    if (existing === null) {
+      throw notFound('Address not found');
+    }
 
-  if (patch.label !== undefined) doc.label = patch.label;
-  if (patch.recipientName !== undefined) doc.recipientName = patch.recipientName;
-  if (patch.line1 !== undefined) doc.line1 = patch.line1;
-  if (patch.line2 !== undefined) doc.line2 = patch.line2;
-  if (patch.city !== undefined) doc.city = patch.city;
-  if (patch.region !== undefined) doc.region = patch.region;
-  if (patch.postalCode !== undefined) doc.postalCode = patch.postalCode;
-  if (patch.country !== undefined) doc.country = patch.country;
-  if (patch.phone !== undefined) doc.phone = patch.phone;
+    // Clear BEFORE setting, so the two states this passes through are "no
+    // default" and "exactly one" — never "two", which is the order a partial
+    // unique index would reject if one is ever added.
+    if (patch.isDefault === true) {
+      await clearDefaultAddresses(oxyUserId, addressId, tx);
+    }
 
-  if (patch.isDefault === true) {
-    await clearOtherDefaults(oxyUserId, addressId);
-    doc.isDefault = true;
-  } else if (patch.isDefault === false) {
-    doc.isDefault = false;
-  }
+    const updated = await updateAddressForUser(
+      oxyUserId,
+      addressId,
+      {
+        label: patch.label,
+        recipientName: patch.recipientName,
+        line1: patch.line1,
+        line2: patch.line2,
+        city: patch.city,
+        region: patch.region,
+        postalCode: patch.postalCode,
+        country: patch.country,
+        phone: patch.phone,
+        isDefault: patch.isDefault,
+      },
+      tx,
+    );
+    if (updated === null) {
+      throw notFound('Address not found');
+    }
+    return updated;
+  });
 
-  await doc.save();
-  return toDTO(doc.toObject());
+  return toDTO(row);
 }
 
 /**
@@ -122,18 +163,19 @@ export async function update(
  * so the buyer always has a default when at least one address exists.
  */
 export async function remove(oxyUserId: string, addressId: string): Promise<void> {
-  const doc = await Address.findOne({ _id: addressId, oxyUserId }).lean<IAddress | null>();
-  if (!doc) {
-    throw notFound('Address not found');
-  }
-
-  await Address.deleteOne({ _id: addressId, oxyUserId });
-
-  if (doc.isDefault) {
-    const next = await Address.findOne({ oxyUserId }).sort({ createdAt: -1 });
-    if (next) {
-      next.isDefault = true;
-      await next.save();
+  await getDb().transaction(async (tx) => {
+    const existing = await findAddressForUser(oxyUserId, addressId, tx);
+    if (existing === null) {
+      throw notFound('Address not found');
     }
-  }
+
+    await deleteAddressForUser(oxyUserId, addressId, tx);
+
+    if (existing.isDefault) {
+      const next = await findNewestAddressForUser(oxyUserId, tx);
+      if (next !== null) {
+        await setAddressDefault(next.id, tx);
+      }
+    }
+  });
 }
