@@ -50,6 +50,15 @@ esac
 # the missing piece and the file that supplies it. The migrator does still
 # refuse on its own (verified: exit 1 with no DATABASE_URL) — this is the
 # earlier, clearer of two real guards, never the only one.
+#
+# The way it actually disappears is worth naming, because it is not a typo in
+# this repo: DATABASE_URL was added to the task definition by hand
+# (oxy-moovo:1 -> :2) and, at the time of writing, is declared in no terraform.
+# A routine `terraform apply` in oxy-infra therefore REMOVES it — it strips a
+# live-but-undeclared secret — which rolls the service back to a task definition
+# the current image cannot migrate against. That has already happened twice to a
+# sibling service. So a sudden failure here most likely means an apply ran, not
+# that anyone edited this workflow; the fix is in oxy-infra, not in this file.
 if ! aws ecs describe-task-definition --task-definition "$TASK_DEFINITION" \
       --query 'taskDefinition.containerDefinitions[].secrets[].name' --output text |
       grep -qw DATABASE_URL; then

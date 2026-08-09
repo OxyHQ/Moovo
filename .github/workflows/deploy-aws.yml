@@ -108,6 +108,25 @@ jobs:
       #
       # The list is the secrets the `moovo` task definition actually consumes.
       # Adding a new one means adding it here, or it never reaches SSM.
+      #
+      # DATABASE_URL IS DELIBERATELY ABSENT, and the omission is the decision —
+      # not an oversight somebody should "complete" by adding it.
+      #
+      # This step exists so GitHub is the source of truth for a secret. For
+      # DATABASE_URL it is not: /oxy/moovo/DATABASE_URL was provisioned out of
+      # band with a working value, and this repository has no DATABASE_URL
+      # secret at either the repo or the org level. Adding the line would
+      # therefore create a SECOND authority over a parameter that is already
+      # correct, whose value is empty — and while the placeholder guard below
+      # skips an empty value today, the guard is the only thing standing between
+      # a blank secret and `put-parameter --overwrite` on the connection string
+      # the migrator and the running service both read.
+      #
+      # Restore the line only together with a real GitHub secret, in the same
+      # change. Verified 2026-08-10: `gh secret list` shows only the two
+      # Cloudflare secrets, and the org exposes ADD_TO_PROJECT_TOKEN,
+      # CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and NPM_TOKEN — so both
+      # entries below resolve to empty strings and this step is a no-op today.
       - name: Sync GitHub secrets -> SSM (GitHub is the source of truth)
         env:
           APP_MONGODB_URI: ${{ secrets.MONGODB_URI }}
