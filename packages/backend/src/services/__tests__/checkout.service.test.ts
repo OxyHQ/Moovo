@@ -43,8 +43,13 @@ vi.mock('../../models/product-variant.js', () => ({
   ProductVariant: { find: (...args: unknown[]) => variantFind(...args) },
 }));
 
-vi.mock('../../models/address.js', () => ({
-  Address: { findOne: (...args: unknown[]) => addressFindOne(...args) },
+// The addresses table moved to Postgres, so the seam checkout depends on is
+// now the repository, not the model. Retargeted rather than deleted: this
+// suite is about checkout's own logic, and it still needs one saved address to
+// snapshot. Note the shape change — `findAddressForUser` RESOLVES a row, where
+// `Address.findOne(...)` returned a chainable that needed `.lean()`.
+vi.mock('../../db/addresses/addressRepository.js', () => ({
+  findAddressForUser: (...args: unknown[]) => addressFindOne(...args),
 }));
 
 vi.mock('../../models/order.js', () => ({
@@ -168,7 +173,7 @@ describe('checkout.service.checkout — multi-seller split', () => {
       ],
       subtotal: { amount: 3000, currency: 'USD' },
     });
-    addressFindOne.mockReturnValueOnce(leanOf(addressDoc));
+    addressFindOne.mockResolvedValueOnce(addressDoc);
     listingFind.mockReturnValueOnce(
       leanOf([
         listingDoc(L1, { ownerType: 'store', storeId: 'store-A' }),
@@ -218,7 +223,7 @@ describe('checkout.service.checkout — reservation rollback', () => {
       ],
       subtotal: { amount: 7000, currency: 'USD' },
     });
-    addressFindOne.mockReturnValueOnce(leanOf(addressDoc));
+    addressFindOne.mockResolvedValueOnce(addressDoc);
     listingFind.mockReturnValueOnce(
       leanOf([
         listingDoc(L1, { ownerType: 'user', oxyUserId: 'seller-X' }),
@@ -277,7 +282,7 @@ describe('checkout.service.checkout — totals', () => {
       items: [cartItem({ listingId: L1, variantId: V1, amount: 2500, quantity: 2 })], // line 5000
       subtotal: { amount: 5000, currency: 'USD' },
     });
-    addressFindOne.mockReturnValueOnce(leanOf(addressDoc));
+    addressFindOne.mockResolvedValueOnce(addressDoc);
     listingFind.mockReturnValueOnce(leanOf([listingDoc(L1, { ownerType: 'store', storeId: 'store-A' })]));
     variantFind.mockReturnValueOnce(leanOf([variantDoc(V1, L1)]));
     nextOrderNumber.mockResolvedValueOnce('MRC-000010');

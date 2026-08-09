@@ -26,7 +26,10 @@ import type { Cart } from '@moovo/shared-types';
 import { Order, type IOrder, type IOrderItem, type IAddressSnapshot } from '../models/order.js';
 import { Listing, type IListing } from '../models/listing.js';
 import { ProductVariant, type IProductVariant } from '../models/product-variant.js';
-import { Address, type IAddress } from '../models/address.js';
+import {
+  findAddressForUser,
+  type AddressRow,
+} from '../db/addresses/addressRepository.js';
 import { nextOrderNumber } from '../models/counter.js';
 import { getCart, clearCart } from './cart.service.js';
 import { reserve, release } from './inventory.service.js';
@@ -91,7 +94,7 @@ interface OrderCreateDoc {
 }
 
 /** Build the immutable address snapshot from a saved address (omit absent optionals). */
-function snapshotAddress(address: IAddress): IAddressSnapshot {
+function snapshotAddress(address: AddressRow): IAddressSnapshot {
   const snapshot: IAddressSnapshot = {
     recipientName: address.recipientName,
     line1: address.line1,
@@ -238,7 +241,11 @@ export async function checkout(
   }
 
   // 3. Resolve + snapshot the shipping address.
-  const address = await Address.findOne({ _id: input.addressId, oxyUserId }).lean<IAddress | null>();
+  // The addresses table moved to Postgres; this is the cross-domain reader the
+  // census flagged, moved in the SAME change. Left behind it would query the
+  // now-empty Mongo collection and answer "Address not found" for every saved
+  // address — a checkout that fails with a plausible-looking error.
+  const address = await findAddressForUser(oxyUserId, input.addressId);
   if (!address) {
     throw notFound('Address not found');
   }
