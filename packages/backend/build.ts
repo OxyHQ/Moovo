@@ -1,12 +1,43 @@
 import * as esbuild from 'esbuild';
 
 await esbuild.build({
-  entryPoints: ['src/index.ts'],
+  /**
+   * TWO entry points, and the second is not optional.
+   *
+   * `src/db/migrate.ts` is the one-shot the deploy runs before and after the
+   * rollout (`.github/workflows/deploy-aws.yml`). It cannot be invoked the way a
+   * developer does — `bun src/db/migrate.ts` — because the runtime image ships
+   * neither bun nor `src/`, only node and `dist/`. Without this entry there is
+   * simply no way to migrate the production database from the image that
+   * carries the migrations, and the failure is silent in the worst direction:
+   * the deploy succeeds, the new code serves, and its tables do not exist.
+   *
+   * `outdir` rather than `outfile` because there are two: esbuild takes the
+   * entry points' common ancestor (`src/`) as the base, so these land exactly at
+   * `dist/index.js` and `dist/db/migrate.js`. `migrate.ts` runs `main()` under
+   * `import.meta.main`, which esbuild preserves, so the emitted file runs on
+   * plain `node <path>`.
+   *
+   * `db/migrate.ts` resolves its SQL folder relative to its OWN directory
+   * (`import.meta.url`), so the emitted `dist/db/migrate.js` looks for
+   * `dist/db/migrations` — which is where the Dockerfile puts the `.sql` files.
+   * That resolution is depth-independent and therefore correct for both the
+   * `src/` and `dist/` layouts without either knowing about the other.
+   *
+   * Code splitting is deliberately left OFF (esbuild's default): each entry is
+   * self-contained, so the migrator cannot fail at container start on a missing
+   * shared chunk — the one failure that would strike exactly when a deploy is
+   * mid-flight.
+   */
+  entryPoints: [
+    'src/index.ts',
+    'src/db/migrate.ts',
+  ],
   bundle: true,
   platform: 'node',
   target: 'node20',
   format: 'esm',
-  outfile: 'dist/index.js',
+  outdir: 'dist',
   // Keep every node_modules dependency external EXCEPT @moovo/* — first-party
   // workspace packages (e.g. shared-types) are inlined so the runtime image has
   // no dependency on their dist or their build-time devDependencies.

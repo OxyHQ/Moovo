@@ -12,9 +12,18 @@
 # Pipeline:
 #   build: bun install --frozen-lockfile (incl. devDependencies for the build)
 #          && bun run build:backend           (tsc shared-types + esbuild bundle
-#                                               -> packages/backend/dist/index.js)
+#                                               -> packages/backend/dist/index.js
+#                                               +  packages/backend/dist/db/migrate.js)
 #          && reinstall production-only deps
 #   run:   node packages/backend/dist/index.js
+#   migrate (one-shot, not the CMD):
+#          node packages/backend/dist/db/migrate.js --target-database=moovo --phase=<pre|post|all>
+#
+# The migrator is a SECOND entry point and the image must carry both it and the
+# `.sql` files it applies. Neither was here before: the image shipped a single
+# bundled `dist/index.js`, so there was no way to migrate the production
+# database from the image that contains the migrations — a deploy shipped new
+# code against a schema nothing had applied, and reported success.
 #
 # @moovo/shared-types is a first-party workspace package; the API bundle
 # INLINES it (see packages/backend/build.ts), so the runtime image needs neither
@@ -72,9 +81,27 @@ COPY packages/backend ./packages/backend
 # The externals are resolved at runtime from the node_modules copied below.
 RUN bun run build:backend
 
-# Fail fast if the expected entry point was not emitted.
+# Fail fast if either expected entry point was not emitted.
+#
+# The migrator is asserted separately and deliberately: a build that silently
+# stopped emitting it would leave the server bundle here and perfectly
+# functional, so nothing would notice until a deploy's migration task failed —
+# or, before that task existed, until production served code whose tables were
+# never created.
 RUN test -f packages/backend/dist/index.js \
  || (echo "ERROR: packages/backend/dist/index.js was not produced by the build" && exit 1)
+RUN test -f packages/backend/dist/db/migrate.js \
+ || (echo "ERROR: packages/backend/dist/db/migrate.js was not produced by the build" && exit 1)
+
+# The SQL the migrator applies. `src/db/migrate.ts` resolves its folder relative
+# to its OWN directory, so the emitted `dist/db/migrate.js` looks for
+# `dist/db/migrations` — which is what this copy creates. Resolving from the
+# module's own directory rather than from the package root is what lets the same
+# line of code find `src/db/migrations` under `bun` in development and this
+# folder under `node` in the image, with neither layout knowing about the other.
+RUN cp -R packages/backend/src/db/migrations packages/backend/dist/db/migrations \
+ && test -n "$(ls -A packages/backend/dist/db/migrations/*.sql 2>/dev/null)" \
+ || (echo "ERROR: no .sql migrations were copied into the image" && exit 1)
 
 # Strip devDependencies so only production modules are carried into the runtime
 # image (bun has no `prune`; a clean production install from the same lockfile is
