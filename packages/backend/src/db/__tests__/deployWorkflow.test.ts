@@ -119,6 +119,26 @@ describe('the deploy can apply migrations', () => {
     expect(workflow).toContain(folder);
   });
 
+  it('serialises deploys and NEVER cancels one that is already running', () => {
+    const workflow = read(WORKFLOW_PATH);
+
+    // The migrator takes no lock — `@oxyhq/db`'s runner says so under a
+    // heading reading "WHAT THIS DELIBERATELY DOES NOT DO", and it was
+    // measured: two runs started together against one fresh database both
+    // logged "Applying 1 migration(s)", one exited 0 and the other exited 1 on
+    // an already-applied statement. So this workflow is the interlock.
+    expect(workflow).toMatch(/^concurrency:/m);
+    expect(workflow).toMatch(/^\s+group: deploy-aws-/m);
+
+    // The load-bearing half, and the one somebody will "tidy". Cancelling a
+    // run between `run-task` and its exit-code check orphans a live migration
+    // task and reports nothing about it; cancelling mid-rollout is itself what
+    // triggers an ECS rollback to the revision the cancelled run captured at
+    // its start. `true` reads like an optimisation and is the opposite here.
+    expect(workflow).toMatch(/^\s+cancel-in-progress: false$/m);
+    expect(workflow).not.toMatch(/^\s+cancel-in-progress: true$/m);
+  });
+
   it('runs the pre phase before the rollout and the post phase after it', () => {
     const workflow = read(WORKFLOW_PATH);
     const pre = workflow.indexOf('run-migration-task.sh pre');

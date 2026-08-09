@@ -37,6 +37,43 @@ on:
           - pre-post
           - all
 
+# ONE deploy at a time, and never cancel one that is already running.
+#
+# Two independent reasons, either of which alone justifies this:
+#
+# 1. THE MIGRATOR TAKES NO LOCK, and that is deliberate rather than an
+#    oversight. `@oxyhq/db`'s runner documents it under a heading reading
+#    "WHAT THIS DELIBERATELY DOES NOT DO": drizzle's migrator reads the
+#    ledger's high-water mark OUTSIDE its transaction and replays everything
+#    newer INSIDE one, so two runs both read the same mark and both attempt
+#    the same DDL. It says a caller that can race itself "needs an interlock
+#    of its own". This is that interlock.
+#
+#    Measured, not taken on trust: two `runMigrations` started together
+#    against one fresh database both logged "Applying 1 migration(s)"; one
+#    exited 0 and the other exited 1 on an already-applied statement. The
+#    ledger ended with exactly one row — so the loser fails LOUDLY and
+#    nothing is corrupted, but a deploy goes red for no reason, having
+#    already pushed its image.
+#
+# 2. Even with a lock this would be right, because it is not only about
+#    migrations. Three simultaneous `update-service --force-new-deployment`
+#    calls, each followed by `wait services-stable`, is a deploy waiting on a
+#    revision another deploy has already superseded — it times out and rolls
+#    the service back to whatever IT captured at its start. That is not
+#    hypothetical: it happened three times to a sibling service, whose
+#    workflow HAS this block, so Moovo without one is strictly worse off.
+#    Three runs were in flight here simultaneously on 2026-08-10.
+#
+# `cancel-in-progress: false` is the load-bearing half. Cancelling a run
+# between `run-task` and its exit-code check ORPHANS a live migration task and
+# reports nothing about it — and cancelling mid-rollout is itself what
+# triggers the rollback above, measured on that same sibling service. A queued
+# deploy is always better than a cancelled one here.
+concurrency:
+  group: deploy-aws-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   id-token: write
   contents: read
