@@ -1,12 +1,20 @@
 # AWS deploy workflow for the Moovo API.
-# Builds the linux/arm64 backend image, pushes it to ECR, and forces a new ECS
-# deployment. AWS access is via the OIDC role oxy-github-deploy — no stored keys.
+# Builds the linux/arm64 backend image, pushes it to ECR, applies migrations as
+# ECS one-shot tasks, and forces a new ECS deployment. AWS access is via the
+# OIDC role oxy-github-deploy — no stored keys.
 #
-# NOTE (handoff): the ECS service `moovo`, its task definition, ALB
-# listener rule, ECR repo, and SSM parameter wiring do NOT exist yet. They live
-# in oxy-infra (terraform-uswest2/) and must be provisioned there before this
-# workflow can deploy. Until then this builds + pushes the image and skips the
-# ECS step (the service-existence guard below handles that gracefully).
+# The ECS service `moovo` on cluster `oxy-cluster` is PROVISIONED AND SERVING
+# (verified 2026-08-10: status ACTIVE, task definition oxy-moovo:1). It lives in
+# oxy-infra (terraform-uswest2/), which stays the source of truth for changing
+# any of it — this workflow only deploys onto it. The service-existence guard
+# below is therefore a GUARD, not the normal path: a run reporting "not created
+# yet" means the infrastructure moved, not that Moovo is awaiting provisioning.
+#
+# Migrations run as the pre/post one-shot pair around the rollout, inside the
+# VPC. They cannot run on the runner: the database is postgres.internal.oxy.so,
+# private DNS on the shared RDS instance, which a hosted runner cannot reach.
+# Use `migration_phase=all` from workflow_dispatch only for a from-zero/cutover
+# batch — see the note on that step.
 name: Deploy to AWS
 
 on:
@@ -16,6 +24,18 @@ on:
       - '**.md'
       - 'docs/**'
   workflow_dispatch:
+    inputs:
+      migration_phase:
+        description: >-
+          How to apply migrations. `pre-post` (default) applies the additive ones
+          before the rollout and the destructive ones after. `all` applies
+          everything in ONE run before the rollout — what a from-zero batch needs,
+          and wrong for anything else.
+        type: choice
+        default: pre-post
+        options:
+          - pre-post
+          - all
 
 permissions:
   id-token: write
@@ -27,6 +47,17 @@ env:
   APP: moovo
   CLUSTER: oxy-cluster
   DOCKERFILE: Dockerfile
+  # The PostgreSQL database the migration tasks below are allowed to touch.
+  #
+  # NOT cosmetic: the migrator refuses to run unless this matches the database
+  # its DATABASE_URL actually resolves to, so a value that disagrees with the
+  # provisioned database fails the deploy loudly instead of migrating some other
+  # app's on the server they share.
+  #
+  # VERIFIED, not assumed: /oxy/moovo/DATABASE_URL resolves to database `moovo`
+  # owned by role `moovo` on oxy-postgres, with PostGIS already installed
+  # (checked 2026-08-10).
+  PG_DATABASE: moovo
 
 jobs:
   test:
@@ -122,13 +153,101 @@ jobs:
             --push \
             .
 
-      - name: Deploy to ECS (rolling; skipped until the service exists)
+      # Everything the migration tasks and the rollout need, read ONCE from the
+      # live service. The migration one-shot runs on the service's OWN task
+      # definition (overriding only the command), so it inherits exactly the
+      # secrets, role and network the service has — there is no second place
+      # where DATABASE_URL could be configured differently for migrations than
+      # for the code those migrations are for.
+      - name: Discover the ECS service
+        id: ecs
+        env:
+          # Absent on a `push` trigger, where only the default is ever right.
+          REQUESTED_PHASE: ${{ github.event.inputs.migration_phase }}
         run: |
+          echo "phase_mode=${REQUESTED_PHASE:-pre-post}" >> "$GITHUB_OUTPUT"
           STATUS=$(aws ecs describe-services --cluster "$CLUSTER" --services "$APP" --query 'services[0].status' --output text 2>/dev/null || echo NONE)
-          if [ "$STATUS" = "ACTIVE" ]; then
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          if [ "$STATUS" != "ACTIVE" ]; then
+            echo "ECS service $APP not created yet — nothing to migrate or deploy against"
+            exit 0
+          fi
+          TD=$(aws ecs describe-services --cluster "$CLUSTER" --services "$APP" --query 'services[0].taskDefinition' --output text)
+          NET=$(aws ecs describe-services --cluster "$CLUSTER" --services "$APP" --query 'services[0].networkConfiguration' --output json)
+          CONTAINER=$(aws ecs describe-task-definition --task-definition "$TD" --query 'taskDefinition.containerDefinitions[0].name' --output text)
+          echo "task_definition=$TD" >> "$GITHUB_OUTPUT"
+          echo "container=$CONTAINER" >> "$GITHUB_OUTPUT"
+          # JSON on one line: a GITHUB_OUTPUT value cannot span lines unhelped.
+          echo "network=$(echo "$NET" | jq -c .)" >> "$GITHUB_OUTPUT"
+
+      # Does this release contain a post-rollout migration at all? Grepped with
+      # the pattern @oxyhq/db EXPORTS (`POST_PHASE_GREP_PATTERN`), never a copy —
+      # `src/db/__tests__/deployWorkflow.test.ts` asserts this workflow contains
+      # that exact string, so the two cannot drift. The grep is sound only
+      # because the migrator separately proves every file carries exactly one
+      # well-formed marker; without that a typo would read as "no post migration"
+      # and the drop would never be applied by anything.
+      - name: Detect a post-rollout migration in this release
+        id: phases
+        run: |
+          if grep -rlE '^-- oxy:deploy-phase=post$' packages/backend/src/db/migrations >/dev/null 2>&1; then
+            echo "has_post=true" >> "$GITHUB_OUTPUT"
+            echo "this release carries at least one post-rollout migration"
+          else
+            echo "has_post=false" >> "$GITHUB_OUTPUT"
+            echo "no post-rollout migration in this release"
+          fi
+
+      # The CUTOVER path, chosen by hand from workflow_dispatch. One `all` run
+      # applies the whole chain in journal order before the rollout, which the
+      # pre/post pair cannot do when a `pre` migration sits queued behind an
+      # unapplied `post` one — that BLOCKS by design. It is safe only on a
+      # database no image is serving yet, which is also why it must never be the
+      # default.
+      - name: Migrate (all) — cutover only, never a normal release
+        if: steps.ecs.outputs.status == 'ACTIVE' && steps.ecs.outputs.phase_mode == 'all'
+        run: .github/scripts/run-migration-task.sh all
+        env:
+          TASK_DEFINITION: ${{ steps.ecs.outputs.task_definition }}
+          CONTAINER_NAME: ${{ steps.ecs.outputs.container }}
+          NETWORK_CONFIGURATION: ${{ steps.ecs.outputs.network }}
+
+      # Additive migrations, applied while the PREVIOUS image is still serving —
+      # which is the whole reason the phase split exists. This runs on every
+      # ordinary deploy; when the journal has nothing pending it is a no-op that
+      # still proves the migrator could reach the database.
+      - name: Migrate (pre) — before the rollout
+        if: steps.ecs.outputs.status == 'ACTIVE' && steps.ecs.outputs.phase_mode != 'all'
+        run: .github/scripts/run-migration-task.sh pre
+        env:
+          TASK_DEFINITION: ${{ steps.ecs.outputs.task_definition }}
+          CONTAINER_NAME: ${{ steps.ecs.outputs.container }}
+          NETWORK_CONFIGURATION: ${{ steps.ecs.outputs.network }}
+
+      - name: Deploy to ECS (rolling; skipped until the service exists)
+        # Through `env:` rather than `${{ }}` inside `run:`. Nothing here is
+        # attacker-controlled today, but a workflow expression expanded into a
+        # shell command is the shape of an injection, and the habit is what
+        # keeps it from becoming one when somebody later reaches for an input.
+        env:
+          SERVICE_STATUS: ${{ steps.ecs.outputs.status }}
+        run: |
+          if [ "$SERVICE_STATUS" = "ACTIVE" ]; then
             aws ecs update-service --cluster "$CLUSTER" --service "$APP" --force-new-deployment >/dev/null
             aws ecs wait services-stable --cluster "$CLUSTER" --services "$APP"
             echo "deployed $APP"
           else
             echo "ECS service $APP not created yet — image is in ECR, skipping deploy"
           fi
+
+      # Drops, renames and narrowings, applied only once the NEW image is live —
+      # each one breaks a write the previous image performs. Skipped entirely
+      # when the release carries none, so an ordinary deploy does not start a
+      # Fargate task to do nothing.
+      - name: Migrate (post) — after the rollout
+        if: steps.ecs.outputs.status == 'ACTIVE' && steps.ecs.outputs.phase_mode != 'all' && steps.phases.outputs.has_post == 'true'
+        run: .github/scripts/run-migration-task.sh post
+        env:
+          TASK_DEFINITION: ${{ steps.ecs.outputs.task_definition }}
+          CONTAINER_NAME: ${{ steps.ecs.outputs.container }}
+          NETWORK_CONFIGURATION: ${{ steps.ecs.outputs.network }}
