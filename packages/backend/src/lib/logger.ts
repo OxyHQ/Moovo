@@ -94,6 +94,11 @@ export const log = {
   // dead-lettered report is moderation work nobody will do, and finding those
   // must not mean grepping the whole application's output.
   moderation: createLogger('moderation'),
+  // Migrations and the expiry sweep. Its own subsystem for the same reason as
+  // moderation: a sweep that has silently stopped reaping produces no error and
+  // no failing test, so the only trace it leaves is its own log line — and
+  // finding that must not mean grepping the whole application's output.
+  db: createLogger('db'),
   general: rootLogger,
 };
 
