@@ -1,0 +1,42 @@
+## Local PostgreSQL for `bun run --cwd packages/backend test`.
+##
+##   docker compose -f docker-compose.postgres.yml up -d --wait
+##   export TEST_DATABASE_URL=postgres://moovo:moovo@127.0.0.1:5437/postgres
+##
+## `TEST_DATABASE_URL` points at `postgres`, the ADMIN database, because that is
+## where each test file's throwaway database is CREATED — it is not the database
+## any suite connects to. `db/testDatabase.ts` creates `oxydb_test_<hex>`,
+## migrates it, hands the suite a handle to that, and drops it afterwards.
+##
+## Port 5437 rather than the default: every Oxy backend keeps a dev server on
+## this machine and they cannot share one. 5432-5436, 5438 and 5439 are taken by
+## the other apps, so a default port here would connect a Moovo suite to some
+## other product's database and read as a schema error.
+##
+## Plain `postgres:17-alpine`, NOT a PostGIS image: nothing in this schema uses a
+## geography type. If that changes, the image is only half the fix — a new
+## database is cloned from `template1`, which the image never seeds, so the
+## extension also has to be installed per database by a privileged role.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: moovo-postgres-dev
+    environment:
+      POSTGRES_USER: moovo
+      POSTGRES_PASSWORD: moovo
+      POSTGRES_DB: moovo
+    ports:
+      - '127.0.0.1:5437:5432'
+    healthcheck:
+      # `pg_isready` rather than a sleep, and `--wait` on the compose command:
+      # a suite that starts before the server accepts connections fails as a
+      # connection error, which reads like a broken harness rather than a
+      # container that was not up yet.
+      test: ['CMD-SHELL', 'pg_isready -U moovo']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    tmpfs:
+      # Throwaway by construction: a test database that survives a restart is a
+      # test database that can carry a previous run's rows into this one.
+      - /var/lib/postgresql/data
