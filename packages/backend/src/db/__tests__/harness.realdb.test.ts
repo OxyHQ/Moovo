@@ -33,6 +33,14 @@ import {
  * re-run this same mutation to confirm skipping the migration now fails.
  * Until then this suite proves the migrator ENTRYPOINT is correct (its guards
  * fire, it is idempotent) but not that the harness calls it.
+ *
+ * The same zero-migration short-circuit means the declared `postgis` extension
+ * is NOT created in these throwaway databases yet — measured: `pg_extension` has
+ * no row for it. `runMigrations` returns on an empty journal BEFORE it reaches
+ * `ensureExtensions`. That is the right order for the first real migration (with
+ * migrations pending, extensions are ensured BEFORE the DDL that names
+ * `geography`), so nothing is broken — but do not read a passing suite here as
+ * evidence that PostGIS works. The first migration is what proves that too.
  */
 
 const describeIfPostgres = POSTGRES_TESTS_ENABLED ? describe : describe.skip;
