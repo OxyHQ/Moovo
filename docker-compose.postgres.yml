@@ -13,13 +13,22 @@
 ## the other apps, so a default port here would connect a Moovo suite to some
 ## other product's database and read as a schema error.
 ##
-## Plain `postgres:17-alpine`, NOT a PostGIS image: nothing in this schema uses a
-## geography type. If that changes, the image is only half the fix — a new
-## database is cloned from `template1`, which the image never seeds, so the
-## extension also has to be installed per database by a privileged role.
+## `postgis/postgis`, NOT plain `postgres:17-alpine`, and pinned on BOTH versions.
+## Measured rather than assumed: courier dispatch runs `$nearSphere` and listing
+## search runs `$near`, so those become `geography` columns with GiST indexes and
+## the migrator declares `postgis` as a required extension.
+##
+## The image is only half of it. A new database is cloned from `template1`, which
+## the image never seeds, so `CREATE EXTENSION` still has to run per database —
+## which is what `db/migrate.ts` declares and `@oxyhq/db` performs here. On RDS
+## that same statement needs the MASTER user: postgis is not a trusted extension,
+## so the owning role cannot install it.
+##
+## A floating PostGIS minor is a floating set of function volatilities, which a
+## generated column and its index depend on — hence both versions pinned.
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgis/postgis:17-3.5
     container_name: moovo-postgres-dev
     environment:
       POSTGRES_USER: moovo

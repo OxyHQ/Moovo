@@ -4,6 +4,7 @@ import { main as runMigrateEntrypoint } from '../migrate';
 import { getDb } from '../postgres';
 import {
   POSTGRES_TESTS_ENABLED,
+  POSTGRES_TESTS_REQUIRED,
   createSuiteDatabase,
   destroySuiteDatabase,
   type SuiteDatabase,
@@ -33,9 +34,32 @@ import {
  * re-run this same mutation to confirm skipping the migration now fails.
  * Until then this suite proves the migrator ENTRYPOINT is correct (its guards
  * fire, it is idempotent) but not that the harness calls it.
+ *
+ * The same zero-migration short-circuit means the declared `postgis` extension
+ * is NOT created in these throwaway databases yet — measured: `pg_extension` has
+ * no row for it. `runMigrations` returns on an empty journal BEFORE it reaches
+ * `ensureExtensions`. That is the right order for the first real migration (with
+ * migrations pending, extensions are ensured BEFORE the DDL that names
+ * `geography`), so nothing is broken — but do not read a passing suite here as
+ * evidence that PostGIS works. The first migration is what proves that too.
  */
 
 const describeIfPostgres = POSTGRES_TESTS_ENABLED ? describe : describe.skip;
+
+// In CI this must RUN, not skip. Expressed as a failing test rather than a
+// grep over reporter output, so it cannot be defeated by a formatting change.
+describe('the real-database suites', () => {
+  it('are available wherever they are required', () => {
+    if (POSTGRES_TESTS_REQUIRED && !POSTGRES_TESTS_ENABLED) {
+      throw new Error(
+        'MOOVO_REQUIRE_POSTGRES_TESTS=1 but TEST_DATABASE_URL is unset, so the ' +
+          'Postgres suites would SKIP. In CI that is a green build over an ' +
+          'untested database — start the compose server and export the URL.',
+      );
+    }
+    expect(POSTGRES_TESTS_REQUIRED && !POSTGRES_TESTS_ENABLED).toBe(false);
+  });
+});
 
 describeIfPostgres('the Postgres test harness', () => {
   let suite: SuiteDatabase | null = null;
