@@ -39,8 +39,15 @@ vi.mock('../../models/job-offer.js', () => ({
   NON_TERMINAL_OFFER_STATUSES: ['offered'],
 }));
 
-vi.mock('../../models/courier-profile.js', () => ({
-  CourierProfile: { find: (...args: unknown[]) => profileFind(...args) },
+// `courier_profiles` is Postgres now, so the seam is the repository — and the
+// shape change matters here more than usual: the Mongo call took a FILTER
+// OBJECT the test could inspect field by field, while the repository takes a
+// typed QUERY. The `$nearSphere`/`$maxDistance` pair is no longer expressible
+// as a filter to assert against; it is `ST_DWithin` plus `ORDER BY <->` inside
+// the repository, and that ORDERING is pinned by `fleet.realdb.test.ts` against
+// a real PostGIS server, which is the only place it can be pinned at all.
+vi.mock('../../db/fleet/courierProfileRepository.js', () => ({
+  findDispatchCandidates: (...args: unknown[]) => profileFind(...args),
 }));
 
 vi.mock('../capability.service.js', () => ({
@@ -98,7 +105,9 @@ function mockCandidate(oxyUserId: string) {
     eligibleJobTypes: ['package'],
     maxSizeClass: 'large',
     maxWeightKg: 50,
-    currentLocation: { type: 'Point', coordinates: [2.18, 41.39] },
+    // Ordinate COLUMNS, not a nested GeoJSON point.
+    longitude: 2.18,
+    latitude: 41.39,
   };
 }
 
@@ -117,35 +126,27 @@ beforeEach(() => {
 describe('dispatchJob — candidate selection', () => {
   it('queries online, non-stale, type-eligible couriers near the pickup, limited to waveSize', async () => {
     jobFindById.mockResolvedValue(mockJob());
-    profileFind.mockReturnValue({ limit: () => ({ lean: () => Promise.resolve([mockCandidate('c1')]) }) });
-
-    let capturedFilter: Record<string, unknown> = {};
-    profileFind.mockImplementation((filter: Record<string, unknown>) => {
-      capturedFilter = filter;
-      return { limit: () => ({ lean: () => Promise.resolve([mockCandidate('c1')]) }) };
+    let capturedQuery: Record<string, unknown> = {};
+    profileFind.mockImplementation((query: Record<string, unknown>) => {
+      capturedQuery = query;
+      return Promise.resolve([mockCandidate('c1')]);
     });
 
     await dispatchJob('job-1');
 
-    expect(capturedFilter.onlineStatus).toBe('online');
-    expect(capturedFilter.eligibleJobTypes).toBe('package');
-    expect(capturedFilter.lastPingAt).toMatchObject({ $gte: expect.any(Date) });
-    expect(capturedFilter.maxWeightKg).toMatchObject({ $gte: 3 });
-    expect(capturedFilter.currentLocation).toMatchObject({
-      $nearSphere: {
-        $geometry: { type: 'Point', coordinates: [2.17, 41.38] },
-        $maxDistance: expect.any(Number),
-      },
-    });
+    expect(capturedQuery.jobType).toBe('package');
+    expect(capturedQuery.stalePingCutoff).toBeInstanceOf(Date);
+    expect(capturedQuery.weightKg).toBe(3);
+    expect(capturedQuery.limit).toBeGreaterThan(0);
+    expect(capturedQuery.pickup).toEqual({ longitude: 2.17, latitude: 41.38 });
+    expect(capturedQuery.radiusM).toBeGreaterThan(0);
   });
 });
 
 describe('dispatchJob — offer fan-out', () => {
   it('creates one offer per candidate, moves the job offered, and emits each candidate', async () => {
     jobFindById.mockResolvedValue(mockJob());
-    profileFind.mockReturnValue({
-      limit: () => ({ lean: () => Promise.resolve([mockCandidate('c1'), mockCandidate('c2')]) }),
-    });
+    profileFind.mockResolvedValue([mockCandidate('c1'), mockCandidate('c2')]);
 
     const result = await dispatchJob('job-1');
 
@@ -165,9 +166,7 @@ describe('dispatchJob — offer fan-out', () => {
 
   it('does NOT transition on a re-dispatch wave (job already offered)', async () => {
     jobFindById.mockResolvedValue(mockJob({ status: 'offered', dispatchAttempts: 1 }));
-    profileFind.mockReturnValue({
-      limit: () => ({ lean: () => Promise.resolve([mockCandidate('c3')]) }),
-    });
+    profileFind.mockResolvedValue([mockCandidate('c3')]);
 
     const result = await dispatchJob('job-1');
 
@@ -180,7 +179,7 @@ describe('dispatchJob — offer fan-out', () => {
 describe('dispatchJob — zero candidates', () => {
   it('leaves the job requested (no transition, no cancel) but bumps dispatchAttempts', async () => {
     jobFindById.mockResolvedValue(mockJob());
-    profileFind.mockReturnValue({ limit: () => ({ lean: () => Promise.resolve([]) }) });
+    profileFind.mockResolvedValue([]);
 
     const result = await dispatchJob('job-1');
 
@@ -193,9 +192,7 @@ describe('dispatchJob — zero candidates', () => {
 
   it('filters out candidates that fail the precise eligibility gate', async () => {
     jobFindById.mockResolvedValue(mockJob());
-    profileFind.mockReturnValue({
-      limit: () => ({ lean: () => Promise.resolve([mockCandidate('c1')]) }),
-    });
+    profileFind.mockResolvedValue([mockCandidate('c1')]);
     isEligible.mockReturnValue(false);
 
     const result = await dispatchJob('job-1');

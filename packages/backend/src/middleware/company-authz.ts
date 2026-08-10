@@ -16,7 +16,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import { isLiveEntityId } from '@oxyhq/db';
 import type { CompanyRole, CompanyPermission } from '@moovo/shared-types';
-import { CourierCompany, type ICompany, type ICompanyMember } from '../models/courier-company.js';
+import {
+  findCompanyById,
+  type CompanyMemberValue,
+  type CourierCompanyRecord,
+} from '../db/fleet/courierCompanyRepository.js';
 import { sendError, ErrorCodes } from '../utils/api-response.js';
 import { log } from '../lib/logger.js';
 
@@ -25,8 +29,8 @@ import { log } from '../lib/logger.js';
 declare global {
   namespace Express {
     interface Request {
-      company?: ICompany;
-      companyMembership?: ICompanyMember;
+      company?: CourierCompanyRecord;
+      companyMembership?: CompanyMemberValue;
     }
   }
 }
@@ -64,7 +68,7 @@ export const ROLE_PERMISSIONS: Record<CompanyRole, CompanyPermission[]> = {
 };
 
 /** Compute a member's effective permissions: role defaults ∪ explicit grants. */
-export function effectiveCompanyPermissions(member: ICompanyMember): Set<CompanyPermission> {
+export function effectiveCompanyPermissions(member: CompanyMemberValue): Set<CompanyPermission> {
   const effective = new Set<CompanyPermission>(ROLE_PERMISSIONS[member.role]);
   for (const perm of member.permissions) {
     effective.add(perm);
@@ -97,7 +101,7 @@ export async function loadCompany(req: Request, res: Response, next: NextFunctio
   }
 
   try {
-    const company = await CourierCompany.findById(companyId);
+    const company = await findCompanyById(companyId);
     if (!company) {
       sendError(res, ErrorCodes.NOT_FOUND, 'Company not found', 404);
       return;

@@ -3,7 +3,7 @@
  *
  * `dispatchJob` selects up to `config.dispatch.waveSize` nearby ONLINE eligible
  * couriers around the job's pickup (a `$nearSphere` geo-query over
- * `CourierProfile.currentLocation`, nearest-first), creates one time-boxed
+ * `courier_profiles.location`, nearest-first), creates one time-boxed
  * `JobOffer` per candidate, moves the job `requested → offered` on the FIRST wave
  * (a guarded transition so later waves — already `offered` — skip it), bumps the
  * job's `dispatchAttempts` wave counter, and pushes a `job:offer` socket event +
@@ -21,10 +21,13 @@
  * `job.service` inside the wave-1 transition (same technique as `queue/handlers`).
  */
 
-import type { JobOfferView, FiatCurrency } from '@moovo/shared-types';
+import type { JobOfferView, FiatCurrency, JobType, SizeClass } from '@moovo/shared-types';
 import { Job, type IJob } from '../models/job.js';
 import { JobOffer, NON_TERMINAL_OFFER_STATUSES } from '../models/job-offer.js';
-import { CourierProfile, type ICourierProfile } from '../models/courier-profile.js';
+import {
+  findDispatchCandidates,
+  type CourierProfileRow,
+} from '../db/fleet/courierProfileRepository.js';
 import { isEligible } from './capability.service.js';
 import { getFairRate } from './faircoin-rate.service.js';
 import { toDisplayPriceBreakdown } from '../utils/fair-display.js';
@@ -86,41 +89,30 @@ async function couriersWithLiveOffer(jobId: string): Promise<string[]> {
  * Find up to `waveSize` nearby ONLINE eligible couriers around the pickup,
  * nearest-first, excluding `excludeIds`. The geo + capacity gate runs in Mongo;
  * the precise `isEligible` capability check runs per-candidate on the projected
- * denormalized capability (size class is not expressible as a simple Mongo range).
+ * denormalized capability (size class is not an orderable column).
  */
 async function findCandidates(
   job: IJob,
   pickup: [number, number],
   radiusM: number,
   excludeIds: string[],
-): Promise<ICourierProfile[]> {
-  const staleCutoff = new Date(Date.now() - config.dispatch.stalenessMs);
-  const filter: Record<string, unknown> = {
-    onlineStatus: 'online',
-    lastPingAt: { $gte: staleCutoff },
-    eligibleJobTypes: job.type,
-    maxWeightKg: { $gte: job.parcelSnapshot.weightKg },
-    currentLocation: {
-      $nearSphere: {
-        $geometry: { type: 'Point', coordinates: pickup },
-        $maxDistance: radiusM,
-      },
-    },
-  };
-  if (excludeIds.length > 0) {
-    filter.oxyUserId = { $nin: excludeIds };
-  }
+): Promise<CourierProfileRow[]> {
+  const candidates = await findDispatchCandidates({
+    pickup: { longitude: pickup[0], latitude: pickup[1] },
+    radiusM,
+    jobType: job.type,
+    weightKg: job.parcelSnapshot.weightKg,
+    stalePingCutoff: new Date(Date.now() - config.dispatch.stalenessMs),
+    excludeOxyUserIds: excludeIds,
+    limit: config.dispatch.waveSize,
+  });
 
-  const candidates = await CourierProfile.find(filter)
-    .limit(config.dispatch.waveSize)
-    .lean<ICourierProfile[]>();
-
-  // Final precise capability gate (size class ordering is not a Mongo range).
+  // Final precise capability gate (size class ordering is not a SQL range).
   return candidates.filter((c) =>
     isEligible(
       {
-        eligibleJobTypes: c.eligibleJobTypes,
-        maxSizeClass: c.maxSizeClass,
+        eligibleJobTypes: c.eligibleJobTypes as JobType[],
+        maxSizeClass: c.maxSizeClass as SizeClass,
         maxWeightKg: c.maxWeightKg,
       },
       {
@@ -220,11 +212,14 @@ export async function dispatchJob(jobId: string): Promise<DispatchResult> {
   let offered = 0;
   for (let rank = 0; rank < candidates.length; rank += 1) {
     const candidate = candidates[rank];
-    const courierOxyUserId = String(candidate.oxyUserId);
-    const courierCoords = candidate.currentLocation?.coordinates;
+    const courierOxyUserId = candidate.oxyUserId;
+    // The ordinates are columns now, not a nested GeoJSON point. A candidate
+    // reached here through `ST_DWithin`, so both are set — but the fallback is
+    // kept because the columns are nullable and `radiusM` is the honest upper
+    // bound for a courier whose position we cannot read.
     const distanceM =
-      courierCoords && courierCoords.length >= 2
-        ? distanceMetersBetween(courierCoords, pickup)
+      candidate.longitude !== null && candidate.latitude !== null
+        ? distanceMetersBetween([candidate.longitude, candidate.latitude], pickup)
         : radiusM;
 
     try {

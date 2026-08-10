@@ -18,7 +18,10 @@ import mongoose from 'mongoose';
 import type { ModerationEnforcementAction, ModerationEnforcementMode } from '@moovo/shared-types';
 import { config } from '../../config/index.js';
 import { log } from '../../lib/logger.js';
-import { CourierProfile } from '../../models/courier-profile.js';
+import {
+  reinstateCourier as reinstateCourierRow,
+  suspendCourier as suspendCourierRow,
+} from '../../db/fleet/courierProfileRepository.js';
 import { ModerationEnforcement } from '../../models/moderation-enforcement.js';
 import type { EnforcementTargetType, PlannedEnforcementAction } from './enforcement-plan.js';
 
@@ -68,11 +71,12 @@ interface EffectResult {
  * rather than silently succeeding.
  */
 async function suspendCourier(oxyUserId: string): Promise<EffectResult> {
-  const result = await CourierProfile.updateOne(
-    { oxyUserId, status: { $ne: 'suspended' } },
-    { $set: { status: 'suspended', onlineStatus: 'offline' } },
-  );
-  if (result.matchedCount === 0) {
+  // The repository answers the same question `matchedCount === 0` answered:
+  // did this statement actually change a courier's status. Both predicates
+  // exclude the no-change case, so Mongo's matchedCount and Postgres' row
+  // count cannot disagree here — see the repository's own note.
+  const suspended = await suspendCourierRow(oxyUserId);
+  if (!suspended) {
     return { applied: false, reason: 'No active courier profile to suspend' };
   }
   return { applied: true };
@@ -87,11 +91,8 @@ async function suspendCourier(oxyUserId: string): Promise<EffectResult> {
  * state is not ours to skip.
  */
 async function reinstateCourier(oxyUserId: string): Promise<EffectResult> {
-  const result = await CourierProfile.updateOne(
-    { oxyUserId, status: 'suspended' },
-    { $set: { status: 'active' } },
-  );
-  if (result.matchedCount === 0) {
+  const reinstated = await reinstateCourierRow(oxyUserId);
+  if (!reinstated) {
     return { applied: false, reason: 'There was no suspension to undo' };
   }
   return { applied: true };

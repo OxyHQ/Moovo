@@ -45,7 +45,10 @@ import {
   markQuoteSelected,
   type QuoteRecord,
 } from '../db/transport/quoteRepository.js';
-import { CourierProfile } from '../models/courier-profile.js';
+import {
+  markCourierOnJob,
+  updateCourierAcceptanceRate,
+} from '../db/fleet/courierProfileRepository.js';
 import { nextJobNumber } from '../models/counter.js';
 import { getAdapter } from './providers/provider-registry.js';
 import { emitJobStatus, emitJobLocation } from './job-events.service.js';
@@ -386,10 +389,7 @@ async function recomputeAcceptanceRate(courierOxyUserId: string): Promise<void> 
     if (resolved === 0) {
       return;
     }
-    await CourierProfile.updateOne(
-      { oxyUserId: courierOxyUserId },
-      { $set: { acceptanceRate: accepted / resolved } },
-    );
+    await updateCourierAcceptanceRate(courierOxyUserId, accepted / resolved);
   } catch (err) {
     log.general.warn({ err, courierOxyUserId }, 'Failed to recompute acceptance rate (best-effort)');
   }
@@ -452,10 +452,7 @@ export async function accept(courierOxyUserId: string, jobId: string): Promise<I
   }
 
   // Courier is now busy; recompute their acceptance rate from offer history.
-  await CourierProfile.updateOne(
-    { oxyUserId: courierOxyUserId },
-    { $set: { onlineStatus: 'on_job' } },
-  );
+  await markCourierOnJob(courierOxyUserId);
   await recomputeAcceptanceRate(courierOxyUserId);
 
   // Notify the losing candidates + the sender.
