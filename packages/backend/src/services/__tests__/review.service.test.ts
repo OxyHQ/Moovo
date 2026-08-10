@@ -1,7 +1,7 @@
 /**
  * Unit tests for `review.service`.
  *
- * `mongodb-memory-server` is not available, so the Review/Order/Listing/Store/
+ * Nothing in this repo runs a Mongo server for tests, so the Review/Order/Listing/Store/
  * SellerProfile models, the queue producer, the notification service, and the
  * Oxy/media hydration are mocked. Tests assert the F5 contract: the
  * verified-purchase gate (no qualifying order → FORBIDDEN; qualifying order →

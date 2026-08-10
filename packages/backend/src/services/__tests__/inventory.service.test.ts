@@ -1,7 +1,7 @@
 /**
  * Unit tests for `inventory.service`.
  *
- * `mongodb-memory-server` is not available, so the `ProductVariant` model and
+ * Nothing in this repo runs a Mongo server for tests, so the `ProductVariant` model and
  * the shared `syncListingFacets` helper are mocked. Tests assert the EXACT Mongo
  * filter + `$inc` and the `matchedCount` branch (the race-safety contract), the
  * untracked short-circuit, and that facets are resynced after stock-flipping

@@ -1,116 +1,27 @@
 /**
- * The outbox coupling: a delivery event may only be written inside a
- * transaction.
+ * The outbox POLICY: event ids, and where retrying stops.
  *
- * This is the invariant that keeps "the reporter got a 201" and "somebody will
- * actually deliver this" from coming apart. It is enforced at runtime rather than
- * by review because the mistake it catches — passing a session nobody opened a
- * transaction on — type-checks perfectly, commits the row on its own, and passes
- * any test that only asserts the row exists.
+ * What this file used to hold — the assertion that a delivery event may only be
+ * written inside a transaction — has MOVED to `moderation.realdb.test.ts`, and
+ * that is a strengthening rather than a relocation. It was asserted here against
+ * a hand-made session object whose `inTransaction()` returned whatever the test
+ * said, so it proved the guard consulted its argument and nothing about whether
+ * a REAL handle answers correctly. The Postgres guard discriminates on whether
+ * the handle carries `.rollback`, and the only thing that can establish that
+ * `getDb()` lacks it while a real `db.transaction(...)` handle has it is a real
+ * server.
+ *
+ * What remains here is what genuinely has no database in it: the event ids, and
+ * the retryability rule that decides whether a failure is worth another attempt.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ClientSession } from 'mongoose';
-
-const updateOne = vi.fn();
-
-vi.mock('../../../models/moderation-outbox.js', () => ({
-  ModerationOutbox: { updateOne: (...args: unknown[]) => updateOne(...args) },
-  MODERATION_OUTBOX_RETENTION_SECONDS: 2_592_000,
-  MODERATION_OUTBOX_KINDS: ['report.submit', 'decision.apply'],
-}));
-
-vi.mock('../../../lib/logger.js', () => ({
-  log: { moderation: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } },
-}));
+import { describe, it, expect } from 'vitest';
 
 import {
-  enqueueModerationOutboxEvent,
-  ModerationOutboxTransactionError,
   isRetryableDeliveryError,
   reportSubmitEventId,
   decisionApplyEventId,
 } from '../moderation-outbox.service.js';
-
-/**
- * A session that answers whether it is in a transaction, and nothing else.
- *
- * Deliberately not a mongoose `ClientSession` mock with every method stubbed: the
- * only thing the guard consults is `inTransaction()`, and a fatter double would
- * invite a future test to assert against behaviour the real session owns.
- */
-function sessionInTransaction(open: boolean): ClientSession {
-  const session = { inTransaction: () => open };
-  return session as unknown as ClientSession;
-}
-
-const EVENT = {
-  eventId: 'moderation:report.submit:report-1',
-  kind: 'report.submit' as const,
-  payload: { reportId: 'report-1' },
-};
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  updateOne.mockResolvedValue({ upsertedCount: 1 });
-});
-
-describe('enqueueModerationOutboxEvent', () => {
-  it('writes the row when the session is in a transaction', async () => {
-    const eventId = await enqueueModerationOutboxEvent(EVENT, sessionInTransaction(true));
-
-    expect(eventId).toBe(EVENT.eventId);
-    expect(updateOne).toHaveBeenCalledTimes(1);
-    const [, , options] = updateOne.mock.calls[0] as [unknown, unknown, { upsert: boolean }];
-    expect(options.upsert).toBe(true);
-  });
-
-  /**
-   * The mutation this file exists for.
-   *
-   * Remove the `inTransaction()` guard from `enqueueModerationOutboxEvent` and
-   * this is the assertion that goes red — and it goes red naming the exact
-   * failure, because the error message is the documentation of why the guard is
-   * there. Verified by actually deleting the guard, not by assuming.
-   */
-  it('REFUSES to write outside a transaction', async () => {
-    await expect(
-      enqueueModerationOutboxEvent(EVENT, sessionInTransaction(false)),
-    ).rejects.toBeInstanceOf(ModerationOutboxTransactionError);
-  });
-
-  it('writes nothing at all when it refuses', async () => {
-    // A guard that threw AFTER writing would still leave the uncoupled row it
-    // exists to prevent, so the refusal and the absence of a write are two
-    // different claims and both are asserted.
-    await expect(
-      enqueueModerationOutboxEvent(EVENT, sessionInTransaction(false)),
-    ).rejects.toThrow();
-    expect(updateOne).not.toHaveBeenCalled();
-  });
-
-  it('names the consequence, not just the rule', async () => {
-    await expect(
-      enqueueModerationOutboxEvent(EVENT, sessionInTransaction(false)),
-    ).rejects.toThrow(/answered 201 and never delivered/);
-  });
-
-  it('upserts on a deterministic id so a retry cannot queue two deliveries', async () => {
-    await enqueueModerationOutboxEvent(EVENT, sessionInTransaction(true));
-    await enqueueModerationOutboxEvent(EVENT, sessionInTransaction(true));
-
-    const filters = updateOne.mock.calls.map((call) => call[0]);
-    expect(filters[0]).toEqual({ _id: EVENT.eventId });
-    expect(filters[1]).toEqual(filters[0]);
-  });
-
-  it('sets the row body only on insert, so a retry never resets attempts', async () => {
-    await enqueueModerationOutboxEvent(EVENT, sessionInTransaction(true));
-    const [, update] = updateOne.mock.calls[0] as [unknown, Record<string, unknown>];
-    expect(update).toHaveProperty('$setOnInsert');
-    expect(update).not.toHaveProperty('$set');
-  });
-});
 
 describe('event ids', () => {
   it('derives a report event id from the report, not the request', () => {

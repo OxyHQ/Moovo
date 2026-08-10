@@ -17,8 +17,8 @@ import { applyDecisionOutboxEvent } from './moderation-decision.worker.js';
 import { deliverReportOutboxEvent } from './moderation-delivery.worker.js';
 import {
   dispatchModerationOutbox,
-  type ModerationOutboxEvent,
 } from './moderation-outbox.service.js';
+import type { ModerationOutboxEvent } from '../../db/moderation/moderationOutboxRepository.js';
 
 let timer: NodeJS.Timeout | null = null;
 let controller: AbortController | null = null;

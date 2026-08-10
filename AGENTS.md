@@ -157,42 +157,66 @@ anywhere.
 
 **Two invariants that fail silently if broken:**
 
-- `enqueueModerationOutboxEvent` **throws unless `session.inTransaction()`**. The
-  report and its delivery event commit together or not at all; a bare
-  `startSession()` type-checks, commits the row alone, and passes any test that
-  only asserts the row exists.
+- `enqueueModerationOutboxRow` **refuses the root connection**, via
+  `requireTransaction` in `db/transactionGuard.ts`. The report and its delivery
+  event commit together or not at all; `DatabaseOrTransaction` is a union the
+  root handle satisfies, so a caller that forgets to pass `tx` type-checks,
+  commits the row alone, and passes any test that only asserts the row exists.
+  The discriminator is that only a transaction handle carries `.rollback`,
+  which is why the guard is a function rather than a signature.
 - The webhook router **must stay mounted before `express.json()`** in
   `index.ts`. The signature covers the bytes that arrived. Guarded by a test
   asserting `typeof req.body === 'undefined'` inside the route, plus one pinning
   the ordering in `index.ts` itself.
 
-**The moderation writes are tested against a REAL MongoDB replica set**
-(`vitest.globalSetup.ts` plus `moderation-durability.mongo.test.ts`), and that is
-not belt and braces: **a mocked `updateOne` accepts every update document,
-including ones the server rejects.** Demonstrated in tree by injecting Mention's
-bug (naming `createdAt` and `updatedAt` in `$setOnInsert` against a
-`{ timestamps: true }` schema): the mocked suite stays fully green while the real
-server suite fails ten tests with `MongoServerError: Updating the path
-'updatedAt' would create a conflict at 'updatedAt'`, zero rows written, and
-inside the intake transaction the abort takes the `Report` with it, so
-`POST /reports` 500s for every caller from the first one. Any new moderation
-write belongs in the `.mongo.test.ts` file, not in a mocked one.
+**The moderation writes are tested against a REAL PostgreSQL server**
+(`services/moderation/__tests__/moderation.realdb.test.ts`), and that is not belt
+and braces: **a mocked repository accepts every statement, including ones the
+server rejects.** The Mongo-era version of this file was written after an update
+naming `updatedAt` under two operators passed a fully green mocked suite and
+failed every real write; the engine has changed and the blind spot has not. Any
+new moderation write belongs in the `.realdb.test.ts` file, not in a mocked one.
 
-**The outbox enqueue passes `{ upsert: true, session, timestamps: false }` and
-writes BOTH timestamps explicitly. There are two fixes for the conflict above and
-they are NOT interchangeable; this is the right one.** Dropping the explicit
-fields also clears the error, and leaves Mongoose's own `$set: { updatedAt }` on
-the update, which turns a repeat enqueue for an existing row into a real WRITE
-rather than a no-op. Measured here on a replica set: the second enqueue moved
-`updatedAt` by 38 ms, and a transaction re-enqueueing while an outside writer
-touched the same row died with `MongoServerError: operation exceeded time limit`
-on the row lock. A repeat enqueue is ordinary (a transaction retry, two
-concurrent duplicate submissions, a reconciliation sweep re-deriving an event)
-while the dispatcher is concurrently claiming and renewing leases on those same
-rows, so this is a live path, not an exotic one. Both halves are pinned by tests
-(`leaves updatedAt UNTOUCHED on a repeat enqueue`, `does not block a concurrent
-writer on the same row`). Credit: `homiio`, via `@oxyhq/crowdsource-app`
-(CrowdSource PR #34).
+**The outbox enqueue is `ON CONFLICT (id) DO NOTHING`, and a repeat writes
+NOTHING — no tuple version, no timestamp, no lock.** Not because a flag was
+passed but because there is no update branch to write one. That matters because a
+repeat enqueue is ordinary (a transaction retry, two concurrent duplicate
+submissions, a reconciliation sweep re-deriving an event) while the dispatcher is
+concurrently claiming and renewing leases on those same rows. It is pinned on
+`xmin` as well as `updated_at`: a careful `DO UPDATE` setting every column to its
+current value would leave `updated_at` alone — `$onUpdate` only fires on a real
+change — and still bump the tuple, so `updated_at` alone cannot tell "wrote
+nothing" from "wrote the same thing".
+
+**Neither claim-by-unique may RAISE.** The webhook dedupe claim and the
+enforcement claim both used to insert and catch a duplicate-key error. In
+Postgres a raised `23505` aborts the surrounding transaction, so every later
+statement fails with `25P02` — and both run inside one, where a decision plans
+SEVERAL actions and one already-claimed action must not abandon the others.
+`ON CONFLICT DO NOTHING RETURNING` makes the empty result the answer instead.
+The realdb suite asserts the transaction is still USABLE afterwards, because
+answering `false` is not on its own evidence that nothing was poisoned.
+
+**The three lease transitions do NOT share count semantics.** `renew` reads a
+MATCH count deliberately: two renewals inside one millisecond compute an
+identical `leaseUntil`, so a renewal that held its lease perfectly modifies
+nothing, and re-spelling it as "did something change" reports a LOST lease that
+was never lost — which the dispatcher answers by abandoning delivery mid-flight.
+Postgres has one number and it behaves like `matchedCount`, so `renew` ports
+exactly; `complete` and `fail` coincide with it only because they always move
+`status` off `processing`, which is an ARGUMENT rather than a construction. A
+test comparing two numbers cannot check that argument, so each transition is
+called TWICE and the second call is asserted on `updated_at` and `xmin`.
+
+**`decisionRevision` started working at the cutover, and had never held before.**
+`ReportSchema` declared no such path, so Mongoose's strict mode stripped it from
+every `$set`: the column was never stored and the `{decisionRevision: {$lt: n}}`
+arm of the guard could never match, so every late delivery of an EARLIER revision
+was applied — a retried suspension could overwrite an accepted appeal's
+`dismissed` with `resolved`, and the report would say the courier was found in
+violation of something they had been cleared of. Storing the column makes the
+refusal real. That is a behaviour CHANGE, not a faithful port, and both
+directions are pinned in the realdb suite.
 
 **Env:** `CROWDSOURCE_ENABLED` (requires BOTH the service key and the webhook
 secret to take effect), `CROWDSOURCE_SERVICE_KEY`, `CROWDSOURCE_BASE_URL`,

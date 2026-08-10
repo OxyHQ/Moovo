@@ -2,7 +2,7 @@
  * Claiming, completing and failing moderation outbox events.
  *
  * At-least-once: handlers MUST make every downstream effect idempotent using the
- * event `_id`, because an expired lease is reclaimable and a worker can die
+ * event id, because an expired lease is reclaimable and a worker can die
  * mid-delivery.
  *
  * Where retrying STOPS is the part worth reading. A failure the SDK marks as not
@@ -11,13 +11,13 @@
  */
 
 import { randomUUID } from 'crypto';
-import type { ClientSession } from 'mongoose';
 import {
-  ModerationOutbox,
-  MODERATION_OUTBOX_RETENTION_SECONDS,
-  type ModerationOutboxKind,
-  type ModerationOutboxPayload,
-} from '../../models/moderation-outbox.js';
+  claimModerationOutboxRow,
+  completeModerationOutboxRow,
+  releaseModerationOutboxRow,
+  renewModerationOutboxRow,
+  type ModerationOutboxEvent,
+} from '../../db/moderation/moderationOutboxRepository.js';
 import { log } from '../../lib/logger.js';
 
 const DEFAULT_LEASE_MS = 60_000;
@@ -34,18 +34,6 @@ const MIN_LEASE_RENEW_INTERVAL_MS = 250;
  * trying. A report that has not landed by then needs a human, not another attempt.
  */
 const MAX_RETRYABLE_ATTEMPTS = 25;
-
-export interface ModerationOutboxEvent {
-  _id: string;
-  kind: ModerationOutboxKind;
-  payload: ModerationOutboxPayload;
-  attempts: number;
-  availableAt: Date;
-  leaseOwner?: string;
-  leaseUntil?: Date;
-  expiresAt: Date;
-  createdAt: Date;
-}
 
 /**
  * The event id for delivering a report.
@@ -69,176 +57,6 @@ export function decisionApplyEventId(eventId: string): string {
   return `moderation:decision.apply:${eventId}`;
 }
 
-/**
- * Raised when an outbox event is written outside a transaction.
- *
- * Never expected at runtime. It exists so the invariant is ENFORCED rather than
- * reviewed — see {@link enqueueModerationOutboxEvent}.
- */
-export class ModerationOutboxTransactionError extends Error {
-  constructor(eventId: string) {
-    super(
-      `Refusing to enqueue moderation outbox event '${eventId}' outside a transaction: ` +
-        'the domain write and this row must commit together, or a report is answered 201 ' +
-        'and never delivered.',
-    );
-    this.name = 'ModerationOutboxTransactionError';
-  }
-}
-
-/**
- * Write the event with the CALLER's session.
- *
- * The session is required, not optional. This is the whole point of the
- * collection: the domain write and this row commit together or not at all. An
- * overload that let a caller enqueue outside a transaction would be the one line
- * that quietly reintroduces "the report was answered 201 and then vanished".
- *
- * The type makes the session mandatory; the runtime check below makes it
- * mandatory that the session is ACTUALLY IN a transaction. A required parameter
- * is satisfied by any session — including a bare `startSession()` nobody opened a
- * transaction on, which type-checks perfectly and commits the row on its own.
- * That is the shape of the mistake worth catching: it looks exactly like correct
- * code, it passes any test that only asserts the row exists, and it fails as lost
- * moderation work with no trace on the day something restarts between the two
- * writes.
- *
- * This function is also the ONLY writer of this collection — the dispatcher
- * claims existing rows and never creates one — so there is no second queue that
- * can drift out of sync with the outbox. A job here is never the only evidence
- * that work exists, because the row IS the job.
- */
-export async function enqueueModerationOutboxEvent(
-  input: {
-    eventId: string;
-    kind: ModerationOutboxKind;
-    payload: ModerationOutboxPayload;
-  },
-  session: ClientSession,
-): Promise<string> {
-  if (!session.inTransaction()) {
-    throw new ModerationOutboxTransactionError(input.eventId);
-  }
-
-  const now = new Date();
-  /**
-   * `timestamps: false` on the operation, with BOTH timestamps written
-   * explicitly. Two distinct reasons, and the second is why this is not
-   * interchangeable with simply dropping the explicit fields.
-   *
-   * **It has to be one or the other.** The schema declares `timestamps: true`,
-   * so on an upsert Mongoose adds `createdAt` to `$setOnInsert` and `updatedAt`
-   * to `$set` itself. Naming either field here as well puts one path under two
-   * operators and the server rejects the WHOLE write — "Updating the path
-   * 'updatedAt' would create a conflict at 'updatedAt'" — which, inside intake's
-   * transaction, aborts the report too. Every report submission fails, from the
-   * first one. It is a server-side update validation, so nothing in the schema,
-   * the types, or a mocked driver reveals it.
-   *
-   * **And it has to be THIS one.** Letting Mongoose own the timestamps instead
-   * leaves its `$set: { updatedAt }` on the update, which turns a repeated
-   * enqueue for an event that already exists into a real WRITE rather than a
-   * no-op. Measured on a replica set: the second enqueue moved `updatedAt`, and
-   * a transaction that re-enqueues while the dispatcher touches the same row
-   * blocks on the row lock and fails. A repeated enqueue is ORDINARY — a
-   * transaction retry, two concurrent duplicate submissions, a reconciliation
-   * sweep re-deriving an event — and the dispatcher is concurrently claiming,
-   * renewing and completing leases on these same rows. Writing both fields
-   * explicitly keeps the upsert a genuine no-op for a row that already exists,
-   * which is the property the deterministic event id exists to provide.
-   *
-   * Credit: `homiio` raised this refinement from the Homiio integration; it is
-   * the shape `@oxyhq/crowdsource-app` settled on (CrowdSource PR #34).
-   */
-  await ModerationOutbox.updateOne(
-    { _id: input.eventId },
-    {
-      $setOnInsert: {
-        _id: input.eventId,
-        kind: input.kind,
-        payload: input.payload,
-        status: 'pending',
-        attempts: 0,
-        availableAt: now,
-        expiresAt: new Date(now.getTime() + MODERATION_OUTBOX_RETENTION_SECONDS * 1_000),
-        createdAt: now,
-        updatedAt: now,
-      },
-    },
-    { upsert: true, session, timestamps: false },
-  );
-  return input.eventId;
-}
-
-function claimFilter(now: Date, eventId?: string): Record<string, unknown> {
-  return {
-    ...(eventId ? { _id: eventId } : {}),
-    $or: [
-      { status: 'pending', availableAt: { $lte: now } },
-      { status: 'processing', leaseUntil: { $lte: now } },
-    ],
-  };
-}
-
-/**
- * Atomically claim one due event. An expired `processing` lease is reclaimable,
- * so a dead worker cannot strand moderation work forever.
- */
-export async function claimModerationOutboxEvent(options: {
-  leaseOwner: string;
-  eventId?: string;
-  now?: Date;
-  leaseMs?: number;
-}): Promise<ModerationOutboxEvent | null> {
-  const now = options.now ?? new Date();
-  const leaseMs = Math.max(1_000, options.leaseMs ?? DEFAULT_LEASE_MS);
-  return await ModerationOutbox.findOneAndUpdate(
-    claimFilter(now, options.eventId),
-    {
-      $set: {
-        status: 'processing',
-        leaseOwner: options.leaseOwner,
-        leaseUntil: new Date(now.getTime() + leaseMs),
-      },
-      $inc: { attempts: 1 },
-      $unset: { lastError: '' },
-    },
-    { new: true, sort: { createdAt: 1 } },
-  )
-    .select('_id kind payload attempts availableAt leaseOwner leaseUntil expiresAt createdAt')
-    .lean<ModerationOutboxEvent | null>();
-}
-
-/** Complete only the lease this dispatcher currently owns. */
-export async function completeModerationOutboxEvent(
-  eventId: string,
-  leaseOwner: string,
-  now: Date = new Date(),
-): Promise<boolean> {
-  const result = await ModerationOutbox.updateOne(
-    { _id: eventId, status: 'processing', leaseOwner, leaseUntil: { $gt: now } },
-    {
-      $set: { status: 'processed', processedAt: now },
-      $unset: { leaseOwner: '', leaseUntil: '', lastError: '' },
-    },
-  );
-  return result.modifiedCount === 1;
-}
-
-/** Extend only a live lease still owned by this dispatcher. */
-export async function renewModerationOutboxEvent(
-  eventId: string,
-  leaseOwner: string,
-  leaseMs: number,
-  now: Date = new Date(),
-): Promise<boolean> {
-  const result = await ModerationOutbox.updateOne(
-    { _id: eventId, status: 'processing', leaseOwner, leaseUntil: { $gt: now } },
-    { $set: { leaseUntil: new Date(now.getTime() + Math.max(1_000, leaseMs)) } },
-  );
-  return result.matchedCount === 1;
-}
-
 function nextAttemptAt(attempts: number, now: Date): Date {
   const exponent = Math.max(0, Math.min(attempts - 1, 20));
   return new Date(now.getTime() + Math.min(1_000 * 2 ** exponent, MAX_BACKOFF_MS));
@@ -249,8 +67,8 @@ function nextAttemptAt(attempts: number, now: Date): Date {
  *
  * Every error `@oxyhq/crowdsource` throws carries `retryable`, which is the only
  * thing a delivery worker needs from it. Anything else — a bug in this code, a
- * Mongo error — is treated as retryable, because assuming a defect is permanent
- * is how a recoverable outage becomes lost moderation work.
+ * database error — is treated as retryable, because assuming a defect is
+ * permanent is how a recoverable outage becomes lost moderation work.
  */
 export function isRetryableDeliveryError(error: unknown): boolean {
   if (typeof error === 'object' && error !== null && 'retryable' in error) {
@@ -275,7 +93,7 @@ export interface ModerationOutboxFailure {
  * visible with their error rather than accumulating attempts nobody reads.
  */
 export async function failModerationOutboxEvent(
-  event: Pick<ModerationOutboxEvent, '_id' | 'attempts'>,
+  event: Pick<ModerationOutboxEvent, 'id' | 'attempts'>,
   leaseOwner: string,
   error: unknown,
   now: Date = new Date(),
@@ -284,18 +102,17 @@ export async function failModerationOutboxEvent(
   const retryable = isRetryableDeliveryError(error);
   const deadLettered = !retryable || event.attempts >= MAX_RETRYABLE_ATTEMPTS;
 
-  const result = await ModerationOutbox.updateOne(
-    { _id: event._id, status: 'processing', leaseOwner, leaseUntil: { $gt: now } },
+  const released = await releaseModerationOutboxRow(
     {
-      $set: {
-        status: deadLettered ? 'dead_letter' : 'pending',
-        availableAt: deadLettered ? now : nextAttemptAt(event.attempts, now),
-        lastError: message.slice(0, 2_000),
-      },
-      $unset: { leaseOwner: '', leaseUntil: '' },
+      eventId: event.id,
+      status: deadLettered ? 'dead_letter' : 'pending',
+      availableAt: deadLettered ? now : nextAttemptAt(event.attempts, now),
+      lastError: message.slice(0, 2_000),
     },
+    leaseOwner,
+    now,
   );
-  return { released: result.modifiedCount === 1, deadLettered };
+  return { released, deadLettered };
 }
 
 export type ModerationOutboxHandler = (event: ModerationOutboxEvent) => Promise<void>;
@@ -321,7 +138,7 @@ function startLeaseHeartbeat(options: {
 
   const renew = (): void => {
     if (stopped || lost || renewalInFlight) return;
-    const renewal = renewModerationOutboxEvent(
+    const renewal = renewModerationOutboxRow(
       options.eventId,
       options.leaseOwner,
       options.leaseMs,
@@ -380,10 +197,10 @@ export async function dispatchModerationOutbox(options: {
     // a durable state.
     if (options.signal?.aborted) break;
 
-    const event = await claimModerationOutboxEvent({ leaseOwner, leaseMs });
+    const event = await claimModerationOutboxRow({ leaseOwner, leaseMs });
     if (!event) break;
 
-    const heartbeat = startLeaseHeartbeat({ eventId: event._id, leaseOwner, leaseMs });
+    const heartbeat = startLeaseHeartbeat({ eventId: event.id, leaseOwner, leaseMs });
     let deliveryError: unknown;
     try {
       await options.handler(event);
@@ -397,7 +214,7 @@ export async function dispatchModerationOutbox(options: {
       failed += 1;
       log.moderation.warn(
         {
-          eventId: event._id,
+          eventId: event.id,
           kind: event.kind,
           attempts: event.attempts,
           err: heartbeatResult.error,
@@ -411,7 +228,7 @@ export async function dispatchModerationOutbox(options: {
       failed += 1;
       const outcome = await failModerationOutboxEvent(event, leaseOwner, deliveryError);
       const context = {
-        eventId: event._id,
+        eventId: event.id,
         kind: event.kind,
         attempts: event.attempts,
         err: deliveryError,
@@ -426,18 +243,18 @@ export async function dispatchModerationOutbox(options: {
       }
       if (!outcome.released) {
         log.moderation.warn(
-          { eventId: event._id, kind: event.kind },
+          { eventId: event.id, kind: event.kind },
           '[ModerationOutbox] lease lost before failure release',
         );
       }
       continue;
     }
 
-    const completed = await completeModerationOutboxEvent(event._id, leaseOwner);
+    const completed = await completeModerationOutboxRow(event.id, leaseOwner);
     if (!completed) {
       failed += 1;
       log.moderation.warn(
-        { eventId: event._id, kind: event.kind, attempts: event.attempts },
+        { eventId: event.id, kind: event.kind, attempts: event.attempts },
         '[ModerationOutbox] lease lost before completion',
       );
       continue;

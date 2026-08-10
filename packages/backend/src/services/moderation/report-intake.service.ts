@@ -24,36 +24,35 @@
  * inferred from a missing row.
  */
 
-import { isLiveEntityId } from '@oxyhq/db';
-import mongoose, { type ClientSession } from 'mongoose';
+import { isLiveEntityId, isUniqueViolation } from '@oxyhq/db';
 import {
   REPORTED_TYPES,
   type ModerationLocalStatus,
   type ReportCategory,
   type ReportedType,
 } from '@moovo/shared-types';
-import { Report, type IReport } from '../../models/report.js';
+import { getDb } from '../../db/postgres.js';
+import { insertReport, type ReportRecord } from '../../db/moderation/reportRepository.js';
+import { enqueueModerationOutboxRow } from '../../db/moderation/moderationOutboxRepository.js';
 import { isJobParty } from '../../db/transport/jobRepository.js';
-import {
-  enqueueModerationOutboxEvent,
-  reportSubmitEventId,
-} from './moderation-outbox.service.js';
+import { reportSubmitEventId } from './moderation-outbox.service.js';
 import { subjectProviderFor } from './subjects/registry.js';
 
-const TRANSACTION_OPTIONS = {
-  readPreference: 'primary' as const,
-  readConcern: { level: 'snapshot' as const },
-  writeConcern: { w: 'majority' as const },
-};
-
 /**
- * Refuses an identifier that is not a string, at the point the QUERY is built.
+ * Refuses an identifier that is not a non-empty string, before it is bound.
  *
  * `CreateReportInput` types these as strings and the route validates them, but a
- * type is erased at runtime and a truthiness check passes `{ $ne: null }`. Handed
- * that, `findOne` matches an UNRELATED report and this function answers "you
- * already reported this" about somebody else's row — and `Report.create` would
- * then store a query operator where an id belongs.
+ * type is erased at runtime. The specific danger this guard was written for —
+ * an object like `{ $ne: null }` becoming a query OPERATOR and matching an
+ * unrelated row — is gone with Mongo: drizzle binds a parameter positionally
+ * and cannot be talked into a different predicate by its value.
+ *
+ * The guard stays because what remains is still worth refusing HERE. A `null`
+ * or a non-string reaching `reports` is either a `23502` from a NOT NULL column
+ * or a driver-level bind failure, both of which name the constraint rather than
+ * the caller's mistake, and both of which arrive after the transaction has
+ * opened. Answering `'reporter' must be a non-empty string` at the boundary is
+ * the difference between a diagnosable error and an opaque one.
  *
  * The check lives here rather than only at the route because `createReport` is
  * exported: a queue worker, a backfill script or a future admin path is under no
@@ -71,10 +70,11 @@ function requireIdentifier(value: unknown, field: string): string {
  * The same guard for the reported type, which must also be one Moovo knows.
  *
  * Narrowing to `ReportedType` rather than returning `string` is not a typing
- * nicety: a value that reached the model as a bare string would be written
- * against the schema enum and rejected by Mongo at write time — after the
- * transaction had already opened — instead of here, where the caller is told
- * which field is wrong.
+ * nicety: an unknown value reaching the table is refused by
+ * `reports_reported_type_check` at write time — after the transaction has
+ * already opened, and naming the constraint rather than the field — instead of
+ * here, where the caller is told which field is wrong. The closed set is
+ * enforced in both places on purpose; this one is the readable half.
  */
 function requireReportedType(value: unknown): ReportedType {
   const candidate = requireIdentifier(value, 'reportedType');
@@ -95,7 +95,7 @@ export interface CreateReportInput {
 }
 
 export interface CreateReportResult {
-  report: IReport;
+  report: ReportRecord;
   /**
    * The durable delivery event.
    *
@@ -150,24 +150,6 @@ async function resolveContextJobId(
   return (await isJobParty(contextJobId, reporter)) ? contextJobId : undefined;
 }
 
-async function inTransaction<T>(
-  operation: (session: ClientSession) => Promise<T>,
-): Promise<T> {
-  const session = await mongoose.startSession();
-  let result: T | undefined;
-  try {
-    await session.withTransaction(async () => {
-      result = await operation(session);
-    }, TRANSACTION_OPTIONS);
-    if (result === undefined) {
-      throw new Error('Report intake transaction completed without a result');
-    }
-    return result;
-  } finally {
-    await session.endSession();
-  }
-}
-
 /**
  * Store the report, and queue its delivery in the same transaction.
  *
@@ -207,49 +189,55 @@ export async function createReport(input: CreateReportInput): Promise<CreateRepo
    */
   const contextJobId = await resolveContextJobId(reporter, input.contextJobId);
 
-  return await inTransaction(async (session) => {
-    const created = await Report.create(
-      [
-        {
-          reporter,
-          reportedType,
-          reportedId,
-          ...(contextJobId === undefined ? {} : { contextJobId }),
-          categories: input.categories,
-          ...(input.details === undefined ? {} : { details: input.details }),
-          status: 'pending' as const,
-          localStatus,
-          ...(deliverable ? {} : { localStatusReason: localOnlyReason(reportedType) }),
-        },
-      ],
-      { session },
+  return await getDb().transaction(async (tx) => {
+    const report = await insertReport(
+      {
+        reporter,
+        reportedType,
+        reportedId,
+        contextJobId,
+        categories: input.categories,
+        details: input.details,
+        status: 'pending',
+        localStatus,
+        ...(deliverable ? {} : { localStatusReason: localOnlyReason(reportedType) }),
+      },
+      tx,
     );
-    const report = created[0];
-    if (report === undefined) {
-      throw new Error('Report.create returned no document');
-    }
 
     if (!deliverable) return { report };
 
-    const outboxEventId = await enqueueModerationOutboxEvent(
+    const outboxEventId = await enqueueModerationOutboxRow(
       {
-        eventId: reportSubmitEventId(String(report._id)),
+        eventId: reportSubmitEventId(report.id),
         kind: 'report.submit',
-        payload: { reportId: String(report._id) },
+        payload: { reportId: report.id },
       },
-      session,
+      tx,
     );
 
     return { report, outboxEventId };
   });
 }
 
-/** Whether a thrown error is the unique-index rejection of a duplicate report. */
+/**
+ * Whether a thrown error is `reports_reporter_target_key` refusing a duplicate.
+ *
+ * `isUniqueViolation` rather than a `code` comparison, and that is not a style
+ * preference — **drizzle WRAPS the driver failure in its own error, so the
+ * SQLSTATE lives on `cause` and not on the error you catch.** A predicate
+ * reading `error.code` directly matches nothing, and because this one feeds a
+ * `catch` that rethrows, the symptom is a plain 500 on every duplicate report
+ * rather than anything that points here. Measured: written that way first, and
+ * caught only by `moderation.realdb.test.ts` — no mock and no typecheck sees it.
+ *
+ * The constraint is NAMED, so a future unique index on `reports` cannot quietly
+ * start answering "you already reported this" for an unrelated collision.
+ *
+ * Left as a raise rather than an `ON CONFLICT`: intake WANTS the duplicate to
+ * fail, because a second submission must not silently succeed and return the
+ * first report's id as though a new one had been taken.
+ */
 export function isDuplicateReportError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    Number((error as { code?: unknown }).code) === 11000
-  );
+  return isUniqueViolation(error, 'reports_reporter_target_key');
 }
