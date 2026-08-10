@@ -48,22 +48,21 @@ moderation, sequences — runs on it, over the 34 tables in migration `0000`.
 Schema, conventions and the migration rules are in
 `packages/backend/src/db/schema/CONVENTIONS.md`.
 
-**Mongo is GONE — there are no models, no `mongoose`, no `MONGODB_URI` and no
-rollback target.** The marketplace port finished and the cut removed
-`src/models/`, `lib/db.ts`, `lib/mongo-bootstrap.ts` and `scripts/seed.ts`.
-`HANDOFF.md` §4 keeps the record.
+**Mongo is GONE — no models, no `mongoose`, no `MONGODB_URI`, no rollback
+target.** The cut removed `src/models/`, `lib/db.ts`, `lib/mongo-bootstrap.ts`
+and `scripts/seed.ts`; `HANDOFF.md` §4 keeps the record.
 
-`DATABASE_URL` is the only store configuration. `db/postgres.ts` REFUSES to
-open without it rather than defaulting to a local server, because a default
-makes a misconfigured task boot, report healthy-ish and fail every request.
-Note it does not yet gate BOOT — the expiry sweeper announces itself as not
-running and the server still listens; making it required to boot is a
-deliberate behaviour change nobody has taken yet.
+`DATABASE_URL` is the only store configuration, and `db/postgres.ts` REFUSES to
+open without it rather than defaulting to a local server — a default makes a
+misconfigured task boot, report healthy-ish and fail every request. It does not
+yet gate BOOT: the server still listens and the expiry sweeper announces itself
+as not running. Making it required is a deliberate behaviour change nobody has
+taken.
 
-**`/health/ready` asks the store a REAL question** (`select 1`), never infers
-reachability from a connection string, and names the dependency in its 503
-reason. It is what the `oxy-moovo` target group health-checks (matcher 200,
-30s, threshold 3), so it decides whether a task receives traffic.
+**`/health/ready` asks the store a REAL question** (`select 1`) rather than
+inferring reachability from a connection string, and names the dependency in
+its 503. The `oxy-moovo` target group health-checks it (matcher 200, 30s,
+threshold 3), so it decides whether a task receives traffic.
 
 ## Open decisions the Postgres port left, with owners
 
