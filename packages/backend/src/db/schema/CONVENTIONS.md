@@ -124,11 +124,36 @@ constraints cannot fail on data that does not exist; it does NOT mean the
 invariants ever held under real traffic. The gaps are real and have simply had
 no data to bite.
 
-**Re-run the census immediately before the cutover migration applies.** A CHECK
-that was safe against an empty table is not automatically safe against a
-populated one, and the window between landing this schema and cutting over is
-exactly where that changes. If any count comes back non-zero, the constraint
-needs a repair pass or a narrower form — that is a decision, not a CHECK.
+### SETTLED 2026-08-10 — the window closed empty, and the instruction is discharged
+
+The paragraph above used to end "re-run the census immediately before the
+cutover migration applies", because a CHECK that is safe against an empty table
+is not automatically safe against a populated one, and the window between
+landing this schema and cutting over is where that changes.
+
+**That window has closed with nothing in it, and the instruction is no longer
+followable — so it is answered here rather than left standing.** The source
+database was archived and destroyed on 2026-08-10. `counts-at-dump.json` in
+`s3://oxy-mongo-backups-usw2-237343248947/final/2026-08-10/` records every
+`moovo-production` collection at the moment of the last restore-verified dump:
+`listings`, `orders`, `carts`, `categories`, `product_variants`, `reviews`,
+`seller_profiles` and `stores` all **0**; only `providers` held anything (2
+rows). No row arrived during the window, and none can now, because there is no
+longer a source to write to.
+
+So each constraint above meets an empty table permanently. They remain
+UNVIOLATED-rather-than-VERIFIED as statements about the source's history — the
+invariants genuinely never had data to bite — but the risk the re-run guarded
+against cannot materialise.
+
+**The general form, worth keeping:** "we cannot measure this any more" is a
+claim like any other, and it needs checking before it is written down. Here the
+measurement was archived, in a bucket that was deliberately retained. Look for
+the archive before recording something as unknowable.
+
+**What would reopen it:** rows arriving in these tables from an IMPORT rather
+than from this codebase's own services. Every argument above is about the
+writers that existed; an importer is a new one.
 
 ## `quotes` stores the price audit trail per BREAKDOWN, not per component
 

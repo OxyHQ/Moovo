@@ -176,9 +176,14 @@ export const listings = pgTable(
      * named sub-schema with both fields required. The port closes that hole
      * rather than reproducing it.
      *
-     * Because Mongo really did allow the shape, the BACKFILL must audit for
-     * partial and empty locations before this constraint meets them — see
-     * `CONVENTIONS.md` §"Constraints the source never enforced".
+     * Because Mongo really did allow the shape, a BACKFILL would have had to
+     * audit for partial and empty locations before this constraint met them.
+     *
+     * **There is no backfill: SETTLED 2026-08-10.** `listings` held 0 rows at
+     * the final restore-verified dump (`counts-at-dump.json` in the archive)
+     * and the source is destroyed, so no partial location exists to audit and
+     * none can be created. See `CONVENTIONS.md` §"Constraints the source never
+     * enforced".
      */
     check(
       'listings_location_shape_check',

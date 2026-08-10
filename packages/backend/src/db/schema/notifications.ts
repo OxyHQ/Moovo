@@ -62,9 +62,15 @@ export const notifications = pgTable(
      * It is also written through by `sendNotification` but passed by none of
      * its call sites, which makes it a candidate for removal — deliberately
      * NOT taken here. "No caller passes it" and "no stored document has it"
-     * are different claims, and only the second licenses a drop; a census of
-     * the live collection is what settles it, and the drop is then a `post`
-     * migration rather than a guess baked into the foundation.
+     * are different claims, and only the second licenses a drop.
+     *
+     * **The second claim is now SETTLED (2026-08-10): `notifications` held 0
+     * rows** at the final restore-verified dump (`counts-at-dump.json` in the
+     * archive), and the source is destroyed. So the drop IS licensed. It is
+     * still not taken here, for a different reason than before — it is a
+     * `post` migration in the notifications domain, not a marketplace change,
+     * and it belongs to whoever next touches that domain rather than being
+     * smuggled into a port PR.
      */
     expiresAt: timestamptz(),
     readAt: timestamptz(),

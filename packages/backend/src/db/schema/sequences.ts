@@ -31,9 +31,14 @@
  *
  * `START WITH 1` is a MEASURED fact rather than a default nobody checked: a
  * census of `moovo-production` found the `counters` collection empty, with no
- * document for either `order` or `job`, so the generator has never incremented
- * in production and there is no maximum to seed past. Confirm that again at
- * cutover — the seeding step is only unnecessary while it stays true.
+ * document for either `order` or `job`, so the generator never incremented in
+ * production and there is no maximum to seed past.
+ *
+ * **SETTLED 2026-08-10 — no seeding step is needed, permanently.** The final
+ * restore-verified dump records `counters: 0` (`counts-at-dump.json` in
+ * `s3://oxy-mongo-backups-usw2-237343248947/final/2026-08-10/`) and the source
+ * database is destroyed, so the count cannot change. The "confirm again at
+ * cutover" this comment used to carry is discharged rather than outstanding.
  */
 
 import { pgSequence } from 'drizzle-orm/pg-core';

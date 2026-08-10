@@ -184,16 +184,23 @@ export const orders = pgTable(
      * pair would be two names for a value that cannot disagree.
      *
      * A census counted orders whose `shipping.cost` and `totals.shipping`
-     * disagree in amount or currency: zero. But `orders` held zero rows, so
-     * that is an UNVIOLATED result rather than a verified one — it rules out
-     * losing data that exists, not the possibility that an older writer could
-     * have made the two differ. Were the collection populated by an earlier
-     * version, the collapse would drop one value silently: the order still
-     * renders, with a plausible number.
+     * disagree in amount or currency: zero — but against zero rows, which is
+     * UNVIOLATED rather than verified.
      *
-     * Re-run the census before cutover. If it is ever non-zero, restore two
-     * column pairs — a shape chosen for the code's current shape is the wrong
-     * authority when real rows disagree with it.
+     * **SETTLED 2026-08-10, and the instruction to re-run it is discharged
+     * rather than outstanding.** The source database is destroyed, and
+     * `counts-at-dump.json` in the final archive
+     * (`s3://oxy-mongo-backups-usw2-237343248947/final/2026-08-10/`) records
+     * `orders: 0` at the moment of the last restore-verified dump. So the
+     * window this comment was worried about — rows arriving between the schema
+     * landing and cutover — closed with nothing in it, and no further row can
+     * ever be written to the source. There is no order whose two values could
+     * disagree, and there will not be one.
+     *
+     * Left as one column pair deliberately. Were rows ever to arrive from an
+     * IMPORT rather than from `checkout.service`, re-examine this — an
+     * importer is a second writer, and the argument above only covers the
+     * writers that existed.
      */
     shippingCostAmount: moneyMinor().notNull(),
     shippingCostCurrency: text().notNull(),
@@ -252,19 +259,17 @@ export const orders = pgTable(
      * validate on `updateOne`/`findOneAndUpdate` either, so a violating row
      * may exist right now.
      *
-     * UNVIOLATED, NOT VERIFIED — and the difference is the point. A census of
+     * UNVIOLATED, NOT VERIFIED — and the difference was the point. A census of
      * `moovo-production` (instrument mutation-tested against planted
      * violations first) found zero orders breaking this. But `orders` held
-     * ZERO rows, and an empty collection satisfies every predicate: the count
-     * says the constraint will not fail on data that does not exist, not that
-     * the invariant has ever held under real traffic. It has simply never had
-     * data to bite.
+     * ZERO rows, and an empty collection satisfies every predicate.
      *
-     * Re-run the census immediately before the cutover migration applies. A
-     * CHECK that was safe against an empty table is not automatically safe
-     * against a populated one, and the window between now and cutover is
-     * exactly where that changes. See `CONVENTIONS.md` §"Constraints the
-     * source never enforced".
+     * **SETTLED 2026-08-10.** The window that concern was about has closed:
+     * `counts-at-dump.json` in the final archive records `orders: 0` at the
+     * last restore-verified dump, and the source database is destroyed, so no
+     * row arrived in that window and none can now. The CHECK meets an empty
+     * table, permanently. See `CONVENTIONS.md` §"Constraints the source never
+     * enforced".
      */
     check(
       'orders_seller_shape_check',
