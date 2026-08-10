@@ -117,8 +117,8 @@ remains:
 
 1. Point `search.service` at `searchListingsOffset`/`searchListingsCursor`. It
    becomes a translation of `ListingQuery` and nothing else.
-2. Move `catalog-hydration` to consume `ListingRow` — **read the next section
-   first, it is not a free choice.**
+2. Move `catalog-hydration` to consume `ListingRow` via the DECIDED adapter —
+   see the next section for its one condition.
 3. Repoint `listings`, `categories`, `seller-listings` and `stores` controllers.
 4. Replace the mocked catalogue tests with realdb ones, as #62 did for stores.
 
@@ -131,20 +131,32 @@ a row comparison is NULL for undated rows and silently drops them; and
 `ST_Distance()` in `ORDER BY` cannot use the GiST index where the `<->` operator
 can.
 
-### `hydrateListings` straddles the 3a/3b split — decide before touching it
+### `hydrateListings` straddles the 3a/3b split — DECIDED: the adapter
 
 It has five caller files: `listings`, `categories`, `seller-listings` and
 `stores` (all 3a) **plus `products-admin`, which is 3b** and feeds it documents
 from `catalog-write`. Changing its parameter from `IListing` to `ListingRow`
 breaks that fifth caller.
 
-Three ways out, none obviously right: widen 3a to include `products-admin`
-(which drags in `catalog-write`, so the split collapses); add a temporary
-`listingDocToRow` adapter at the un-ported call sites, deleted when 3b lands
-(the `withStoreId` device, which holds ONE hydration path); or reverse the split
-to writes-first (which inverts the "nothing matters until something can serve a
-listing" ordering). The adapter was the standing recommendation when work
-stopped; it was not decided.
+**Decision (2026-08-10): add a temporary `listingDocToRow` adapter** at the
+un-ported call sites — the `withStoreId` device from slice 2. The two rejected
+options and why: widening 3a to include `products-admin` drags in
+`catalog-write`, so the split collapses and the large PR comes back; reversing
+to writes-first inverts the ordering and delays the milestone that actually
+matters, which is Moovo serving a listing.
+
+**The reason is the one to inherit: ONE hydration path is what is being
+protected.** Two representations of a listing is precisely the failure this
+port exists to remove, so a temporary mapping at a handful of call sites is
+cheaper than a second projection that would have to be kept honest against the
+first.
+
+**The condition that makes it a migration artefact rather than a shim that
+accretes: write its deletion trigger AT ITS DEFINITION.** A comment on
+`listingDocToRow` naming the exact call sites it exists for (`products-admin`,
+and anything else 3b touches) and stating that it is deleted when 3b lands. Not
+in a PR body — a PR body is archaeology once merged, which is why this file
+exists at all.
 
 ### The 17 store access sites left on Mongo, and the condition that makes that unsafe
 
