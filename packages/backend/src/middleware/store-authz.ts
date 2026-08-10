@@ -16,7 +16,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { isLiveEntityId } from '@oxyhq/db';
 import type { StoreRole, StorePermission } from '@moovo/shared-types';
-import { Store, type IStore, type IStoreMember } from '../models/store.js';
+import { findMembership, findStoreById, type StoreMemberRecord, type StoreRecord } from '../db/stores/storeRepository.js';
 import { sendError, ErrorCodes } from '../utils/api-response.js';
 import { log } from '../lib/logger.js';
 
@@ -25,8 +25,8 @@ import { log } from '../lib/logger.js';
 declare global {
   namespace Express {
     interface Request {
-      store?: IStore;
-      storeMembership?: IStoreMember;
+      store?: StoreRecord;
+      storeMembership?: StoreMemberRecord;
     }
   }
 }
@@ -73,7 +73,7 @@ export const ROLE_PERMISSIONS: Record<StoreRole, StorePermission[]> = {
 };
 
 /** Compute a member's effective permissions: role defaults ∪ explicit grants. */
-export function effectivePermissions(member: IStoreMember): Set<StorePermission> {
+export function effectivePermissions(member: StoreMemberRecord): Set<StorePermission> {
   const effective = new Set<StorePermission>(ROLE_PERMISSIONS[member.role]);
   for (const perm of member.permissions) {
     effective.add(perm);
@@ -105,14 +105,19 @@ export async function loadStore(req: Request, res: Response, next: NextFunction)
   }
 
   try {
-    const store = await Store.findById(storeId);
-    if (!store) {
+    // The membership lookup is filtered by BOTH the store and the caller, in
+    // SQL — it is the authorization boundary, so it must not be a scan of a
+    // fetched member list in JavaScript. A 404 before it keeps a non-member
+    // from distinguishing "no such store" from "not yours" only by store id,
+    // which is the behaviour the source had and is preserved deliberately.
+    const store = await findStoreById(storeId);
+    if (store === null) {
       sendError(res, ErrorCodes.NOT_FOUND, 'Store not found', 404);
       return;
     }
 
-    const membership = store.members.find((m) => m.oxyUserId === callerId);
-    if (!membership) {
+    const membership = await findMembership(storeId, callerId);
+    if (membership === null) {
       sendError(res, ErrorCodes.FORBIDDEN, 'You are not a member of this store', 403);
       return;
     }

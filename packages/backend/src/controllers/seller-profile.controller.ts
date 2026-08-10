@@ -8,16 +8,16 @@
 
 import type { Request, Response } from 'express';
 import { getRequiredOxyUserId } from '@oxyhq/core/server';
-import type { ISellerProfile } from '../models/seller-profile.js';
+import type { SellerProfileRecord } from '../db/stores/sellerProfileRepository.js';
 import { getMine, updatePrefs, type SellerPrefsInput } from '../services/seller-profile.service.js';
 import { sendSuccess } from '../utils/api-response.js';
 import { respondWithError } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
 
 /** Serialize a seller profile document to the wire (omits Mongo internals). */
-function toSellerProfileResponse(profile: ISellerProfile): Record<string, unknown> {
+function toSellerProfileResponse(profile: SellerProfileRecord): Record<string, unknown> {
   return {
-    id: String((profile as { _id: unknown })._id),
+    id: profile.id,
     oxyUserId: profile.oxyUserId,
     isVerified: profile.isVerified,
     rating: profile.rating,
