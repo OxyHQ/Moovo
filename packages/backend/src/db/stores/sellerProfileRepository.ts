@@ -125,6 +125,28 @@ export async function incrementSellerSalesCount(
 }
 
 /**
+ * Set a P2P seller's denormalized rating aggregate, creating the profile if
+ * they have none yet.
+ *
+ * The upsert is the source's `{upsert: true}` and it matters: a seller's first
+ * review arrives before any profile row exists, and a plain UPDATE would move
+ * zero rows and drop the aggregate silently.
+ */
+export async function setSellerRating(
+  oxyUserId: string,
+  aggregate: { rating: number; reviewCount: number },
+  db: DatabaseOrTransaction = getDb(),
+): Promise<void> {
+  await db
+    .insert(sellerProfiles)
+    .values({ oxyUserId, rating: aggregate.rating, reviewCount: aggregate.reviewCount })
+    .onConflictDoUpdate({
+      target: sellerProfiles.oxyUserId,
+      set: { rating: aggregate.rating, reviewCount: aggregate.reviewCount },
+    });
+}
+
+/**
  * Profiles for a set of Oxy user ids, in no particular order.
  *
  * A READ, unlike `ensureSellerProfile` beside it: listing hydration must not

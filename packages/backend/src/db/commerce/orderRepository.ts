@@ -394,6 +394,70 @@ export async function sumStorePaidRevenue(
   return new Map(rows.map((r) => [r.currency, r.total]));
 }
 
+/** What a qualifying purchase must be about, for the review gate. */
+export type PurchaseTarget =
+  | { kind: 'listing'; listingId: string }
+  | { kind: 'store'; storeId: string }
+  | { kind: 'seller'; sellerOxyUserId: string };
+
+/**
+ * Whether `buyerOxyUserId` has an order in one of `statuses` that covers
+ * `target` — the verified-purchase gate behind reviewing.
+ *
+ * **The listing branch is NOT symmetric with the other two, and that is the
+ * whole reason this lives here.** The source expressed it as
+ * `{'items.listingId': targetId}`, which Mongo answers by reaching INSIDE the
+ * order's embedded item array. Line items are their own table now, so the same
+ * question is a join onto `order_items` — written as an EXISTS so a multi-line
+ * order cannot multiply the result, and so the query stops at the first match
+ * rather than materialising every line.
+ *
+ * The store and seller branches restate `sellerType` alongside the id rather
+ * than relying on the shape CHECK, for the reason `scopePredicate` gives: it is
+ * the difference between a person's orders and a store's.
+ *
+ * Returns a boolean, never the order: the caller only decides admission, and
+ * handing back a stranger's order for a `.some()` in JavaScript is how a gate
+ * grows a leak.
+ */
+export async function hasQualifyingPurchase(
+  buyerOxyUserId: string,
+  target: PurchaseTarget,
+  statuses: readonly string[],
+  db: DatabaseOrTransaction = getDb(),
+): Promise<boolean> {
+  if (statuses.length === 0) return false;
+
+  const conditions: SQL[] = [
+    eq(orders.buyerOxyUserId, buyerOxyUserId),
+    // `inArray`, not a bare array in a template — a bare one renders as a ROW
+    // CONSTRUCTOR and matches nothing.
+    inArray(orders.status, [...statuses]),
+  ];
+
+  if (target.kind === 'listing') {
+    conditions.push(
+      sql`exists (select 1 from ${orderItems}
+                  where ${orderItems.orderId} = ${orders.id}
+                    and ${orderItems.listingId} = ${target.listingId})`,
+    );
+  } else if (target.kind === 'store') {
+    conditions.push(eq(orders.sellerType, 'store'), eq(orders.storeId, target.storeId));
+  } else {
+    conditions.push(
+      eq(orders.sellerType, 'user'),
+      eq(orders.sellerOxyUserId, target.sellerOxyUserId),
+    );
+  }
+
+  const [row] = await db
+    .select({ one: sql<number>`1` })
+    .from(orders)
+    .where(and(...conditions))
+    .limit(1);
+  return row !== undefined;
+}
+
 /** Orders still awaiting payment older than `cutoff` — the expiry sweep's input. */
 export async function findStaleUnpaidOrders(
   cutoff: Date,

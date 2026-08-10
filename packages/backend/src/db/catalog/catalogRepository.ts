@@ -292,6 +292,26 @@ export async function listVariantsForListing(
     .orderBy(productVariants.position, productVariants.id);
 }
 
+/**
+ * Set a listing's denormalized rating aggregate.
+ *
+ * An absolute SET, not an increment: the value is DERIVED from the review rows
+ * by `recomputeAggregate`, so the recompute is the authority and a drifted
+ * column is corrected rather than nudged. Writing 0/0 when the last published
+ * review goes is deliberate — a stale 5.0 left standing on a listing with no
+ * reviews is the failure this sweep exists to prevent.
+ */
+export async function setListingRating(
+  listingId: string,
+  aggregate: { rating: number; reviewCount: number },
+  db: DatabaseOrTransaction = getDb(),
+): Promise<void> {
+  await db
+    .update(listings)
+    .set({ rating: aggregate.rating, reviewCount: aggregate.reviewCount })
+    .where(eq(listings.id, listingId));
+}
+
 /** How many variants a listing has. */
 export async function countVariants(
   listingId: string,

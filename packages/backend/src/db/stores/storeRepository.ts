@@ -333,6 +333,23 @@ export async function incrementStoreSalesCount(
     .where(eq(stores.id, storeId));
 }
 
+/**
+ * Set a store's denormalized rating aggregate.
+ *
+ * Absolute, for the same reason as the listing one: the recompute derives it
+ * from the review rows and is the authority.
+ */
+export async function setStoreRating(
+  storeId: string,
+  aggregate: { rating: number; reviewCount: number },
+  db: DatabaseOrTransaction = getDb(),
+): Promise<void> {
+  await db
+    .update(stores)
+    .set({ rating: aggregate.rating, reviewCount: aggregate.reviewCount })
+    .where(eq(stores.id, storeId));
+}
+
 /** The store columns an update may set, already flattened. */
 export interface StorePatch {
   name?: string;
