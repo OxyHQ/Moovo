@@ -105,6 +105,91 @@ correctly returning nothing are the same observation. Every slice therefore
 lands with a fixture seeding **two owners** and asserting the wrong owner's rows
 are absent — that is what distinguishes a working filter from an absent one.
 
+### Where the port stopped, and what the next person picks up
+
+**Landed:** `resolveMedia` extracted (#60); stores, members and seller profiles
+(#62); the catalogue READ repository plus its 15 realdb cases (#63, additive —
+nothing imports it).
+
+**Slice 3a is half done, and the seam it stopped at is deliberate.** The
+repository exists with its semantics pinned; the rewiring does not. What
+remains:
+
+1. Point `search.service` at `searchListingsOffset`/`searchListingsCursor`. It
+   becomes a translation of `ListingQuery` and nothing else.
+2. Move `catalog-hydration` to consume `ListingRow` — **read the next section
+   first, it is not a free choice.**
+3. Repoint `listings`, `categories`, `seller-listings` and `stores` controllers.
+4. Replace the mocked catalogue tests with realdb ones, as #62 did for stores.
+
+**Do not re-derive #63's semantics — they are pinned by tests and cost a real
+measurement each.** Four translations fail by returning a PLAUSIBLE page rather
+than an error: `{categorySlugs:'x'}` is array CONTAINMENT (`eq()` matches
+nothing, which reads as an empty category); `ORDER BY … DESC` puts NULLs FIRST
+in Postgres where Mongo puts a missing value last; a keyset boundary written as
+a row comparison is NULL for undated rows and silently drops them; and
+`ST_Distance()` in `ORDER BY` cannot use the GiST index where the `<->` operator
+can.
+
+### `hydrateListings` straddles the 3a/3b split — decide before touching it
+
+It has five caller files: `listings`, `categories`, `seller-listings` and
+`stores` (all 3a) **plus `products-admin`, which is 3b** and feeds it documents
+from `catalog-write`. Changing its parameter from `IListing` to `ListingRow`
+breaks that fifth caller.
+
+Three ways out, none obviously right: widen 3a to include `products-admin`
+(which drags in `catalog-write`, so the split collapses); add a temporary
+`listingDocToRow` adapter at the un-ported call sites, deleted when 3b lands
+(the `withStoreId` device, which holds ONE hydration path); or reverse the split
+to writes-first (which inverts the "nothing matters until something can serve a
+listing" ordering). The adapter was the standing recommendation when work
+stopped; it was not decided.
+
+### The 17 store access sites left on Mongo, and the condition that makes that unsafe
+
+Slice 2 ported the store DOMAIN but left **17 `Store.*` / `SellerProfile.*`
+call sites across 7 files**, counted on `766c6571` excluding tests and
+comments: `review.service` (5), `order.service` (3), `order-hydration` (2),
+`catalog-hydration` (2), `scripts/seed` (2), `queue/handlers` (2),
+`catalog-write` (1).
+
+**That is safe for one specific reason, not as a general rule:** each of those
+paths is WHOLLY on Mongo, so with no `MONGODB_URI` configured they fail loudly
+rather than returning a wrong answer — and both stores are empty, so there is
+nothing to be stale about.
+
+**The condition that flips it: a service that is PARTIALLY ported.** A handler
+reading one entity from Postgres and another from Mongo is the silent-wrong-
+answer shape, and it will not fail — it will answer, with half the truth.
+`stores.controller` is in exactly that state right now: its store comes from
+Postgres (#62) and its listings still come from Mongo. **It is the only such
+handler in the tree, and closing it is what 3a's controller work does.** If you
+port anything else that a mixed handler reads, close the mixed path in the same
+change.
+
+### `listings.search_vector` loses tag search — a migration, not a read-path fix
+
+The two halves of the generated column are not symmetric. `to_tsvector` STEMS
+the prose; `array_to_tsvector` stores each tag VERBATIM; `plainto_tsquery` stems
+the query either way. Measured on the server:
+
+```
+plainto_tsquery('english','watering')  ->  'water'
+array_to_tsvector(ARRAY['watering'])   ->  'watering'      match? false
+array_to_tsvector(ARRAY['garden'])     vs  'garden'        match? true
+```
+
+So **a tag is findable only when it is already an English stem**, where Mongo's
+`$text` stemmed tag values too. A small functional loss, not a faithful port.
+
+Fixing it changes a generated column and therefore needs a migration, so it was
+deliberately NOT done inside a read-path slice. The current behaviour is
+asserted in `db/catalog/__tests__/catalog-reads.realdb.test.ts` (lands with
+#63) under a case named *"does NOT match a tag whose stem differs from the tag
+(known limitation)"*. **When that case goes red the fix has probably landed — invert
+the assertion, do not delete it.**
+
 ### Verify against the entrypoint production actually runs, not the convenient one
 
 Measured 2026-08-10 while proving the boot gate (#59). Booting the API with
