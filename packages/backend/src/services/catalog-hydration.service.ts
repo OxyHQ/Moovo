@@ -1,8 +1,8 @@
 /**
  * Catalog hydration service.
  *
- * Turns raw `IListing` documents into fully-hydrated `Listing` DTOs ready for
- * the client, doing ALL Oxy + DB lookups in BATCHES (no N+1):
+ * Turns `ListingRecord`s into fully-hydrated `Listing` DTOs ready for the
+ * client, doing ALL PostgreSQL + Oxy lookups in BATCHES (no N+1):
  *   1. batch-load every listing's variants,
  *   2. batch-load seller profiles (user listings) and stores (store listings),
  *   3. batch-load every owning user's Oxy profile in one `getProfiles` call,
@@ -12,41 +12,53 @@
  * URLs pass through unchanged (e.g. seeded Shopify CDN assets), everything else
  * is treated as an Oxy media file id and resolved via `getFileDownloadUrl` — the
  * only sanctioned media resolver.
+ *
+ * ## This is the ONE hydration path, and that is the point
+ *
+ * It reads listings, variants, seller profiles and stores — four entities, one
+ * store. A second projection kept in step with this one by hand is precisely
+ * the failure the port exists to remove, so callers that hold a listing from
+ * anywhere else convert it to a `ListingRecord` rather than growing a parameter
+ * here.
  */
 
-import mongoose from 'mongoose';
 import type { OxyServices } from '@oxyhq/core';
 import type {
   Listing,
   ListingImage,
   ListingOption,
   Money,
-  ProductSummary,
+  MerchantSummary,
   ProductThumbnail,
   ProductVariantDTO,
-  MerchantSummary,
   Seller,
   TextTone,
 } from '@moovo/shared-types';
-import { ProductVariant, type IProductVariant } from '../models/product-variant.js';
-import { SellerProfile, type ISellerProfile } from '../models/seller-profile.js';
-import { Store, type IStore } from '../models/store.js';
-import type { IListing } from '../models/listing.js';
+import { listVariantsForListings } from '../db/catalog/catalogRepository.js';
+import {
+  toProductVariantRecord,
+  type CatalogMoney,
+  type ListingImageValue,
+  type ListingRecord,
+  type ProductVariantRecord,
+} from '../db/catalog/catalogShape.js';
+import { findSellerProfilesByUserIds, type SellerProfileRecord } from '../db/stores/sellerProfileRepository.js';
+import { findStoresByIds } from '../db/stores/storeRepository.js';
 import { config } from '../config/index.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
 import { resolveMedia } from './media.service.js';
 
-/** Map a persisted `Money` sub-document to the `Money` DTO. */
-function toMoney(value: { amount: number; currency: string }): Money {
+/** Map a stored money pair to the `Money` DTO. */
+function toMoney(value: CatalogMoney): Money {
   return { amount: value.amount, currency: value.currency as Money['currency'] };
 }
 
-/** Map an internal variant doc to the wire `ProductVariantDTO` (never exposes `committed`). */
-function toVariantDTO(variant: IProductVariant): ProductVariantDTO {
+/** Map an internal variant to the wire `ProductVariantDTO` (never exposes `committed`). */
+function toVariantDTO(variant: ProductVariantRecord): ProductVariantDTO {
   const available = variant.inventory.available;
   const inStock = !variant.inventory.tracked || available > 0;
   const dto: ProductVariantDTO = {
-    id: String((variant as { _id: mongoose.Types.ObjectId })._id),
+    id: variant.id,
     title: variant.title,
     optionValues: variant.optionValues.map((o) => ({ name: o.name, value: o.value })),
     price: toMoney(variant.price),
@@ -63,8 +75,8 @@ function toVariantDTO(variant: IProductVariant): ProductVariantDTO {
 }
 
 /** Pick the variant with the lowest price (stable on ties by array order). */
-function cheapestVariant(variants: IProductVariant[]): IProductVariant | undefined {
-  return variants.reduce<IProductVariant | undefined>((min, v) => {
+function cheapestVariant(variants: ProductVariantRecord[]): ProductVariantRecord | undefined {
+  return variants.reduce<ProductVariantRecord | undefined>((min, v) => {
     if (!min || v.price.amount < min.price.amount) {
       return v;
     }
@@ -73,7 +85,7 @@ function cheapestVariant(variants: IProductVariant[]): IProductVariant | undefin
 }
 
 /** Map listing images through the media chokepoint into `ListingImage` DTOs. */
-function toListingImages(images: IListing['images']): ListingImage[] {
+function toImageDTOs(images: ListingImageValue[]): ListingImage[] {
   return [...images]
     .sort((a, b) => a.position - b.position)
     .map((img) => {
@@ -92,11 +104,11 @@ function toListingImages(images: IListing['images']): ListingImage[] {
  */
 function toSeller(
   oxyUserId: string,
-  profile: ISellerProfile | undefined,
+  profile: SellerProfileRecord | undefined,
   oxyProfile: OxyProfile | undefined,
 ): Seller {
   const seller: Seller = {
-    id: profile ? String((profile as { _id: mongoose.Types.ObjectId })._id) : oxyUserId,
+    id: profile ? profile.id : oxyUserId,
     oxyUserId,
     displayName: oxyProfile?.displayName ?? oxyUserId,
     username: oxyProfile?.username ?? oxyUserId,
@@ -111,21 +123,23 @@ function toSeller(
 }
 
 /**
- * Build the PUBLIC `MerchantSummary` projection of a store. `products` are a few
- * `ProductThumbnail`s drawn from the store's listings' images. Exported for the
- * feed's "Worth the hype" shelf.
- */
-/**
- * The store fields a merchant summary is built from.
+ * Give a Mongo store document the `id` a `MerchantSummarySource` needs.
  *
- * Structural rather than `IStore` so the store domain — now on Postgres — can
- * supply a `StoreRecord` without this function knowing which representation it
- * came from. It is a projection, not a store reader.
+ * Survives ONLY for `order-hydration.service`, which still reads stores from
+ * Mongo. A `StoreRecord` from `storeRepository` already carries `id` and must
+ * not be passed through this. It is deleted with the orders slice.
  */
 export function withStoreId<T extends { _id: unknown }>(store: T): T & { id: string } {
   return { ...store, id: String(store._id) };
 }
 
+/**
+ * The store fields a merchant summary is built from.
+ *
+ * Structural rather than `StoreRecord` so a store from either representation
+ * can supply it while the orders slice is still on Mongo. It is a projection,
+ * not a store reader.
+ */
 export interface MerchantSummarySource {
   id: string;
   handle: string;
@@ -138,24 +152,27 @@ export interface MerchantSummarySource {
   textTone: TextTone;
 }
 
+/**
+ * Build the PUBLIC `MerchantSummary` projection of a store. `products` are a few
+ * `ProductThumbnail`s drawn from the store's listings' images.
+ */
 export function toMerchantSummary(
   store: MerchantSummarySource,
-  featuredListings: IListing[],
+  featuredListings: ListingRecord[],
 ): MerchantSummary {
-  const id = store.id;
   const products: ProductThumbnail[] = featuredListings
     .slice(0, config.feed.storeCardThumbnails)
     .map((listing) => {
       const firstImage = [...listing.images].sort((a, b) => a.position - b.position)[0];
       return {
-        id: String((listing as { _id: mongoose.Types.ObjectId })._id),
+        id: listing.id,
         title: listing.title,
         imageUrl: firstImage ? resolveMedia(firstImage.fileId, 'thumb') : '',
       };
     });
 
   const summary: MerchantSummary = {
-    id,
+    id: store.id,
     handle: store.handle,
     name: store.name,
     coverImageUrl: store.coverFileId ? resolveMedia(store.coverFileId) : '',
@@ -171,38 +188,6 @@ export function toMerchantSummary(
   return summary;
 }
 
-/**
- * Build a `ProductSummary` (browse/shelf card) from a listing + its variants.
- * `brand` is supplied by the caller (store name or seller display name).
- */
-export function toProductSummary(
-  listing: IListing,
-  variants: IProductVariant[],
-  brand: string,
-): ProductSummary {
-  const cheapest = cheapestVariant(variants);
-  const firstImage = [...listing.images].sort((a, b) => a.position - b.position)[0];
-  const price = cheapest
-    ? toMoney(cheapest.price)
-    : listing.priceRange?.min
-      ? toMoney(listing.priceRange.min)
-      : { amount: 0, currency: 'USD' as Money['currency'] };
-
-  const summary: ProductSummary = {
-    id: String((listing as { _id: mongoose.Types.ObjectId })._id),
-    title: listing.title,
-    brand,
-    imageUrl: firstImage ? resolveMedia(firstImage.fileId) : '',
-    rating: listing.rating,
-    reviewCount: listing.reviewCount,
-    price,
-  };
-  if (cheapest?.compareAtPrice) {
-    summary.compareAtPrice = toMoney(cheapest.compareAtPrice);
-  }
-  return summary;
-}
-
 /** Options for hydrating listings. */
 export interface HydrateOptions {
   /** Reserved for future linked-client injection; defaults to the shared client. */
@@ -210,94 +195,96 @@ export interface HydrateOptions {
 }
 
 /**
- * Hydrate raw listing docs into client-ready `Listing` DTOs with batched Oxy/DB
- * lookups. Preserves input order.
+ * Hydrate listing records into client-ready `Listing` DTOs with batched
+ * PostgreSQL/Oxy lookups. Preserves input order.
  */
 export async function hydrateListings(
-  rawListings: IListing[],
-  opts: HydrateOptions = {},
+  listingRecords: ListingRecord[],
+  _opts: HydrateOptions = {},
 ): Promise<Listing[]> {
-  if (rawListings.length === 0) {
+  if (listingRecords.length === 0) {
     return [];
   }
 
-  const listingIds = rawListings.map((l) => String((l as { _id: mongoose.Types.ObjectId })._id));
+  const listingIds = listingRecords.map((l) => l.id);
 
-  // 1. Batch-load every variant for every listing, grouped by listingId.
-  const variantDocs = await ProductVariant.find({ listingId: { $in: listingIds } })
-    .sort({ listingId: 1, position: 1 })
-    .lean<IProductVariant[]>();
-  const variantsByListing = new Map<string, IProductVariant[]>();
-  for (const v of variantDocs) {
-    const key = String(v.listingId);
-    const bucket = variantsByListing.get(key);
+  // 1. Batch-load every variant for every listing, grouped by listingId. The
+  //    repository already orders by (listingId, position, id), so the buckets
+  //    come out in presentation order without a second sort.
+  const variantRows = await listVariantsForListings(listingIds);
+  const variantsByListing = new Map<string, ProductVariantRecord[]>();
+  for (const row of variantRows) {
+    const variant = toProductVariantRecord(row);
+    const bucket = variantsByListing.get(variant.listingId);
     if (bucket) {
-      bucket.push(v);
+      bucket.push(variant);
     } else {
-      variantsByListing.set(key, [v]);
+      variantsByListing.set(variant.listingId, [variant]);
     }
   }
 
   // 2. Split by ownerType; batch-load seller profiles and stores.
   const userOwnerIds = [
-    ...new Set(rawListings.filter((l) => l.ownerType === 'user' && l.oxyUserId).map((l) => String(l.oxyUserId))),
+    ...new Set(
+      listingRecords
+        .filter((l) => l.ownerType === 'user' && l.oxyUserId !== undefined)
+        .map((l) => l.oxyUserId as string),
+    ),
   ];
   const storeIds = [
-    ...new Set(rawListings.filter((l) => l.ownerType === 'store' && l.storeId).map((l) => String(l.storeId))),
+    ...new Set(
+      listingRecords
+        .filter((l) => l.ownerType === 'store' && l.storeId !== undefined)
+        .map((l) => l.storeId as string),
+    ),
   ];
 
-  const [sellerProfileDocs, storeDocs] = await Promise.all([
-    userOwnerIds.length > 0
-      ? SellerProfile.find({ oxyUserId: { $in: userOwnerIds } }).lean<ISellerProfile[]>()
-      : Promise.resolve([] as ISellerProfile[]),
-    storeIds.length > 0
-      ? Store.find({ _id: { $in: storeIds } }).lean<IStore[]>()
-      : Promise.resolve([] as IStore[]),
+  const [sellerProfiles, storeRecords] = await Promise.all([
+    findSellerProfilesByUserIds(userOwnerIds),
+    findStoresByIds(storeIds),
   ]);
 
-  const sellerProfileByUser = new Map<string, ISellerProfile>();
-  for (const p of sellerProfileDocs) {
-    sellerProfileByUser.set(String(p.oxyUserId), p);
+  const sellerProfileByUser = new Map<string, SellerProfileRecord>();
+  for (const p of sellerProfiles) {
+    sellerProfileByUser.set(p.oxyUserId, p);
   }
-  const storeById = new Map<string, IStore>();
-  for (const s of storeDocs) {
-    storeById.set(String((s as { _id: mongoose.Types.ObjectId })._id), s);
-  }
+  const storeById = new Map(storeRecords.map((s) => [s.id, s]));
 
   // 3. Batch-load all owning users' Oxy profiles in one call.
   const oxyProfiles = await getProfiles(userOwnerIds);
 
   // For each store, the listings it owns within THIS batch (for thumbnails).
-  const listingsByStore = new Map<string, IListing[]>();
-  for (const l of rawListings) {
-    if (l.ownerType === 'store' && l.storeId) {
-      const key = String(l.storeId);
-      const bucket = listingsByStore.get(key);
+  const listingsByStore = new Map<string, ListingRecord[]>();
+  for (const l of listingRecords) {
+    if (l.ownerType === 'store' && l.storeId !== undefined) {
+      const bucket = listingsByStore.get(l.storeId);
       if (bucket) {
         bucket.push(l);
       } else {
-        listingsByStore.set(key, [l]);
+        listingsByStore.set(l.storeId, [l]);
       }
     }
   }
 
-  // 5. Assemble each DTO.
-  return rawListings.map((listing) => {
-    const id = String((listing as { _id: mongoose.Types.ObjectId })._id);
-    const variants = variantsByListing.get(id) ?? [];
+  // 4. Assemble each DTO.
+  return listingRecords.map((listing) => {
+    const variants = variantsByListing.get(listing.id) ?? [];
     const variantDTOs = variants.map(toVariantDTO);
     const cheapest = cheapestVariant(variants);
 
-    const priceFallback: Money = listing.priceRange?.min
+    const priceFallback: Money = listing.priceRange
       ? toMoney(listing.priceRange.min)
       : { amount: 0, currency: 'USD' };
     const price = cheapest ? toMoney(cheapest.price) : priceFallback;
     const quantity = variants.reduce((sum, v) => sum + Math.max(0, v.inventory.available), 0);
 
-    const options: ListingOption[] = listing.options.map((o) => ({ name: o.name, values: [...o.values] }));
+    const options: ListingOption[] = listing.options.map((o) => ({
+      name: o.name,
+      values: [...o.values],
+    }));
 
     const dto: Listing = {
-      id,
+      id: listing.id,
       ownerType: listing.ownerType,
       title: listing.title,
       description: listing.description,
@@ -306,7 +293,7 @@ export async function hydrateListings(
       condition: listing.condition,
       status: listing.status,
       category: listing.categorySlugs[listing.categorySlugs.length - 1] ?? '',
-      images: toListingImages(listing.images),
+      images: toImageDTOs(listing.images),
       tags: [...listing.tags],
       quantity,
       createdAt: listing.createdAt.toISOString(),
@@ -326,17 +313,20 @@ export async function hydrateListings(
         min: { amount: Math.min(...amounts), currency },
         max: { amount: Math.max(...amounts), currency },
       };
-    } else if (listing.priceRange?.min && listing.priceRange?.max) {
-      dto.priceRange = { min: toMoney(listing.priceRange.min), max: toMoney(listing.priceRange.max) };
+    } else if (listing.priceRange?.max) {
+      dto.priceRange = {
+        min: toMoney(listing.priceRange.min),
+        max: toMoney(listing.priceRange.max),
+      };
     }
 
-    if (listing.ownerType === 'user' && listing.oxyUserId) {
-      const oxyUserId = String(listing.oxyUserId);
+    if (listing.ownerType === 'user' && listing.oxyUserId !== undefined) {
+      const oxyUserId = listing.oxyUserId;
       dto.seller = toSeller(oxyUserId, sellerProfileByUser.get(oxyUserId), oxyProfiles.get(oxyUserId));
-    } else if (listing.ownerType === 'store' && listing.storeId) {
-      const store = storeById.get(String(listing.storeId));
+    } else if (listing.ownerType === 'store' && listing.storeId !== undefined) {
+      const store = storeById.get(listing.storeId);
       if (store) {
-        dto.store = toMerchantSummary(withStoreId(store), listingsByStore.get(String(listing.storeId)) ?? [listing]);
+        dto.store = toMerchantSummary(store, listingsByStore.get(listing.storeId) ?? [listing]);
       }
     }
 

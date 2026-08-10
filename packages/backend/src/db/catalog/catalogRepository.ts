@@ -1,5 +1,8 @@
 /**
- * Every READ the catalogue browse and detail paths issue.
+ * Every statement the catalogue issues against `listings`, `product_variants`
+ * and `categories`.
+ *
+ * ## Reads
  *
  * Four translations here are wrong in ways `tsc` and a mocked repository both
  * accept, and each was measured against the schema rather than assumed:
@@ -21,6 +24,20 @@
  *    Ordering by a `ST_Distance(...)` call cannot use the GiST index; the
  *    distance operator can. They return the same ordering at very different
  *    cost.
+ *
+ * ## Writes
+ *
+ * The write side reports `rowCount`, which behaves like Mongo's `matchedCount`
+ * and NOT like `modifiedCount`. Every caller ported here consumed
+ * `matchedCount` (`archiveListing`) or `deletedCount` (`removeVariant`), so a
+ * plain predicate is the faithful port and no "would this actually change
+ * anything" clause belongs in the WHERE. Re-archiving an already-archived
+ * listing still matches, which is what the source did.
+ *
+ * `listings_owner_shape_check` replaces `listing.ts`'s `pre('validate')` hook
+ * and is STRICTLY STRONGER: the hook only ran on `create`/`save`, so the
+ * source's four `updateOne` paths could break the owner invariant silently.
+ * The constraint covers them.
  */
 
 import { and, asc, desc, eq, gte, inArray, lte, sql, type SQL } from 'drizzle-orm';
@@ -261,4 +278,237 @@ export async function findCategoryBySlug(
 ): Promise<CategoryRow | null> {
   const [row] = await db.select().from(categories).where(eq(categories.slug, slug)).limit(1);
   return row ?? null;
+}
+
+/** Every variant of ONE listing, in presentation order. */
+export async function listVariantsForListing(
+  listingId: string,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<ProductVariantRow[]> {
+  return await db
+    .select()
+    .from(productVariants)
+    .where(eq(productVariants.listingId, listingId))
+    .orderBy(productVariants.position, productVariants.id);
+}
+
+/** How many variants a listing has. */
+export async function countVariants(
+  listingId: string,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<number> {
+  // `count(*)::int` rather than a bare `count(*)`: postgres.js decodes `bigint`
+  // as a STRING while drizzle types it `number`, so an uncast count would make
+  // `existingCount + 1` string concatenation.
+  const [row] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(productVariants)
+    .where(eq(productVariants.listingId, listingId));
+  return row?.total ?? 0;
+}
+
+/** One variant by id alone, or `null`. */
+export async function findVariantById(
+  variantId: string,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<ProductVariantRow | null> {
+  const [row] = await db
+    .select()
+    .from(productVariants)
+    .where(eq(productVariants.id, variantId))
+    .limit(1);
+  return row ?? null;
+}
+
+/** One variant of a given listing, or `null`. Scoped so an id alone cannot reach it. */
+export async function findVariant(
+  listingId: string,
+  variantId: string,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<ProductVariantRow | null> {
+  const [row] = await db
+    .select()
+    .from(productVariants)
+    .where(and(eq(productVariants.id, variantId), eq(productVariants.listingId, listingId)))
+    .limit(1);
+  return row ?? null;
+}
+
+/** The columns an insert supplies for a listing. */
+export type NewListing = typeof listings.$inferInsert;
+
+/** Insert a listing and return the stored row. */
+export async function insertListing(
+  values: NewListing,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<ListingRow> {
+  const [row] = await db.insert(listings).values(values).returning();
+  return row;
+}
+
+/** The columns an insert supplies for a variant. */
+export type NewProductVariant = typeof productVariants.$inferInsert;
+
+/** Insert one or more variants and return the stored rows. */
+export async function insertVariants(
+  values: NewProductVariant[],
+  db: DatabaseOrTransaction = getDb(),
+): Promise<ProductVariantRow[]> {
+  if (values.length === 0) return [];
+  return await db.insert(productVariants).values(values).returning();
+}
+
+/** The listing columns an update may set. */
+export interface ListingPatch {
+  title?: string;
+  description?: string;
+  condition?: string;
+  status?: string;
+  categoryId?: string;
+  categorySlugs?: string[];
+  tags?: string[];
+  images?: unknown;
+  publishedAt?: Date;
+}
+
+/**
+ * Apply a patch to a listing. Returns whether the row existed.
+ *
+ * `matchedCount` semantics: a patch that changes nothing still reports the row
+ * as found, which is what the source's `matchedCount === 0` test meant.
+ */
+export async function updateListingRow(
+  listingId: string,
+  patch: ListingPatch,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<boolean> {
+  if (Object.keys(patch).length === 0) {
+    const [row] = await db
+      .select({ id: listings.id })
+      .from(listings)
+      .where(eq(listings.id, listingId))
+      .limit(1);
+    return row !== undefined;
+  }
+  const result = await db.update(listings).set(patch).where(eq(listings.id, listingId));
+  // `count`, never `rows.length` — the latter is 0 for an UPDATE either way.
+  return (result.count ?? 0) > 0;
+}
+
+/** The denormalized facets `syncListingFacets` recomputes. */
+export interface ListingFacets {
+  priceMinAmount: number | null;
+  priceMinCurrency: string | null;
+  priceMaxAmount: number | null;
+  priceMaxCurrency: string | null;
+  hasInventory: boolean;
+  variantCount: number;
+}
+
+/** Persist the denormalized facets derived from a listing's variants. */
+export async function updateListingFacets(
+  listingId: string,
+  facets: ListingFacets,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<void> {
+  await db.update(listings).set(facets).where(eq(listings.id, listingId));
+}
+
+/** The variant columns an update may set. */
+export interface ProductVariantPatch {
+  title?: string;
+  sku?: string | null;
+  priceAmount?: number;
+  priceCurrency?: string;
+  compareAtAmount?: number | null;
+  compareAtCurrency?: string | null;
+  optionValues?: unknown;
+  inventoryTracked?: boolean;
+  inventoryAvailable?: number;
+}
+
+/** Apply a patch to one variant of a listing. Returns whether the row existed. */
+export async function updateVariantRow(
+  listingId: string,
+  variantId: string,
+  patch: ProductVariantPatch,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<boolean> {
+  if (Object.keys(patch).length === 0) {
+    return (await findVariant(listingId, variantId, db)) !== null;
+  }
+  const result = await db
+    .update(productVariants)
+    .set(patch)
+    .where(and(eq(productVariants.id, variantId), eq(productVariants.listingId, listingId)));
+  return (result.count ?? 0) > 0;
+}
+
+/** Delete one variant of a listing. Returns whether a row was removed. */
+export async function deleteVariantRow(
+  listingId: string,
+  variantId: string,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<boolean> {
+  const result = await db
+    .delete(productVariants)
+    .where(and(eq(productVariants.id, variantId), eq(productVariants.listingId, listingId)));
+  return (result.count ?? 0) > 0;
+}
+
+/**
+ * Atomically reserve `qty` units of a TRACKED variant.
+ *
+ * The guard is in the WHERE clause, so the loser of a race matches no row and
+ * the caller sees `false` — the same compare-and-set the source expressed as a
+ * filtered `updateOne` with `$inc`. Reading, checking and writing separately
+ * would reintroduce the race the source had already closed.
+ */
+export async function reserveVariantStock(
+  variantId: string,
+  qty: number,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<boolean> {
+  const result = await db
+    .update(productVariants)
+    .set({
+      inventoryAvailable: sql`${productVariants.inventoryAvailable} - ${qty}`,
+      inventoryCommitted: sql`${productVariants.inventoryCommitted} + ${qty}`,
+    })
+    .where(
+      and(
+        eq(productVariants.id, variantId),
+        eq(productVariants.inventoryTracked, true),
+        gte(productVariants.inventoryAvailable, qty),
+      ),
+    );
+  return (result.count ?? 0) > 0;
+}
+
+/**
+ * Move a TRACKED variant's stock counters by the given deltas.
+ *
+ * Unguarded beyond `tracked`, matching the source: `commit`, `release` and
+ * `restock` all applied their `$inc` without an availability test because the
+ * reservation that preceded them already established the units exist. Only
+ * `reserve` needs the compare-and-set, and it has its own function.
+ */
+export async function adjustVariantStock(
+  variantId: string,
+  deltas: { available?: number; committed?: number },
+  db: DatabaseOrTransaction = getDb(),
+): Promise<void> {
+  const columns: Record<string, SQL> = {};
+  if (deltas.available !== undefined) {
+    columns.inventoryAvailable = sql`${productVariants.inventoryAvailable} + ${deltas.available}`;
+  }
+  if (deltas.committed !== undefined) {
+    columns.inventoryCommitted = sql`${productVariants.inventoryCommitted} + ${deltas.committed}`;
+  }
+  if (Object.keys(columns).length === 0) return;
+
+  await db
+    .update(productVariants)
+    .set(columns)
+    .where(and(eq(productVariants.id, variantId), eq(productVariants.inventoryTracked, true)));
 }

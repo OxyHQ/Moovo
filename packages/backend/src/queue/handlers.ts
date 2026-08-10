@@ -13,6 +13,7 @@
 import type { NotificationType } from '../lib/notification-service.js';
 import { Order, type IOrder } from '../models/order.js';
 import { Store, type IStore, type IStoreMember } from '../models/store.js';
+import { findStoreById, type StoreMemberRecord } from '../db/stores/storeRepository.js';
 import { Review } from '../models/review.js';
 import { transition } from '../services/order.service.js';
 import { sendNotification } from '../lib/notification-service.js';
@@ -72,8 +73,16 @@ function storeOwnerIds(store: Pick<IStore, 'members'>): string[] {
   return [...new Set(store.members.filter((m) => m.role === 'owner').map((m) => m.oxyUserId))];
 }
 
-/** The distinct member ids who can act on inventory (owner or inventory perms). */
-function inventoryManagerIds(members: IStoreMember[]): string[] {
+/**
+ * The distinct member ids who can act on inventory (owner or inventory perms).
+ *
+ * Takes the structural member shape rather than `IStoreMember`, so it serves
+ * both the ported store reader and `handleOrderEventNotification`, which still
+ * reads stores from Mongo until the orders slice lands.
+ */
+function inventoryManagerIds(
+  members: readonly (IStoreMember | StoreMemberRecord)[],
+): string[] {
   const ids = members
     .filter(
       (m) => m.role === 'owner' || INVENTORY_MANAGER_PERMISSIONS.some((p) => m.permissions.includes(p)),
@@ -185,7 +194,7 @@ export async function handleExpireReservations(): Promise<void> {
  * the low-stock threshold. Best-effort; a missing store logs a warning.
  */
 export async function handleLowInventoryAlert(job: LowInventoryAlertJob): Promise<void> {
-  const store = await Store.findById(job.storeId).lean<IStore | null>();
+  const store = await findStoreById(job.storeId);
   if (!store) {
     log.general.warn({ storeId: job.storeId }, 'Low-inventory alert: store not found');
     return;

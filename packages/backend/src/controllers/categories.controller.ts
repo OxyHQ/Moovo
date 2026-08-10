@@ -7,7 +7,8 @@
 
 import type { Request, Response } from 'express';
 import type { CategoryNode, CursorPage, Listing } from '@moovo/shared-types';
-import { Category, type ICategory } from '../models/category.js';
+import { findCategoryBySlug, listActiveCategories } from '../db/catalog/catalogRepository.js';
+import { toCategoryRecord, type CategoryRecord } from '../db/catalog/catalogShape.js';
 import { searchListingsCursor } from '../services/search.service.js';
 import { hydrateListings } from '../services/catalog-hydration.service.js';
 import { parsePagination } from '../utils/pagination.js';
@@ -16,14 +17,13 @@ import { respondWithError, notFound } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
 
 /** Build the nested `CategoryNode` tree from a flat list of categories. */
-function buildTree(categories: ICategory[]): CategoryNode[] {
+function buildTree(categories: CategoryRecord[]): CategoryNode[] {
   const nodeById = new Map<string, CategoryNode>();
   const roots: CategoryNode[] = [];
 
   for (const c of categories) {
-    const id = String((c as { _id: unknown })._id);
     const node: CategoryNode = {
-      id,
+      id: c.id,
       name: c.name,
       slug: c.slug,
       parentId: c.parentId,
@@ -32,7 +32,7 @@ function buildTree(categories: ICategory[]): CategoryNode[] {
     if (c.imageUrl) {
       node.imageUrl = c.imageUrl;
     }
-    nodeById.set(id, node);
+    nodeById.set(c.id, node);
   }
 
   for (const node of nodeById.values()) {
@@ -56,10 +56,8 @@ function buildTree(categories: ICategory[]): CategoryNode[] {
 /** GET /categories — the active category taxonomy as a tree. */
 export async function getCategoryTree(_req: Request, res: Response): Promise<void> {
   try {
-    const categories = await Category.find({ isActive: true })
-      .sort({ position: 1 })
-      .lean<ICategory[]>();
-    sendSuccess(res, buildTree(categories));
+    const categories = await listActiveCategories();
+    sendSuccess(res, buildTree(categories.map(toCategoryRecord)));
   } catch (err) {
     log.general.error({ err }, 'Failed to load category tree');
     respondWithError(res, err, 'Failed to load categories');
@@ -70,8 +68,11 @@ export async function getCategoryTree(_req: Request, res: Response): Promise<voi
 export async function getCategoryListings(req: Request, res: Response): Promise<void> {
   const slug = Array.isArray(req.params.slug) ? req.params.slug[0] : req.params.slug;
   try {
-    const category = await Category.findOne({ slug, isActive: true }).lean<ICategory | null>();
-    if (!category) {
+    // `isActive` is asserted HERE rather than in the repository: the lookup is
+    // by unique slug, so an inactive category must 404 rather than silently
+    // serve an empty listing page, which is what dropping the check would do.
+    const category = await findCategoryBySlug(slug);
+    if (!category || !category.isActive) {
       throw notFound('Category not found');
     }
 

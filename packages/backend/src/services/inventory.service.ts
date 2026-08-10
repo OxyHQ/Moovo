@@ -2,20 +2,31 @@
  * Inventory service — race-safe, variant-level stock atomicity WITHOUT
  * transactions.
  *
- * Each mutation is a single guarded `$inc` against the variant document, so two
+ * Each mutation is a single guarded UPDATE against the variant row, so two
  * concurrent reserves cannot both succeed past the available stock: the
- * `'inventory.available': { $gte: qty }` guard means at most one wins and the
- * loser sees `matchedCount === 0`. Untracked variants short-circuit (always
- * available). The multi-location seam (`inventory.levels`) reuses these same
- * method signatures with `arrayFilters` in the future — not built here.
+ * `available >= qty` guard lives in the WHERE clause, so at most one wins and
+ * the loser matches no row. Untracked variants short-circuit (always
+ * available). The multi-location seam (`inventory_levels`) reuses these same
+ * signatures in the future — not built here.
  *
  * `available` is decremented at RESERVE time and `committed` raised; `commit`
  * finalizes a sale (drop `committed`, stock already gone); `release` returns a
  * reservation (raise `available`, drop `committed`).
+ *
+ * **The guard must stay in the WHERE clause.** Reading the row, comparing in
+ * JavaScript and then writing would look equivalent and would reintroduce
+ * exactly the race this file exists to avoid — and with both stores empty it
+ * would pass every test that does not run two callers concurrently.
  */
 
-import { ProductVariant, type IProductVariant } from '../models/product-variant.js';
-import { Listing, type IListing } from '../models/listing.js';
+import {
+  adjustVariantStock,
+  findListingById,
+  findVariant,
+  findVariantById,
+  reserveVariantStock,
+  updateVariantRow,
+} from '../db/catalog/catalogRepository.js';
 import { outOfStock, notFound } from '../lib/errors/error-codes.js';
 import { syncListingFacets } from './catalog-write.service.js';
 import { config } from '../config/index.js';
@@ -24,14 +35,12 @@ import { log } from '../lib/logger.js';
 /** Fetch the minimal tracked/listing info for a variant, or null if missing. */
 async function loadVariantMeta(
   variantId: string,
-): Promise<Pick<IProductVariant, 'listingId'> & { tracked: boolean } | null> {
-  const doc = await ProductVariant.findById(variantId)
-    .select('listingId inventory.tracked')
-    .lean<Pick<IProductVariant, 'listingId' | 'inventory'> | null>();
-  if (!doc) {
+): Promise<{ listingId: string; tracked: boolean } | null> {
+  const row = await findVariantById(variantId);
+  if (!row) {
     return null;
   }
-  return { listingId: String(doc.listingId), tracked: doc.inventory.tracked };
+  return { listingId: row.listingId, tracked: row.inventoryTracked };
 }
 
 /**
@@ -52,12 +61,8 @@ export async function reserve(variantId: string, qty: number): Promise<void> {
     return;
   }
 
-  const result = await ProductVariant.updateOne(
-    { _id: variantId, 'inventory.tracked': true, 'inventory.available': { $gte: qty } },
-    { $inc: { 'inventory.available': -qty, 'inventory.committed': qty } },
-  );
-
-  if (result.matchedCount === 0) {
+  const reserved = await reserveVariantStock(variantId, qty);
+  if (!reserved) {
     throw outOfStock('Insufficient stock to reserve');
   }
 
@@ -75,30 +80,26 @@ export async function reserve(variantId: string, qty: number): Promise<void> {
  */
 async function maybeAlertLowStock(variantId: string, listingId: string): Promise<void> {
   try {
-    const variant = await ProductVariant.findById(variantId)
-      .select('title inventory.tracked inventory.available')
-      .lean<Pick<IProductVariant, 'title' | 'inventory'> | null>();
-    if (!variant || !variant.inventory.tracked) {
+    const variant = await findVariantById(variantId);
+    if (!variant || !variant.inventoryTracked) {
       return;
     }
-    if (variant.inventory.available > config.orders.lowStockThreshold) {
+    if (variant.inventoryAvailable > config.orders.lowStockThreshold) {
       return;
     }
 
-    const listing = await Listing.findById(listingId)
-      .select('ownerType storeId')
-      .lean<Pick<IListing, 'ownerType' | 'storeId'> | null>();
-    if (!listing || listing.ownerType !== 'store' || !listing.storeId) {
+    const listing = await findListingById(listingId);
+    if (!listing || listing.ownerType !== 'store' || listing.storeId === null) {
       return;
     }
 
     const { enqueueLowStockAlert } = await import('../queue/producers.js');
     await enqueueLowStockAlert({
-      storeId: String(listing.storeId),
+      storeId: listing.storeId,
       listingId,
       variantId,
       variantTitle: variant.title,
-      available: variant.inventory.available,
+      available: variant.inventoryAvailable,
     });
   } catch (err) {
     log.general.warn({ err, variantId, listingId }, 'Failed to evaluate/enqueue low-stock alert');
@@ -121,10 +122,7 @@ export async function commit(variantId: string, qty: number): Promise<void> {
     return;
   }
 
-  await ProductVariant.updateOne(
-    { _id: variantId, 'inventory.tracked': true },
-    { $inc: { 'inventory.committed': -qty } },
-  );
+  await adjustVariantStock(variantId, { committed: -qty });
 }
 
 /**
@@ -144,10 +142,7 @@ export async function release(variantId: string, qty: number): Promise<void> {
     return;
   }
 
-  await ProductVariant.updateOne(
-    { _id: variantId, 'inventory.tracked': true },
-    { $inc: { 'inventory.available': qty, 'inventory.committed': -qty } },
-  );
+  await adjustVariantStock(variantId, { available: qty, committed: -qty });
 
   await syncListingFacets(meta.listingId);
 }
@@ -171,10 +166,7 @@ export async function restock(variantId: string, qty: number): Promise<void> {
     return;
   }
 
-  await ProductVariant.updateOne(
-    { _id: variantId, 'inventory.tracked': true },
-    { $inc: { 'inventory.available': qty } },
-  );
+  await adjustVariantStock(variantId, { available: qty });
 
   await syncListingFacets(meta.listingId);
 }
@@ -195,15 +187,14 @@ export async function setAvailable(
   if (available < 0 || !Number.isInteger(available)) {
     throw outOfStock('available must be a non-negative integer');
   }
-  const variant = await ProductVariant.findOne({ _id: variantId, listingId });
+  const variant = await findVariant(listingId, variantId);
   if (!variant) {
     throw notFound('Variant not found');
   }
 
-  if (variant.inventory.tracked) {
-    variant.inventory.available = available;
-    await variant.save();
+  if (variant.inventoryTracked) {
+    await updateVariantRow(listingId, variantId, { inventoryAvailable: available });
   }
 
-  await syncListingFacets(String(variant.listingId));
+  await syncListingFacets(listingId);
 }

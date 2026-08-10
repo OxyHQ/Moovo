@@ -21,7 +21,7 @@
  *    broke something.
  */
 
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { isUniqueViolation } from '@oxyhq/db';
 import type { StorePermission, StoreRole, TextTone } from '@moovo/shared-types';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
@@ -289,6 +289,25 @@ export async function findStoresByIds(
   }
 
   return rows.map((row) => toStoreRecord(row, byStore.get(row.id) ?? []));
+}
+
+/**
+ * Move a store's denormalized `productCount` by `delta`.
+ *
+ * Expressed as a SQL increment rather than read-modify-write, so two concurrent
+ * product creates cannot both read the same count and both write it back — the
+ * race the source's `$inc` had already avoided and which a JavaScript
+ * round-trip would reintroduce.
+ */
+export async function incrementStoreProductCount(
+  storeId: string,
+  delta: number,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<void> {
+  await db
+    .update(stores)
+    .set({ productCount: sql`${stores.productCount} + ${delta}` })
+    .where(eq(stores.id, storeId));
 }
 
 /** The store columns an update may set, already flattened. */
