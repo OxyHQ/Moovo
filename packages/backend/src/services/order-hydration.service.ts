@@ -34,7 +34,8 @@ import {
 import { SellerProfile, type ISellerProfile } from '../models/seller-profile.js';
 import { Store, type IStore } from '../models/store.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
-import { resolveMedia, toMerchantSummary } from './catalog-hydration.service.js';
+import { resolveMedia } from './media.service.js';
+import { toMerchantSummary } from './catalog-hydration.service.js';
 
 /** Map a persisted `{ amount, currency }` sub-document to the `Money` DTO. */
 function toMoney(value: { amount: number; currency: string }): Money {

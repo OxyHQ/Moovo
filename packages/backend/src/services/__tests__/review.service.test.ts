@@ -74,7 +74,7 @@ vi.mock('../oxy-user.service.js', () => ({
   getProfiles: (...args: unknown[]) => getProfiles(...args),
 }));
 
-vi.mock('../catalog-hydration.service.js', () => ({
+vi.mock('../media.service.js', () => ({
   resolveMedia: (value: string) => value,
 }));
 

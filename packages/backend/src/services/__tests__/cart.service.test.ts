@@ -41,7 +41,7 @@ vi.mock('../../models/product-variant.js', () => ({
   },
 }));
 
-vi.mock('../catalog-hydration.service.js', () => ({
+vi.mock('../media.service.js', () => ({
   resolveMedia: (value: string) => `resolved:${value}`,
 }));
 

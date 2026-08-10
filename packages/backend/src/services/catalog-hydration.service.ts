@@ -32,25 +32,8 @@ import { SellerProfile, type ISellerProfile } from '../models/seller-profile.js'
 import { Store, type IStore } from '../models/store.js';
 import type { IListing } from '../models/listing.js';
 import { config } from '../config/index.js';
-import { oxyClient } from '../middleware/auth.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
-
-/** Matches an absolute http(s) URL (seeded CDN assets pass through unchanged). */
-const ABSOLUTE_URL = /^https?:\/\//i;
-
-/**
- * THE media chokepoint. Absolute URLs are returned as-is; anything else is
- * treated as an Oxy media file id and resolved through the SDK's
- * `getFileDownloadUrl` — the only sanctioned resolver. Do NOT build another.
- * Exported so other services (e.g. the cart) resolve media through this one
- * chokepoint instead of duplicating the rule.
- */
-export function resolveMedia(value: string, variant?: string): string {
-  if (ABSOLUTE_URL.test(value)) {
-    return value;
-  }
-  return oxyClient.getFileDownloadUrl(value, variant);
-}
+import { resolveMedia } from './media.service.js';
 
 /** Map a persisted `Money` sub-document to the `Money` DTO. */
 function toMoney(value: { amount: number; currency: string }): Money {

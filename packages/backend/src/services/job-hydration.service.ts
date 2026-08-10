@@ -45,7 +45,7 @@ import type {
   ParcelDetailsValue,
 } from '../db/transport/shipmentShape.js';
 import { getFairRate } from './faircoin-rate.service.js';
-import { resolveMedia } from './catalog-hydration.service.js';
+import { resolveMedia } from './media.service.js';
 import { toDisplayPriceBreakdown } from '../utils/fair-display.js';
 
 /** Map a persisted endpoint snapshot to the DTO (verbatim — frozen at booking). */

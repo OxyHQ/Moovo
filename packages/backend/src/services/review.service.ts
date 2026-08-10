@@ -27,7 +27,7 @@ import { Listing, type IListing } from '../models/listing.js';
 import { Store, type IStore } from '../models/store.js';
 import { SellerProfile } from '../models/seller-profile.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
-import { resolveMedia } from './catalog-hydration.service.js';
+import { resolveMedia } from './media.service.js';
 import { enqueueRecomputeAggregate } from '../queue/producers.js';
 import { sendNotification } from '../lib/notification-service.js';
 import { conflict, forbidden, notFound, validationError } from '../lib/errors/error-codes.js';
