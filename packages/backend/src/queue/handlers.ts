@@ -13,7 +13,7 @@
 import type { NotificationType } from '../lib/notification-service.js';
 import { findOrderById, findStaleUnpaidOrders } from '../db/commerce/orderRepository.js';
 import { findStoreById, type StoreMemberRecord } from '../db/stores/storeRepository.js';
-import { Review } from '../models/review.js';
+import { listPublishedReviewTargets } from '../db/reviews/reviewRepository.js';
 import { transition } from '../services/order.service.js';
 import { sendNotification } from '../lib/notification-service.js';
 import { config } from '../config/index.js';
@@ -222,35 +222,13 @@ export async function handleLowInventoryAlert(job: LowInventoryAlertJob): Promis
 export async function handleAggregateSweep(): Promise<void> {
   const { recomputeAggregate } = await import('../services/review.service.js');
 
-  const groups = await Review.aggregate<{
-    _id: { targetType: 'listing' | 'store' | 'seller'; targetId: string };
-  }>([
-    { $match: { status: 'published' } },
-    {
-      $group: {
-        _id: {
-          targetType: '$targetType',
-          targetId: {
-            $switch: {
-              branches: [
-                { case: { $eq: ['$targetType', 'listing'] }, then: '$listingId' },
-                { case: { $eq: ['$targetType', 'store'] }, then: '$storeId' },
-                { case: { $eq: ['$targetType', 'seller'] }, then: '$sellerOxyUserId' },
-              ],
-              default: null,
-            },
-          },
-        },
-      },
-    },
-  ]);
+  // The source grouped with a `$switch` picking the non-null target column and
+  // then skipped null keys; the repository does the same in SQL and returns
+  // only real targets, so there is no null branch to filter here.
+  const targets = await listPublishedReviewTargets();
 
   let recomputed = 0;
-  for (const group of groups) {
-    const { targetType, targetId } = group._id;
-    if (!targetId) {
-      continue;
-    }
+  for (const { targetType, targetId } of targets) {
     try {
       await recomputeAggregate(targetType, targetId);
       recomputed += 1;

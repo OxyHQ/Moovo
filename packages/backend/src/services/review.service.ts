@@ -13,7 +13,6 @@
  * `String`, consistent with the rest of the codebase.
  */
 
-import mongoose from 'mongoose';
 import type {
   CreateReviewInput,
   RatingAggregate,
@@ -21,11 +20,23 @@ import type {
   ReviewAuthor,
   ReviewTargetType,
 } from '@moovo/shared-types';
-import { Review, type IReview } from '../models/review.js';
-import { Order, type IOrder } from '../models/order.js';
-import { Listing, type IListing } from '../models/listing.js';
-import { Store, type IStore } from '../models/store.js';
-import { SellerProfile } from '../models/seller-profile.js';
+import {
+  aggregateForTarget,
+  findReviewByAuthorAndTarget,
+  insertReview,
+  listPublishedReviewsForTarget,
+  targetColumnFor,
+  type ReviewRow,
+} from '../db/reviews/reviewRepository.js';
+import {
+  findOrderById,
+  hasQualifyingPurchase,
+  type OrderRecord,
+  type PurchaseTarget,
+} from '../db/commerce/orderRepository.js';
+import { findListingById, setListingRating } from '../db/catalog/catalogRepository.js';
+import { findStoreById, findStoreByHandle, setStoreRating } from '../db/stores/storeRepository.js';
+import { setSellerRating } from '../db/stores/sellerProfileRepository.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
 import { resolveMedia } from './media.service.js';
 import { enqueueRecomputeAggregate } from '../queue/producers.js';
@@ -71,14 +82,32 @@ function resolveTargetId(input: CreateReviewInput): string {
 }
 
 /** True when the order matches the review target. */
-function orderMatchesTarget(order: IOrder, input: CreateReviewInput, targetId: string): boolean {
+function orderMatchesTarget(
+  record: OrderRecord,
+  input: CreateReviewInput,
+  targetId: string,
+): boolean {
   switch (input.targetType) {
     case 'listing':
-      return order.items.some((item) => String(item.listingId) === targetId);
+      return record.items.some((item) => item.listingId === targetId);
     case 'store':
-      return order.sellerType === 'store' && String(order.storeId) === targetId;
+      return record.order.sellerType === 'store' && record.order.storeId === targetId;
     case 'seller':
-      return order.sellerType === 'user' && String(order.sellerOxyUserId) === targetId;
+      return (
+        record.order.sellerType === 'user' && record.order.sellerOxyUserId === targetId
+      );
+  }
+}
+
+/** The named-order branch and the search branch must agree on what a target is. */
+function purchaseTargetFor(input: CreateReviewInput, targetId: string): PurchaseTarget {
+  switch (input.targetType) {
+    case 'listing':
+      return { kind: 'listing', listingId: targetId };
+    case 'store':
+      return { kind: 'store', storeId: targetId };
+    case 'seller':
+      return { kind: 'seller', sellerOxyUserId: targetId };
   }
 }
 
@@ -93,30 +122,23 @@ async function assertVerifiedPurchase(
   targetId: string,
 ): Promise<void> {
   if (input.orderId) {
-    const order = await Order.findById(input.orderId).lean<IOrder | null>();
+    const record = await findOrderById(input.orderId);
     const qualifies =
-      order !== null &&
-      String(order.buyerOxyUserId) === authorOxyUserId &&
-      (PURCHASED_STATUSES as readonly string[]).includes(order.status) &&
-      orderMatchesTarget(order, input, targetId);
+      record !== null &&
+      record.order.buyerOxyUserId === authorOxyUserId &&
+      (PURCHASED_STATUSES as readonly string[]).includes(record.order.status) &&
+      orderMatchesTarget(record, input, targetId);
     if (!qualifies) {
       throw forbidden('Order does not qualify for this review');
     }
     return;
   }
 
-  const baseFilter = {
-    buyerOxyUserId: authorOxyUserId,
-    status: { $in: PURCHASED_STATUSES as readonly string[] },
-  };
-  const filter: Record<string, unknown> =
-    input.targetType === 'listing'
-      ? { ...baseFilter, 'items.listingId': targetId }
-      : input.targetType === 'store'
-        ? { ...baseFilter, sellerType: 'store', storeId: targetId }
-        : { ...baseFilter, sellerType: 'user', sellerOxyUserId: targetId };
-
-  const found = await Order.findOne(filter).lean<IOrder | null>();
+  const found = await hasQualifyingPurchase(
+    authorOxyUserId,
+    purchaseTargetFor(input, targetId),
+    PURCHASED_STATUSES,
+  );
   if (!found) {
     throw forbidden('You can only review items you have purchased');
   }
@@ -136,14 +158,14 @@ function toReviewAuthor(profile: OxyProfile | undefined): ReviewAuthor | undefin
 }
 
 /** Map a persisted review doc + the resolved author profile to the `Review` DTO. */
-function toReviewDTO(doc: IReview, authorProfiles: Map<string, OxyProfile>): ReviewDTO {
+function toReviewDTO(doc: ReviewRow, authorProfiles: Map<string, OxyProfile>): ReviewDTO {
   const authorOxyUserId = String(doc.authorOxyUserId);
   const dto: ReviewDTO = {
-    id: String((doc as { _id: mongoose.Types.ObjectId })._id),
+    id: doc.id,
     authorOxyUserId,
-    targetType: doc.targetType,
+    targetType: doc.targetType as ReviewTargetType,
     rating: doc.rating,
-    status: doc.status,
+    status: doc.status as ReviewDTO['status'],
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   };
@@ -168,30 +190,20 @@ export async function recomputeAggregate(
   targetType: ReviewTargetType,
   targetId: string,
 ): Promise<RatingAggregate> {
-  const match: Record<string, unknown> = {
-    targetType,
-    [targetIdField(targetType)]: targetId,
-    status: 'published',
-  };
+  const { average, count } = await aggregateForTarget(targetType, targetId);
 
-  const [group] = await Review.aggregate<{ avg: number; count: number }>([
-    { $match: match },
-    { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
-  ]);
-
-  const reviewCount = group?.count ?? 0;
-  const rating = group && reviewCount > 0 ? roundRating(group.avg) : 0;
-  const update = { $set: { rating, reviewCount } };
+  const reviewCount = count;
+  const rating = count > 0 ? roundRating(average) : 0;
 
   switch (targetType) {
     case 'listing':
-      await Listing.updateOne({ _id: targetId }, update);
+      await setListingRating(targetId, { rating, reviewCount });
       break;
     case 'store':
-      await Store.updateOne({ _id: targetId }, update);
+      await setStoreRating(targetId, { rating, reviewCount });
       break;
     case 'seller':
-      await SellerProfile.updateOne({ oxyUserId: targetId }, update, { upsert: true });
+      await setSellerRating(targetId, { rating, reviewCount });
       break;
   }
 
@@ -203,7 +215,7 @@ export async function recomputeAggregate(
  * throws). The author is never notified about their own review.
  */
 async function notifyTargetOwner(
-  doc: IReview,
+  doc: ReviewRow,
   input: CreateReviewInput,
   targetId: string,
   authorOxyUserId: string,
@@ -212,19 +224,17 @@ async function notifyTargetOwner(
     const recipients = new Set<string>();
 
     if (input.targetType === 'listing') {
-      const listing = await Listing.findById(targetId)
-        .select('ownerType oxyUserId storeId')
-        .lean<Pick<IListing, 'ownerType' | 'oxyUserId' | 'storeId'> | null>();
+      const listing = await findListingById(targetId);
       if (listing?.ownerType === 'user' && listing.oxyUserId) {
-        recipients.add(String(listing.oxyUserId));
+        recipients.add(listing.oxyUserId);
       } else if (listing?.ownerType === 'store' && listing.storeId) {
-        const store = await Store.findById(listing.storeId).select('members').lean<Pick<IStore, 'members'> | null>();
+        const store = await findStoreById(listing.storeId);
         for (const member of store?.members ?? []) {
           if (member.role === 'owner') recipients.add(member.oxyUserId);
         }
       }
     } else if (input.targetType === 'store') {
-      const store = await Store.findById(targetId).select('members').lean<Pick<IStore, 'members'> | null>();
+      const store = await findStoreById(targetId);
       for (const member of store?.members ?? []) {
         if (member.role === 'owner') recipients.add(member.oxyUserId);
       }
@@ -241,7 +251,7 @@ async function notifyTargetOwner(
         title: 'New review',
         body: `You received a ${doc.rating}-star review.`,
         data: {
-          reviewId: String((doc as { _id: mongoose.Types.ObjectId })._id),
+          reviewId: doc.id,
           targetType: input.targetType,
           rating: doc.rating,
         },
@@ -265,37 +275,27 @@ export async function createReview(
 
   await assertVerifiedPurchase(authorOxyUserId, input, targetId);
 
-  const existing = await Review.findOne({
-    authorOxyUserId,
-    targetType: input.targetType,
-    [targetIdField(input.targetType)]: targetId,
-  }).lean<IReview | null>();
+  const existing = await findReviewByAuthorAndTarget(authorOxyUserId, input.targetType, targetId);
   if (existing) {
     throw conflict('You have already reviewed this item');
   }
 
-  const createDoc: Record<string, unknown> = {
+  // The insert answers a LISTING duplicate with null — the partial unique
+  // index decides at commit time, so it also closes the race the pre-check
+  // above cannot. Store and seller uniqueness has no index (same as the
+  // source), so for those the pre-check IS the rule.
+  const doc = await insertReview({
     authorOxyUserId,
     targetType: input.targetType,
-    [targetIdField(input.targetType)]: targetId,
+    [targetColumnFor(input.targetType)]: targetId,
     rating: input.rating,
     status: 'published',
-  };
-  if (input.orderId) createDoc.orderId = input.orderId;
-  if (input.title) createDoc.title = input.title;
-  if (input.body) createDoc.body = input.body;
-
-  let doc: IReview;
-  try {
-    const created = await Review.create(createDoc);
-    doc = created.toObject<IReview>();
-  } catch (err) {
-    // Belt-and-suspenders: the listing partial-unique index can race past the
-    // pre-check; map the duplicate-key error to the same clean conflict.
-    if (err && typeof err === 'object' && (err as { code?: number }).code === 11000) {
-      throw conflict('You have already reviewed this item');
-    }
-    throw err;
+    ...(input.orderId ? { orderId: input.orderId } : {}),
+    ...(input.title ? { title: input.title } : {}),
+    ...(input.body ? { body: input.body } : {}),
+  });
+  if (doc === null) {
+    throw conflict('You have already reviewed this item');
   }
 
   // Recompute the aggregate inline so the immediate read is correct.
@@ -341,22 +341,12 @@ export async function listReviews(
   { targetType, targetId }: ReviewTarget,
   { page, limit }: ReviewListParams,
 ): Promise<ReviewPage> {
-  const filter: mongoose.QueryFilter<IReview> = {
-    targetType,
-    [targetIdField(targetType)]: targetId,
-    status: 'published',
-  };
+  const { rows: docs, total } = await listPublishedReviewsForTarget(targetType, targetId, {
+    page,
+    limit,
+  });
 
-  const [docs, total] = await Promise.all([
-    Review.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean<IReview[]>(),
-    Review.countDocuments(filter),
-  ]);
-
-  const authorIds = [...new Set(docs.map((d) => String(d.authorOxyUserId)))];
+  const authorIds = [...new Set(docs.map((d) => d.authorOxyUserId))];
   const authorProfiles = await getProfiles(authorIds);
 
   return { data: docs.map((d) => toReviewDTO(d, authorProfiles)), total };
@@ -370,9 +360,9 @@ export async function listReviewsForStoreHandle(
   handle: string,
   pagination: ReviewListParams,
 ): Promise<ReviewPage> {
-  const store = await Store.findOne({ handle }).select('_id').lean<{ _id: mongoose.Types.ObjectId } | null>();
+  const store = await findStoreByHandle(handle);
   if (!store) {
     throw notFound('Store not found');
   }
-  return listReviews({ targetType: 'store', targetId: String(store._id) }, pagination);
+  return listReviews({ targetType: 'store', targetId: store.id }, pagination);
 }
