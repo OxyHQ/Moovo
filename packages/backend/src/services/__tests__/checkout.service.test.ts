@@ -59,7 +59,7 @@ vi.mock('../../models/order.js', () => ({
   },
 }));
 
-vi.mock('../../models/counter.js', () => ({
+vi.mock('../../db/sequences/numberRepository.js', () => ({
   nextOrderNumber: (...args: unknown[]) => nextOrderNumber(...args),
 }));
 

@@ -66,7 +66,7 @@ vi.mock('../../db/transport/quoteRepository.js', () => ({
   markQuoteSelected: vi.fn(),
 }));
 vi.mock('../../db/transport/providerRepository.js', () => ({ findProviderById: vi.fn() }));
-vi.mock('../../models/counter.js', () => ({ nextJobNumber: vi.fn() }));
+vi.mock('../../db/sequences/numberRepository.js', () => ({ nextJobNumber: vi.fn() }));
 vi.mock('../providers/provider-registry.js', () => ({ getAdapter: vi.fn() }));
 
 vi.mock('../job-events.service.js', () => ({

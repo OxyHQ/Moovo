@@ -57,7 +57,7 @@ vi.mock('../../db/transport/providerRepository.js', () => ({
   findProviderById: (...args: unknown[]) => providerFindById(...args),
 }));
 
-vi.mock('../../models/counter.js', () => ({
+vi.mock('../../db/sequences/numberRepository.js', () => ({
   nextJobNumber: (...args: unknown[]) => nextJobNumber(...args),
 }));
 
