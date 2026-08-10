@@ -21,7 +21,7 @@
  * preserve a value the seller had just cleared.
  */
 
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { sellerProfiles } from '../schema/stores';
 
@@ -95,6 +95,33 @@ export async function ensureSellerProfile(
     .where(eq(sellerProfiles.oxyUserId, oxyUserId))
     .limit(1);
   return toRecord(existing);
+}
+
+/**
+ * Move a P2P seller's denormalized `salesCount` by `delta`, creating the
+ * profile if they have none yet.
+ *
+ * The port of `SellerProfile.updateOne({oxyUserId}, {$inc:{salesCount:1}},
+ * {upsert:true})`, and the upsert is the whole reason this is not a plain
+ * UPDATE: a seller's FIRST sale is the common case in which no profile row
+ * exists, and an UPDATE would move zero rows and lose that sale silently.
+ *
+ * On the insert path the row is created with `salesCount` already at `delta`;
+ * on the conflict path the increment reads the STORED column, so two concurrent
+ * sales cannot both read the same starting value.
+ */
+export async function incrementSellerSalesCount(
+  oxyUserId: string,
+  delta: number,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<void> {
+  await db
+    .insert(sellerProfiles)
+    .values({ oxyUserId, salesCount: delta })
+    .onConflictDoUpdate({
+      target: sellerProfiles.oxyUserId,
+      set: { salesCount: sql`${sellerProfiles.salesCount} + ${delta}` },
+    });
 }
 
 /**

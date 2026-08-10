@@ -140,6 +140,10 @@ async function seedOrder(
       },
     ],
   );
+  // `insertOrder` answers null when an `idempotencyKey` is already taken. No
+  // seed here sets one, so a null is a broken fixture rather than a duplicate —
+  // failing loudly beats returning an id from a row that was never written.
+  if (order === null) throw new Error('seed failed: insertOrder returned null');
   return order.id;
 }
 

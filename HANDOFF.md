@@ -109,7 +109,38 @@ are absent — that is what distinguishes a working filter from an absent one.
 
 **Landed:** `resolveMedia` extracted (#60); stores, members and seller profiles
 (#62); the catalogue READ repository plus its 15 realdb cases (#63, additive —
-nothing imports it).
+nothing imports it); catalogue reads + writes (#65); cart (#66); schema census
+comments discharged (#67); the order repository (#68, additive); **the orders
+and checkout SERVICE SWITCH, with the two order queue handlers**.
+
+**What the orders slice leaves for reviews.** `review.service` is now the only
+non-test, non-seed file importing a marketplace model, and it imports four of
+them. It is WHOLLY on Mongo, which is what keeps it loud rather than half-true —
+see the store-access section below. Its `assertVerifiedPurchase` reads orders,
+so the reviews slice inherits a reader of a table that has already moved: point
+it at `orderRepository`, and note the two queries are not symmetric — one is a
+by-id + buyer + status check, the other a `{'items.listingId': …}` search that
+becomes a join onto `order_items`.
+
+### Counting model call sites: two holes worth inheriting
+
+Both found by PRINTING THE RESIDUAL — the files that import a model and appear
+to call nothing on it — rather than by trusting a call-site count.
+
+1. **A call with an explicit generic type argument is invisible to the obvious
+   pattern.** `Review.aggregate<{…}>(` does not match `\.[a-zA-Z]+\(`, because
+   the `<…>` sits between the method name and the paren. `queue/handlers.ts`
+   read as ZERO call sites and has one. Match on `\.[a-zA-Z]+` and confirm by
+   eye, or the count is silently short.
+2. **A type-only importer legitimately has zero call sites**, and stays
+   invisible until `models/` is deleted and the build breaks.
+   `middleware/__tests__/store-authz.test.ts` imports `IStoreMember` this way.
+   **At the cut, re-derive these with `tsc` rather than a reader scan.**
+
+Measured on this branch: **zero dynamic imports of any model** (20 dynamic
+imports exist in the tree, so the scan is not vacuous), and every
+`mongoose.models.X` hit is the self-registration idiom inside the model file
+that defines it — none is a consumer reaching into the registry.
 
 **Slice 3a is half done, and the seam it stopped at is deliberate.** The
 repository exists with its semantics pinned; the rewiring does not. What
@@ -158,13 +189,18 @@ and anything else 3b touches) and stating that it is deleted when 3b lands. Not
 in a PR body — a PR body is archaeology once merged, which is why this file
 exists at all.
 
-### The 17 store access sites left on Mongo, and the condition that makes that unsafe
+### The store access sites left on Mongo, and the condition that makes that unsafe
 
-Slice 2 ported the store DOMAIN but left **17 `Store.*` / `SellerProfile.*`
-call sites across 7 files**, counted on `766c6571` excluding tests and
-comments: `review.service` (5), `order.service` (3), `order-hydration` (2),
-`catalog-hydration` (2), `scripts/seed` (2), `queue/handlers` (2),
-`catalog-write` (1).
+Slice 2 ported the store DOMAIN but left `Store.*` / `SellerProfile.*` call
+sites behind it. **After the orders slice there are 9 across 2 files**, measured
+on the orders branch excluding tests and comments: `review.service` (5),
+`scripts/seed` (4). Both retire in the remaining work — `review.service` in the
+reviews slice, `scripts/seed` at the cut.
+
+The earlier count in this file was 17 across 7 files on `766c6571`. Its
+`scripts/seed` figure was 2 where the same grep now returns 4; the 9 above is
+what the branch measures rather than a subtraction from the old one, because a
+count carried forward arithmetically is an assertion, not a measurement.
 
 **That is safe for one specific reason, not as a general rule:** each of those
 paths is WHOLLY on Mongo, so with no `MONGODB_URI` configured they fail loudly
@@ -173,12 +209,18 @@ nothing to be stale about.
 
 **The condition that flips it: a service that is PARTIALLY ported.** A handler
 reading one entity from Postgres and another from Mongo is the silent-wrong-
-answer shape, and it will not fail — it will answer, with half the truth.
-`stores.controller` is in exactly that state right now: its store comes from
-Postgres (#62) and its listings still come from Mongo. **It is the only such
-handler in the tree, and closing it is what 3a's controller work does.** If you
-port anything else that a mixed handler reads, close the mixed path in the same
-change.
+answer shape, and it will not fail — it will answer, with half the truth. If you
+port anything a mixed handler reads, close the mixed path in the same change.
+
+**There is no mixed handler in the tree today, and that was checked rather than
+assumed.** `stores.controller` was the one — store from Postgres (#62), listings
+from Mongo — and #65 closed it; no file under `controllers/` imports a model at
+all now. **The orders slice was checked against this specifically**:
+`review.service.assertVerifiedPurchase` reads `Order`, so moving orders to
+Postgres could have made it half-ported — it does not, because every other read
+in that file (`Review`, `Listing`, `Store`, `SellerProfile`) is Mongoose too, so
+the first one to run throws. Re-run that check when porting reviews: it is the
+file where the property finally has to be established rather than inherited.
 
 ### `listings.search_vector` loses tag search — a migration, not a read-path fix
 

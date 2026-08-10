@@ -1,23 +1,29 @@
 /**
  * Unit tests for the marketplace job handlers.
  *
- * Focus: `handleExpireReservations` cancels every stale `pending_payment` order
- * the Mongo filter returns (the date cut happens in Mongo, so the handler simply
- * transitions whatever `Order.find` returns) and is a no-op when none are stale.
- * Models + the order-service transition are mocked.
+ * Focus: `handleExpireReservations` transitions whatever the repository's
+ * working-set query returns, and is a no-op when nothing is stale. The date cut
+ * itself is a WHERE clause and belongs to the repository — it is asserted
+ * against a real server in `db/commerce/__tests__/orders.realdb.test.ts`,
+ * because a mock returning a list proves nothing about which rows Postgres
+ * would have selected.
+ *
+ * What is left here is the handler's OWN contract: one transition per stale
+ * order, and a per-order failure that does not abort the sweep.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const orderFind = vi.fn();
+const findStaleUnpaidOrders = vi.fn();
 const transition = vi.fn();
 
-vi.mock('../../models/order.js', () => ({
-  Order: { find: (...args: unknown[]) => orderFind(...args) },
+vi.mock('../../db/commerce/orderRepository.js', () => ({
+  findOrderById: vi.fn(),
+  findStaleUnpaidOrders: (...args: unknown[]) => findStaleUnpaidOrders(...args),
 }));
 
+vi.mock('../../db/stores/storeRepository.js', () => ({ findStoreById: vi.fn() }));
 vi.mock('../../models/listing.js', () => ({ Listing: { findById: vi.fn() } }));
-vi.mock('../../models/store.js', () => ({ Store: { findById: vi.fn() } }));
 vi.mock('../../models/review.js', () => ({ Review: { aggregate: vi.fn() } }));
 
 vi.mock('../../services/order.service.js', () => ({
@@ -37,8 +43,8 @@ beforeEach(() => {
 
 describe('handleExpireReservations', () => {
   it('cancels each stale pending_payment order via transition', async () => {
-    const stale = { _id: 'order-old-1', status: 'pending_payment' };
-    orderFind.mockResolvedValue([stale]);
+    const stale = { order: { id: 'order-old-1', status: 'pending_payment' }, items: [], statusHistory: [] };
+    findStaleUnpaidOrders.mockResolvedValue([stale]);
 
     await handleExpireReservations();
 
@@ -50,8 +56,18 @@ describe('handleExpireReservations', () => {
     );
   });
 
-  it('does nothing when no orders are stale (filtered out by Mongo)', async () => {
-    orderFind.mockResolvedValue([]);
+  it('passes a cutoff in the past, never a future one', async () => {
+    findStaleUnpaidOrders.mockResolvedValue([]);
+
+    await handleExpireReservations();
+
+    const cutoff = findStaleUnpaidOrders.mock.calls[0][0] as Date;
+    expect(cutoff).toBeInstanceOf(Date);
+    expect(cutoff.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  it('does nothing when no orders are stale', async () => {
+    findStaleUnpaidOrders.mockResolvedValue([]);
 
     await handleExpireReservations();
 
@@ -59,9 +75,9 @@ describe('handleExpireReservations', () => {
   });
 
   it('continues past a per-order transition failure', async () => {
-    const a = { _id: 'order-a', status: 'pending_payment' };
-    const b = { _id: 'order-b', status: 'pending_payment' };
-    orderFind.mockResolvedValue([a, b]);
+    const a = { order: { id: 'order-a', status: 'pending_payment' }, items: [], statusHistory: [] };
+    const b = { order: { id: 'order-b', status: 'pending_payment' }, items: [], statusHistory: [] };
+    findStaleUnpaidOrders.mockResolvedValue([a, b]);
     transition.mockRejectedValueOnce(new Error('cannot cancel'));
 
     await expect(handleExpireReservations()).resolves.toBeUndefined();
