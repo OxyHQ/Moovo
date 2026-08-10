@@ -10,10 +10,13 @@
  * `quoting → quoted`. All prices are FAIR (the stored source of truth).
  */
 
+import {
+  listEnabledProvidersForType,
+  type ProviderRow,
+} from '../db/transport/providerRepository.js';
 import type { ProviderQuote } from '@moovo/shared-types';
 import { Shipment, type IShipment } from '../models/shipment.js';
 import { Quote, type IQuote, type IPriceBreakdown } from '../models/quote.js';
-import { Provider, type IProvider } from '../models/provider.js';
 import { computeInternalQuote } from './pricing.service.js';
 import { getAdapter } from './providers/provider-registry.js';
 import type { ProviderAdapter } from './providers/provider-adapter.js';
@@ -76,7 +79,7 @@ async function quoteWithTimeout(
  */
 async function collectProviderQuotes(
   shipment: IShipment,
-  providers: IProvider[],
+  providers: ProviderRow[],
   expiresAt: Date,
 ): Promise<QuoteCreateDoc[]> {
   const results = await Promise.allSettled(
@@ -94,7 +97,7 @@ async function collectProviderQuotes(
         const doc: QuoteCreateDoc = {
           shipmentId: String(shipment._id),
           source: 'external_provider',
-          providerId: String(provider._id),
+          providerId: provider.id,
           priceBreakdown: toPriceBreakdown(q),
           expiresAt,
           status: 'active',
@@ -158,10 +161,7 @@ export async function quoteShipment(shipment: IShipment): Promise<IQuote[]> {
   };
 
   // 2. External-provider fan-out (per-adapter isolated).
-  const providers = await Provider.find({
-    enabled: true,
-    supportedTypes: shipment.type,
-  }).lean<IProvider[]>();
+  const providers = await listEnabledProvidersForType(shipment.type);
   const providerDocs = await collectProviderQuotes(shipment, providers, expiresAt);
 
   const created = await Quote.insertMany([internalDoc, ...providerDocs]);

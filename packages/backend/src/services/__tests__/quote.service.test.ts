@@ -25,8 +25,12 @@ vi.mock('../../models/quote.js', () => ({
   Quote: { insertMany: (...args: unknown[]) => quoteInsertMany(...args), find: vi.fn() },
 }));
 
-vi.mock('../../models/provider.js', () => ({
-  Provider: { find: (...args: unknown[]) => providerFind(...args) },
+// `providers` moved to Postgres, so the seam is the repository now. Two shape
+// changes came with it: `listEnabledProvidersForType` RESOLVES rows where
+// `Provider.find(...)` returned a chainable needing `.lean()`, and a row's id
+// is `id`, not `_id`.
+vi.mock('../../db/transport/providerRepository.js', () => ({
+  listEnabledProvidersForType: (...args: unknown[]) => providerFind(...args),
 }));
 
 vi.mock('../providers/provider-registry.js', () => ({
@@ -88,7 +92,7 @@ beforeEach(() => {
 
 describe('quote.service.quoteShipment', () => {
   it('always writes the internal moovo_courier quote (no providers enabled)', async () => {
-    providerFind.mockReturnValue({ lean: () => Promise.resolve([]) });
+    providerFind.mockResolvedValue([]);
 
     await quoteShipment(mockShipment());
 
@@ -99,13 +103,10 @@ describe('quote.service.quoteShipment', () => {
   });
 
   it('contributes one external quote per enabled provider adapter', async () => {
-    providerFind.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          { _id: 'prov-dhl', key: 'dhl-mock' },
-          { _id: 'prov-fedex', key: 'fedex-mock' },
-        ]),
-    });
+    providerFind.mockResolvedValue([
+      { id: 'prov-dhl', key: 'dhl-mock' },
+      { id: 'prov-fedex', key: 'fedex-mock' },
+    ]);
     getAdapter.mockImplementation((key: string) => ({
       key,
       quote: async (): Promise<ProviderQuote[]> => [
@@ -122,13 +123,10 @@ describe('quote.service.quoteShipment', () => {
   });
 
   it('isolates ONE failing provider — the others still produce quotes', async () => {
-    providerFind.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          { _id: 'prov-bad', key: 'bad-mock' },
-          { _id: 'prov-good', key: 'good-mock' },
-        ]),
-    });
+    providerFind.mockResolvedValue([
+      { id: 'prov-bad', key: 'bad-mock' },
+      { id: 'prov-good', key: 'good-mock' },
+    ]);
     getAdapter.mockImplementation((key: string) => ({
       key,
       quote: async (): Promise<ProviderQuote[]> => {
@@ -150,7 +148,7 @@ describe('quote.service.quoteShipment', () => {
   });
 
   it('flips the shipment quoting → quoted after the internal quote lands', async () => {
-    providerFind.mockReturnValue({ lean: () => Promise.resolve([]) });
+    providerFind.mockResolvedValue([]);
 
     await quoteShipment(mockShipment());
 
@@ -162,7 +160,7 @@ describe('quote.service.quoteShipment', () => {
   });
 
   it('persists the computed distance on the shipment', async () => {
-    providerFind.mockReturnValue({ lean: () => Promise.resolve([]) });
+    providerFind.mockResolvedValue([]);
 
     await quoteShipment(mockShipment());
 
