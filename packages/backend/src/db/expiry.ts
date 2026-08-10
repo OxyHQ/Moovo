@@ -99,6 +99,36 @@ export const EXPIRY_TARGETS: readonly ExpirySweepTarget[] = [
 ];
 
 /**
+ * Tables that GROW and are deliberately NOT swept, each with the reason and the
+ * decision still owed.
+ *
+ * This list exists because absence from `EXPIRY_TARGETS` above is otherwise
+ * indistinguishable between "nothing here needs reaping" and "nobody has
+ * looked" — and the second is exactly the silent, symptomless growth this file
+ * exists to prevent. A growing table must be in ONE of the two lists; being in
+ * neither is the failure.
+ *
+ * Not a registry the sweep reads: it takes no column and schedules nothing, on
+ * purpose. A target with a retention nobody agreed is worse than an honest gap,
+ * because it deletes on a guess.
+ */
+export const UNSWEPT_GROWING_TABLES: readonly { table: string; why: string }[] = [
+  {
+    table: 'job_location_pings',
+    why:
+      "The source capped this trail with `$push … $slice: -N`, which was a " +
+      'MONGO DOCUMENT-SIZE concern rather than a retention policy — a row has ' +
+      'no such limit, so the port moved the cap to the READ ' +
+      '(`listRecentLocationPings`) and keeps every ping. Registering it here ' +
+      'needs a retention in seconds, and no defensible number is derivable ' +
+      'from this repo: the figure that matters is how long a courier route ' +
+      'must stay reconstructible for a DISPUTE, which is a product decision. ' +
+      'Closing it is one entry above keyed on `at`, plus a leading btree on ' +
+      'that column. See AGENTS.md §"Open decisions the Postgres port left".',
+  },
+];
+
+/**
  * How often the sweep runs.
  *
  * Mongo's TTL monitor ran once a minute. This is deliberately much slower:
