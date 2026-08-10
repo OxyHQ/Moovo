@@ -310,6 +310,29 @@ export async function incrementStoreProductCount(
     .where(eq(stores.id, storeId));
 }
 
+/**
+ * Move a store's denormalized `salesCount` by `delta`.
+ *
+ * A SQL increment for the same reason as `productCount` above: the source's
+ * `$inc` was already race-free, and only a read-modify-write round trip could
+ * lose one of two concurrent sales.
+ *
+ * Unlike `incrementSellerSalesCount` this does NOT create a missing row,
+ * matching the source exactly — `Store.updateOne` carried no `upsert`, and a
+ * store id on an order always names a store that exists (`orders.store_id` is
+ * a real foreign key).
+ */
+export async function incrementStoreSalesCount(
+  storeId: string,
+  delta: number,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<void> {
+  await db
+    .update(stores)
+    .set({ salesCount: sql`${stores.salesCount} + ${delta}` })
+    .where(eq(stores.id, storeId));
+}
+
 /** The store columns an update may set, already flattened. */
 export interface StorePatch {
   name?: string;

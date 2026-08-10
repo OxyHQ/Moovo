@@ -184,15 +184,122 @@ export async function listScopedOrders(
 export async function insertOrder(
   order: NewOrder,
   lines: Omit<NewOrderItem, 'orderId'>[],
+  openingEvent?: StatusEventInput,
   db: DatabaseOrTransaction = getDb(),
-): Promise<OrderRow> {
+): Promise<OrderRow | null> {
   return await db.transaction(async (tx) => {
-    const [row] = await tx.insert(orders).values(order).returning();
+    const [row] = await tx
+      .insert(orders)
+      .values(order)
+      .onConflictDoNothing({
+        target: orders.idempotencyKey,
+        // The INDEX PREDICATE, not a row filter. `orders_idempotency_key_key`
+        // is PARTIAL, and an `ON CONFLICT` naming a partial index without
+        // repeating its predicate is `42P10` at runtime.
+        where: sql`${orders.idempotencyKey} is not null`,
+      })
+      .returning();
+
+    // The key was already taken — a replayed or concurrent checkout. Returning
+    // null rather than throwing is load-bearing: the source read this off
+    // Mongo's E11000 and then read the prior order back, and that recovery
+    // cannot port. A failing INSERT aborts the whole transaction (25P02) and
+    // takes the recovery read with it, so the conflict has to be expressed as
+    // an absent row instead of an error.
+    //
+    // The target names the column deliberately. A bare `DO NOTHING` would also
+    // swallow an `orders_order_number_key` collision, which is a real bug that
+    // must surface.
+    if (row === undefined) return null;
+
     if (lines.length > 0) {
       await tx.insert(orderItems).values(lines.map((l) => ({ ...l, orderId: row.id })));
     }
+
+    // Optional because only checkout opens an order's trail; the seeds in the
+    // tests insert orders whose history starts empty.
+    if (openingEvent) {
+      await tx.insert(orderStatusEvents).values({
+        orderId: row.id,
+        status: openingEvent.status,
+        ...(openingEvent.byOxyUserId === undefined
+          ? {}
+          : { byOxyUserId: openingEvent.byOxyUserId }),
+        ...(openingEvent.note === undefined ? {} : { note: openingEvent.note }),
+      });
+    }
+
     return row;
   });
+}
+
+/**
+ * One order by its checkout idempotency key, scoped to the buyer.
+ *
+ * The other half of {@link insertOrder}'s null: having learned the key was
+ * taken, checkout converges on the group that took it.
+ */
+export async function findOrderByIdempotencyKey(
+  idempotencyKey: string,
+  buyerOxyUserId: string,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<OrderRecord | null> {
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.idempotencyKey, idempotencyKey),
+        eq(orders.buyerOxyUserId, buyerOxyUserId),
+      ),
+    )
+    .limit(1);
+  if (order === undefined) return null;
+  const [items, statusHistory] = await Promise.all([itemsOf(order.id, db), historyOf(order.id, db)]);
+  return { order, items, statusHistory };
+}
+
+/** Every order of one checkout group belonging to a buyer, oldest first. */
+export async function listOrdersByCheckoutGroup(
+  checkoutGroupId: string,
+  buyerOxyUserId: string,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<OrderRecord[]> {
+  const rows = await db
+    .select()
+    .from(orders)
+    .where(
+      and(
+        eq(orders.checkoutGroupId, checkoutGroupId),
+        eq(orders.buyerOxyUserId, buyerOxyUserId),
+      ),
+    )
+    .orderBy(asc(orders.createdAt), asc(orders.id));
+  if (rows.length === 0) return [];
+
+  const lines = await db
+    .select()
+    .from(orderItems)
+    .where(
+      inArray(
+        orderItems.orderId,
+        rows.map((r) => r.id),
+      ),
+    )
+    .orderBy(asc(orderItems.position), asc(orderItems.id));
+
+  const byOrder = new Map<string, OrderItemRow[]>();
+  for (const line of lines) {
+    const bucket = byOrder.get(line.orderId);
+    if (bucket) bucket.push(line);
+    else byOrder.set(line.orderId, [line]);
+  }
+
+  return rows.map((order) => ({
+    order,
+    items: byOrder.get(order.id) ?? [],
+    statusHistory: [],
+  }));
 }
 
 /** The order columns a transition may set alongside `status`. */

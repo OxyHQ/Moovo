@@ -8,13 +8,21 @@
  * created — checkout is all-or-nothing.
  *
  * Idempotency is layered: a Redis SETNX claim is the fast path (replay returns
- * the original orders), and the durable backstop is the per-order
- * sparse-unique `idempotencyKey` (a Mongo 11000 on replay converges on the
- * already-created group). Redis is best-effort: any Redis failure logs a warning
- * and falls through to the durable Mongo path — it NEVER breaks checkout.
+ * the original orders), and the durable backstop is the per-order partial-unique
+ * `idempotencyKey`, on which a replay converges rather than creating duplicates.
+ * Redis is best-effort: any Redis failure logs a warning and falls through to
+ * the durable database path — it NEVER breaks checkout.
+ *
+ * ## Each order commits alone, and that is the source's shape
+ *
+ * One order plus its lines plus its opening status event go in ONE transaction,
+ * because they were ONE Mongo document. There is deliberately NO transaction
+ * spanning the seller groups: `Order.create` was called per group with no
+ * atomicity between them, and `rollbackReservations` is built on that. Widening
+ * the boundary here would be a silent behaviour change dressed as a port.
  */
 
-import mongoose from 'mongoose';
+import { randomUUID } from 'node:crypto';
 import type {
   CheckoutInput,
   CheckoutResult,
@@ -23,20 +31,21 @@ import type {
   OrderSellerType,
 } from '@moovo/shared-types';
 import type { Cart } from '@moovo/shared-types';
-import { Order, type IOrder, type IOrderItem, type IAddressSnapshot } from '../models/order.js';
-import { Listing, type IListing } from '../models/listing.js';
-import { ProductVariant, type IProductVariant } from '../models/product-variant.js';
 import {
-  findAddressForUser,
-  type AddressRow,
-} from '../db/addresses/addressRepository.js';
-/**
- * Order numbers come from a Postgres SEQUENCE now, not the `counters`
- * collection — `models/counter.ts` held BOTH sequences, so retiring it moved
- * this call site along with the job one. Nothing else in this service is
- * ported: `orders`, `listings` and `product_variants` are still Mongo, and the
- * duplicate-idempotency-key recovery below is theirs to move.
- */
+  findOrderByIdempotencyKey,
+  insertOrder,
+  listOrdersByCheckoutGroup,
+  type NewOrder,
+  type NewOrderItem,
+  type OrderRecord,
+} from '../db/commerce/orderRepository.js';
+import {
+  findListingsByIds,
+  listVariantsForListings,
+  type ListingRow,
+  type ProductVariantRow,
+} from '../db/catalog/catalogRepository.js';
+import { findAddressForUser, type AddressRow } from '../db/addresses/addressRepository.js';
 import { nextOrderNumber } from '../db/sequences/numberRepository.js';
 import { getCart, clearCart } from './cart.service.js';
 import { reserve, release } from './inventory.service.js';
@@ -70,8 +79,8 @@ interface Reservation {
 /** A cart line resolved against its live listing + variant for snapshotting. */
 interface ResolvedLine {
   cartItem: Cart['items'][number];
-  listing: IListing;
-  variant: IProductVariant;
+  listing: ListingRow;
+  variant: ProductVariantRow;
 }
 
 /** A per-seller group of resolved lines that becomes one order. */
@@ -82,61 +91,54 @@ interface SellerGroup {
   lines: ResolvedLine[];
 }
 
-/** The shape passed to `Order.create` for a single group's order. */
-interface OrderCreateDoc {
-  orderNumber: string;
-  buyerOxyUserId: string;
-  sellerType: OrderSellerType;
-  sellerOxyUserId?: string;
-  storeId?: string;
-  items: IOrderItem[];
-  shippingAddressSnapshot: IAddressSnapshot;
-  shipping: { method: ShippingMethod; label: string; cost: Money; trackingNumber: null };
-  totals: { subtotal: Money; shipping: Money; grandTotal: Money };
-  status: 'pending_payment';
-  statusHistory: { status: 'pending_payment'; at: Date; byOxyUserId: string }[];
-  payment: { status: 'unpaid'; provider: 'oxy_pay' };
-  checkoutGroupId: string;
-  idempotencyKey?: string;
-}
+/**
+ * The immutable shipping destination, as the flattened `ship_to_*` columns.
+ *
+ * Copied at checkout and never re-read, so a later edit of the saved `Address`
+ * cannot mutate a placed order — which is why these are columns on the order
+ * rather than a reference to the address row.
+ */
+type ShipToColumns = Pick<
+  NewOrder,
+  | 'shipToLabel'
+  | 'shipToRecipientName'
+  | 'shipToLine1'
+  | 'shipToLine2'
+  | 'shipToCity'
+  | 'shipToRegion'
+  | 'shipToPostalCode'
+  | 'shipToCountry'
+  | 'shipToPhone'
+>;
 
-/** Build the immutable address snapshot from a saved address (omit absent optionals). */
-function snapshotAddress(address: AddressRow): IAddressSnapshot {
-  const snapshot: IAddressSnapshot = {
-    recipientName: address.recipientName,
-    line1: address.line1,
-    city: address.city,
-    postalCode: address.postalCode,
-    country: address.country,
+function snapshotAddress(address: AddressRow): ShipToColumns {
+  return {
+    shipToRecipientName: address.recipientName,
+    shipToLine1: address.line1,
+    shipToCity: address.city,
+    shipToPostalCode: address.postalCode,
+    shipToCountry: address.country,
+    shipToLabel: address.label ?? null,
+    shipToLine2: address.line2 ?? null,
+    shipToRegion: address.region ?? null,
+    shipToPhone: address.phone ?? null,
   };
-  if (address.label) {
-    snapshot.label = address.label;
-  }
-  if (address.line2) {
-    snapshot.line2 = address.line2;
-  }
-  if (address.region) {
-    snapshot.region = address.region;
-  }
-  if (address.phone) {
-    snapshot.phone = address.phone;
-  }
-  return snapshot;
 }
 
 /** The stable seller group key for a listing (`store:<id>` or `user:<id>`). */
-function sellerKeyForListing(listing: IListing): string {
+function sellerKeyForListing(listing: ListingRow): string {
   return listing.ownerType === 'store'
     ? `store:${String(listing.storeId)}`
     : `user:${String(listing.oxyUserId)}`;
 }
 
 /** First listing image (lowest position), resolved through the media chokepoint. */
-function firstImageUrl(listing: IListing): string | undefined {
-  if (listing.images.length === 0) {
+function firstImageUrl(listing: ListingRow): string | undefined {
+  const images = (listing.images ?? []) as { fileId: string; position: number }[];
+  if (images.length === 0) {
     return undefined;
   }
-  const first = [...listing.images].sort((a, b) => a.position - b.position)[0];
+  const first = [...images].sort((a, b) => a.position - b.position)[0];
   return first ? resolveMedia(first.fileId, 'thumb') : undefined;
 }
 
@@ -159,7 +161,7 @@ async function summarizePriorGroup(
   oxyUserId: string,
   checkoutGroupId: string,
 ): Promise<CheckoutResult> {
-  const prior = await Order.find({ checkoutGroupId, buyerOxyUserId: oxyUserId }).lean<IOrder[]>();
+  const prior = await listOrdersByCheckoutGroup(checkoutGroupId, oxyUserId);
   return { checkoutGroupId, orders: await summarizeOrders(prior) };
 }
 
@@ -167,24 +169,29 @@ async function summarizePriorGroup(
  * Build the immutable line item snapshots for a group: title/variant/options/
  * unit price are frozen here and never re-read after the order is placed.
  */
-function buildItems(group: SellerGroup): IOrderItem[] {
-  return group.lines.map(({ cartItem, listing, variant }) => {
+function buildItems(group: SellerGroup): Omit<NewOrderItem, 'orderId'>[] {
+  return group.lines.map(({ cartItem, listing, variant }, position) => {
     const unitPrice: Money = cartItem.unitPrice;
-    const item: IOrderItem = {
-      listingId: String((listing as { _id: mongoose.Types.ObjectId })._id),
-      variantId: String((variant as { _id: mongoose.Types.ObjectId })._id),
+    const lineTotal = multiplyMoney(unitPrice, cartItem.quantity);
+    return {
+      listingId: listing.id,
+      variantId: variant.id,
       title: listing.title,
       variantTitle: variant.title,
-      optionValues: variant.optionValues.map((o) => ({ name: o.name, value: o.value })),
-      unitPrice,
+      imageUrl: firstImageUrl(listing) ?? null,
+      optionValues: ((variant.optionValues ?? []) as { name: string; value: string }[]).map((o) => ({
+        name: o.name,
+        value: o.value,
+      })),
+      unitPriceAmount: unitPrice.amount,
+      unitPriceCurrency: unitPrice.currency,
       quantity: cartItem.quantity,
-      lineTotal: multiplyMoney(unitPrice, cartItem.quantity),
+      lineTotalAmount: lineTotal.amount,
+      lineTotalCurrency: lineTotal.currency,
+      // Explicit because the source's line items were an array whose insertion
+      // order was the only identity a line ever had.
+      position,
     };
-    const imageUrl = firstImageUrl(listing);
-    if (imageUrl !== undefined) {
-      item.imageUrl = imageUrl;
-    }
-    return item;
   });
 }
 
@@ -214,10 +221,7 @@ export async function checkout(
       if (claim === null) {
         const stored = await withRedisTimeout(redis.get(redisKey));
         if (stored && stored !== IDEMPOTENCY_PENDING) {
-          const prior = await Order.find({
-            checkoutGroupId: stored,
-            buyerOxyUserId: oxyUserId,
-          }).lean<IOrder[]>();
+          const prior = await listOrdersByCheckoutGroup(stored, oxyUserId);
           if (prior.length > 0) {
             return { checkoutGroupId: stored, orders: await summarizeOrders(prior) };
           }
@@ -248,10 +252,6 @@ export async function checkout(
   }
 
   // 3. Resolve + snapshot the shipping address.
-  // The addresses table moved to Postgres; this is the cross-domain reader the
-  // census flagged, moved in the SAME change. Left behind it would query the
-  // now-empty Mongo collection and answer "Address not found" for every saved
-  // address — a checkout that fails with a plausible-looking error.
   const address = await findAddressForUser(oxyUserId, input.addressId);
   if (!address) {
     throw notFound('Address not found');
@@ -260,17 +260,12 @@ export async function checkout(
 
   // 4. Load listings + variants for every cart line; group by seller.
   const listingIds = [...new Set(cart.items.map((i) => i.listingId))];
-  const variantIds = [...new Set(cart.items.map((i) => i.variantId))];
-  const [listingDocs, variantDocs] = await Promise.all([
-    Listing.find({ _id: { $in: listingIds } }).lean<IListing[]>(),
-    ProductVariant.find({ _id: { $in: variantIds } }).lean<IProductVariant[]>(),
+  const [listingRows, variantRows] = await Promise.all([
+    findListingsByIds(listingIds),
+    listVariantsForListings(listingIds),
   ]);
-  const listingById = new Map(
-    listingDocs.map((l) => [String((l as { _id: mongoose.Types.ObjectId })._id), l]),
-  );
-  const variantById = new Map(
-    variantDocs.map((v) => [String((v as { _id: mongoose.Types.ObjectId })._id), v]),
-  );
+  const listingById = new Map(listingRows.map((l) => [l.id, l]));
+  const variantById = new Map(variantRows.map((v) => [v.id, v]));
 
   const groups = new Map<string, SellerGroup>();
   for (const cartItem of cart.items) {
@@ -308,10 +303,22 @@ export async function checkout(
     throw err;
   }
 
-  // 6-7. Build + create one order per group (durable idempotency via 11000).
-  const checkoutGroupId = new mongoose.Types.ObjectId().toString();
+  // 6-7. Build + create one order per group.
+  //
+  // The group id was a Mongo ObjectId string; it is an opaque handle the client
+  // round-trips, and `validateEntityId` already accepts both id shapes, so a
+  // uuid serves the same purpose without keeping a bson dependency alive for it.
+  const checkoutGroupId = randomUUID();
   const groupEntries = [...groups.entries()];
-  const created: IOrder[] = [];
+  const created: OrderRecord[] = [];
+  /**
+   * Set when a group's `idempotencyKey` was already taken. Handled AFTER the
+   * try block, not inside it: the conflict path does its own rollback, and a
+   * `throw` from inside would be caught by the `catch` below and release every
+   * reservation a SECOND time — which is not a no-op, it is stock invented out
+   * of nothing.
+   */
+  let idempotencyConflict = false;
 
   try {
     for (const [sellerKey, group] of groupEntries) {
@@ -319,57 +326,76 @@ export async function checkout(
       const cost: Money = { amount: config.orders.shippingRates[method], currency: cart.currency };
       const items = buildItems(group);
       const subtotal = sumMoney(
-        items.map((i) => i.lineTotal as Money),
+        items.map((i) => ({
+          amount: i.lineTotalAmount,
+          currency: i.lineTotalCurrency as Money['currency'],
+        })),
         cart.currency,
       );
       const grandTotal = addMoney(subtotal, cost);
       const orderNumber = await nextOrderNumber();
 
-      const doc: OrderCreateDoc = {
-        orderNumber,
-        buyerOxyUserId: oxyUserId,
-        sellerType: group.sellerType,
-        ...(group.sellerOxyUserId ? { sellerOxyUserId: group.sellerOxyUserId } : {}),
-        ...(group.storeId ? { storeId: group.storeId } : {}),
+      // One order, its lines and its opening status event in ONE transaction —
+      // they were one Mongo document. There is deliberately no transaction
+      // spanning the groups; see this file's header.
+      const order = await insertOrder(
+        {
+          orderNumber,
+          buyerOxyUserId: oxyUserId,
+          sellerType: group.sellerType,
+          sellerOxyUserId: group.sellerOxyUserId ?? null,
+          storeId: group.storeId ?? null,
+          ...shippingAddressSnapshot,
+          shippingMethod: method,
+          shippingLabel: SHIPPING_LABELS[method],
+          shippingCostAmount: cost.amount,
+          shippingCostCurrency: cost.currency,
+          subtotalAmount: subtotal.amount,
+          subtotalCurrency: subtotal.currency,
+          grandTotalAmount: grandTotal.amount,
+          grandTotalCurrency: grandTotal.currency,
+          checkoutGroupId,
+          idempotencyKey: idempotencyKey ? `${idempotencyKey}:${sellerKey}` : null,
+        },
         items,
-        shippingAddressSnapshot,
-        shipping: { method, label: SHIPPING_LABELS[method], cost, trackingNumber: null },
-        totals: { subtotal, shipping: cost, grandTotal },
-        status: 'pending_payment',
-        statusHistory: [{ status: 'pending_payment', at: new Date(), byOxyUserId: oxyUserId }],
-        payment: { status: 'unpaid', provider: 'oxy_pay' },
-        checkoutGroupId,
-        ...(idempotencyKey ? { idempotencyKey: `${idempotencyKey}:${sellerKey}` } : {}),
-      };
+        { status: 'pending_payment', byOxyUserId: oxyUserId },
+      );
 
-      const order = await Order.create(doc);
-      created.push(order.toObject<IOrder>());
+      // A NULL order means the idempotency key was already taken: a concurrent
+      // or replayed checkout already created this group.
+      //
+      // The source read this off Mongo's E11000. There is no error to catch
+      // here BY DESIGN — see `insertOrder`: a failing INSERT would
+      // abort the surrounding transaction (25P02) and take the recovery read
+      // with it, so the conflict is expressed as an absent row instead.
+      if (!order) {
+        idempotencyConflict = true;
+        break;
+      }
+
+      created.push({ order, items: [], statusHistory: [] });
     }
   } catch (err) {
-    // A duplicate idempotencyKey means a concurrent/replayed checkout already
-    // created these orders. Roll back THIS attempt's reservations and converge
-    // on the prior group.
-    if (err && typeof err === 'object' && (err as { code?: number }).code === 11000) {
-      await rollbackReservations(reserved);
-      if (idempotencyKey && groupEntries.length > 0) {
-        const sampleKey = `${idempotencyKey}:${groupEntries[0][0]}`;
-        const prior = await Order.findOne({
-          buyerOxyUserId: oxyUserId,
-          idempotencyKey: sampleKey,
-        }).lean<IOrder | null>();
-        if (prior) {
-          log.general.warn(
-            { oxyUserId, idempotencyKey },
-            'Concurrent/replayed checkout detected; converging on prior order group',
-          );
-          return summarizePriorGroup(oxyUserId, String(prior.checkoutGroupId));
-        }
-      }
-      throw conflict('Checkout already processed');
-    }
-    // Any other create failure: release reservations and rethrow.
+    // Any create failure: release reservations and rethrow.
     await rollbackReservations(reserved);
     throw err;
+  }
+
+  // Roll back THIS attempt's reservations and converge on the prior group.
+  if (idempotencyConflict) {
+    await rollbackReservations(reserved);
+    if (idempotencyKey && groupEntries.length > 0) {
+      const sampleKey = `${idempotencyKey}:${groupEntries[0][0]}`;
+      const prior = await findOrderByIdempotencyKey(sampleKey, oxyUserId);
+      if (prior) {
+        log.general.warn(
+          { oxyUserId, idempotencyKey },
+          'Concurrent/replayed checkout detected; converging on prior order group',
+        );
+        return await summarizePriorGroup(oxyUserId, prior.order.checkoutGroupId ?? '');
+      }
+    }
+    throw conflict('Checkout already processed');
   }
 
   // 8. Best-effort: overwrite the Redis claim with the real group id.
@@ -390,10 +416,7 @@ export async function checkout(
   // failure must never fail a completed checkout.
   try {
     for (const o of created) {
-      await enqueueOrderEvent({
-        orderId: String((o as { _id: mongoose.Types.ObjectId })._id),
-        event: 'placed',
-      });
+      await enqueueOrderEvent({ orderId: o.order.id, event: 'placed' });
     }
   } catch (err) {
     log.general.warn({ err }, 'Failed to enqueue order-placed notifications');

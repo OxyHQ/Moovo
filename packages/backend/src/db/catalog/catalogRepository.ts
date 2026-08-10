@@ -307,6 +307,39 @@ export async function countVariants(
   return row?.total ?? 0;
 }
 
+/**
+ * How many of a store's TRACKED variants sit at or below `threshold`.
+ *
+ * One indexed join, where the source ran two round trips: `Listing.find(...)
+ * .select('_id')` and then `ProductVariant.countDocuments({listingId: {$in:
+ * […]}})`. That second query carried every one of the store's listing ids as a
+ * literal, so it grew without bound with the catalogue; a join has no such
+ * ceiling and cannot silently truncate.
+ *
+ * `inventoryTracked` is part of the predicate, not an afterthought: an
+ * UNTRACKED variant has no stock level to be low, and counting it would report
+ * a shortage for a product that cannot run out.
+ */
+export async function countLowStockVariantsForStore(
+  storeId: string,
+  threshold: number,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<number> {
+  const [row] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(productVariants)
+    .innerJoin(listings, eq(productVariants.listingId, listings.id))
+    .where(
+      and(
+        eq(listings.ownerType, 'store'),
+        eq(listings.storeId, storeId),
+        eq(productVariants.inventoryTracked, true),
+        lte(productVariants.inventoryAvailable, threshold),
+      ),
+    );
+  return row?.total ?? 0;
+}
+
 /** One variant by id alone, or `null`. */
 export async function findVariantById(
   variantId: string,

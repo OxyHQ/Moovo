@@ -123,22 +123,12 @@ function toSeller(
 }
 
 /**
- * Give a Mongo store document the `id` a `MerchantSummarySource` needs.
- *
- * Survives ONLY for `order-hydration.service`, which still reads stores from
- * Mongo. A `StoreRecord` from `storeRepository` already carries `id` and must
- * not be passed through this. It is deleted with the orders slice.
- */
-export function withStoreId<T extends { _id: unknown }>(store: T): T & { id: string } {
-  return { ...store, id: String(store._id) };
-}
-
-/**
  * The store fields a merchant summary is built from.
  *
- * Structural rather than `StoreRecord` so a store from either representation
- * can supply it while the orders slice is still on Mongo. It is a projection,
- * not a store reader.
+ * Structural rather than `StoreRecord` because it is a PROJECTION, not a store
+ * reader: it names the fields a merchant card needs and nothing else, so a
+ * caller cannot quietly start depending on a store's members or policies
+ * through it.
  */
 export interface MerchantSummarySource {
   id: string;

@@ -11,8 +11,7 @@
  */
 
 import type { NotificationType } from '../lib/notification-service.js';
-import { Order, type IOrder } from '../models/order.js';
-import { Store, type IStore, type IStoreMember } from '../models/store.js';
+import { findOrderById, findStaleUnpaidOrders } from '../db/commerce/orderRepository.js';
 import { findStoreById, type StoreMemberRecord } from '../db/stores/storeRepository.js';
 import { Review } from '../models/review.js';
 import { transition } from '../services/order.service.js';
@@ -69,20 +68,12 @@ async function notifySafe(options: Parameters<typeof sendNotification>[0]): Prom
 }
 
 /** The distinct owner-member oxy user ids of a store. */
-function storeOwnerIds(store: Pick<IStore, 'members'>): string[] {
-  return [...new Set(store.members.filter((m) => m.role === 'owner').map((m) => m.oxyUserId))];
+function storeOwnerIds(members: readonly StoreMemberRecord[]): string[] {
+  return [...new Set(members.filter((m) => m.role === 'owner').map((m) => m.oxyUserId))];
 }
 
-/**
- * The distinct member ids who can act on inventory (owner or inventory perms).
- *
- * Takes the structural member shape rather than `IStoreMember`, so it serves
- * both the ported store reader and `handleOrderEventNotification`, which still
- * reads stores from Mongo until the orders slice lands.
- */
-function inventoryManagerIds(
-  members: readonly (IStoreMember | StoreMemberRecord)[],
-): string[] {
+/** The distinct member ids who can act on inventory (owner or inventory perms). */
+function inventoryManagerIds(members: readonly StoreMemberRecord[]): string[] {
   const ids = members
     .filter(
       (m) => m.role === 'owner' || INVENTORY_MANAGER_PERMISSIONS.some((p) => m.permissions.includes(p)),
@@ -108,11 +99,13 @@ export async function handleRecomputeAggregates(job: RecomputeAggregatesJob): Pr
  * notification is isolated so one failure doesn't abort the rest.
  */
 export async function handleOrderEventNotification(job: OrderEventNotificationJob): Promise<void> {
-  const order = await Order.findById(job.orderId).lean<IOrder | null>();
-  if (!order) {
+  const record = await findOrderById(job.orderId);
+  if (!record) {
     log.general.warn({ orderId: job.orderId, event: job.event }, 'Order-event notification: order not found');
     return;
   }
+
+  const order = record.order;
 
   const buyerType = EVENT_TO_BUYER_TYPE[job.event];
   const buyerCopy = BUYER_COPY[job.event];
@@ -146,9 +139,9 @@ export async function handleOrderEventNotification(job: OrderEventNotificationJo
       });
     }
   } else if (order.sellerType === 'store' && order.storeId) {
-    const store = await Store.findById(order.storeId).lean<IStore | null>();
+    const store = await findStoreById(order.storeId);
     if (store) {
-      for (const ownerId of storeOwnerIds(store)) {
+      for (const ownerId of storeOwnerIds(store.members)) {
         await notifySafe({
           userId: ownerId,
           type: buyerType,
@@ -164,12 +157,16 @@ export async function handleOrderEventNotification(job: OrderEventNotificationJo
 /**
  * Expire stale `pending_payment` reservations: cancel every order older than
  * `config.orders.reservationTtlMs`, releasing the held stock via the order
- * transition. Loads NON-lean docs (transition mutates + saves). Per-order
- * failures are logged and skipped so one bad order doesn't abort the sweep.
+ * transition. Per-order failures are logged and skipped so one bad order
+ * doesn't abort the sweep.
+ *
+ * A buyer cancelling the same order at the same moment is the sweep's normal
+ * race, and `transition`'s CAS is what settles it: whichever loses gets a
+ * CONFLICT here and is skipped, so the stock is released exactly once.
  */
 export async function handleExpireReservations(): Promise<void> {
   const cutoff = new Date(Date.now() - config.orders.reservationTtlMs);
-  const stale = await Order.find({ status: 'pending_payment', createdAt: { $lt: cutoff } });
+  const stale = await findStaleUnpaidOrders(cutoff);
 
   if (stale.length === 0) {
     return;
@@ -180,7 +177,7 @@ export async function handleExpireReservations(): Promise<void> {
       await transition(order, 'cancelled', { note: 'reservation expired' });
     } catch (err) {
       log.general.warn(
-        { err, orderId: String(order._id) },
+        { err, orderId: order.order.id },
         'Failed to expire reservation (skipping order)',
       );
     }
