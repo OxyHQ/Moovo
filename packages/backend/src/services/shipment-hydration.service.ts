@@ -1,7 +1,7 @@
 /**
  * Shipment hydration service.
  *
- * Turns raw `IShipment` / `IQuote` documents into client-ready `Shipment` /
+ * Turns raw `ShipmentRecord` / `QuoteRecord` documents into client-ready `Shipment` /
  * `QuoteView` DTOs, doing all Oxy + DB lookups in BATCHES (no N+1): ONE
  * `getProfiles` for the sender identities, ONE `Provider.find` for quote provider
  * names/logos. Media (shipment photos, provider logos) is resolved through the
@@ -10,7 +10,6 @@
  */
 
 import { findProvidersByIds, type ProviderRow } from '../db/transport/providerRepository.js';
-import mongoose from 'mongoose';
 import type {
   Shipment as ShipmentDTO,
   ShipmentPhoto,
@@ -22,18 +21,18 @@ import type {
   FiatCurrency,
 } from '@moovo/shared-types';
 import type {
-  IShipment,
-  IShipmentEndpoint,
-  IParcelDetails,
-  IScheduling,
-} from '../models/shipment.js';
-import { type IQuote } from '../models/quote.js';
+  ShipmentRecord,
+  ShipmentEndpointValue,
+  ParcelDetailsValue,
+  SchedulingValue,
+} from '../db/transport/shipmentShape.js';
+import { type QuoteRecord } from '../db/transport/quoteRepository.js';
 import { resolveMedia } from './catalog-hydration.service.js';
 import { getFairRate } from './faircoin-rate.service.js';
 import { toDisplayPriceBreakdown } from '../utils/fair-display.js';
 
 /** Map a persisted endpoint to the `ShipmentEndpoint` DTO (omit absent optionals). */
-function toEndpoint(endpoint: IShipmentEndpoint): ShipmentEndpoint {
+function toEndpoint(endpoint: ShipmentEndpointValue): ShipmentEndpoint {
   const dto: ShipmentEndpoint = {
     location: {
       type: 'Point',
@@ -55,7 +54,7 @@ function toEndpoint(endpoint: IShipmentEndpoint): ShipmentEndpoint {
 }
 
 /** Map persisted parcel details to the `ParcelDetails` DTO (omit absent optionals). */
-function toParcel(parcel: IParcelDetails): ParcelDetails {
+function toParcel(parcel: ParcelDetailsValue): ParcelDetails {
   const dto: ParcelDetails = {
     weightKg: parcel.weightKg,
     sizeClass: parcel.sizeClass,
@@ -67,7 +66,7 @@ function toParcel(parcel: IParcelDetails): ParcelDetails {
 }
 
 /** Map persisted scheduling to the `Scheduling` DTO. */
-function toScheduling(scheduling: IScheduling): Scheduling {
+function toScheduling(scheduling: SchedulingValue): Scheduling {
   if (scheduling.kind === 'scheduled' && scheduling.scheduledFor) {
     return { kind: 'scheduled', scheduledFor: scheduling.scheduledFor.toISOString() };
   }
@@ -75,7 +74,7 @@ function toScheduling(scheduling: IScheduling): Scheduling {
 }
 
 /** Map shipment photos through the media chokepoint into `ShipmentPhoto` DTOs. */
-function toPhotos(photos: IShipment['photos']): ShipmentPhoto[] {
+function toPhotos(photos: ShipmentRecord['photos']): ShipmentPhoto[] {
   return [...photos]
     .sort((a, b) => a.position - b.position)
     .map((p) => {
@@ -86,10 +85,10 @@ function toPhotos(photos: IShipment['photos']): ShipmentPhoto[] {
 }
 
 /** Build a `Shipment` DTO from a raw doc. */
-function toShipmentDTO(shipment: IShipment): ShipmentDTO {
+function toShipmentDTO(shipment: ShipmentRecord): ShipmentDTO {
   const dto: ShipmentDTO = {
-    id: String((shipment as { _id: mongoose.Types.ObjectId })._id),
-    senderOxyUserId: String(shipment.senderOxyUserId),
+    id: shipment.id,
+    senderOxyUserId: shipment.senderOxyUserId,
     type: shipment.type,
     status: shipment.status,
     pickup: toEndpoint(shipment.pickup),
@@ -112,7 +111,7 @@ function toShipmentDTO(shipment: IShipment): ShipmentDTO {
  * live from Oxy at the route layer where needed; the shipment DTO itself carries
  * only the sender's Oxy user id. Preserves input order.
  */
-export async function hydrateShipments(shipments: IShipment[]): Promise<ShipmentDTO[]> {
+export async function hydrateShipments(shipments: ShipmentRecord[]): Promise<ShipmentDTO[]> {
   if (shipments.length === 0) {
     return [];
   }
@@ -120,7 +119,7 @@ export async function hydrateShipments(shipments: IShipment[]): Promise<Shipment
 }
 
 /** Summarize raw shipment docs (the same DTO shape is compact enough for lists). */
-export async function summarizeShipments(shipments: IShipment[]): Promise<ShipmentDTO[]> {
+export async function summarizeShipments(shipments: ShipmentRecord[]): Promise<ShipmentDTO[]> {
   return hydrateShipments(shipments);
 }
 
@@ -130,7 +129,7 @@ export async function summarizeShipments(shipments: IShipment[]): Promise<Shipme
  */
 export async function hydrateQuotes(
   shipmentId: string,
-  quotes: IQuote[],
+  quotes: QuoteRecord[],
   displayCurrency: FiatCurrency,
 ): Promise<QuoteList> {
   if (quotes.length === 0) {
@@ -151,8 +150,8 @@ export async function hydrateQuotes(
 
   const views: QuoteView[] = quotes.map((quote) => {
     const view: QuoteView = {
-      id: String((quote as { _id: mongoose.Types.ObjectId })._id),
-      shipmentId: String(quote.shipmentId),
+      id: quote.id,
+      shipmentId: quote.shipmentId,
       source: quote.source,
       priceBreakdown: toDisplayPriceBreakdown(quote.priceBreakdown, rate),
       expiresAt: quote.expiresAt.toISOString(),

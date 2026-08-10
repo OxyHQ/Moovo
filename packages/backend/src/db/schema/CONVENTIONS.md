@@ -130,6 +130,51 @@ populated one, and the window between landing this schema and cutting over is
 exactly where that changes. If any count comes back non-zero, the constraint
 needs a repair pass or a narrower form — that is a decision, not a CHECK.
 
+## `quotes` stores the price audit trail per BREAKDOWN, not per component
+
+`FairMoney` carries an optional `{originalCurrency, originalAmount}` audit pair
+"for traceability only", and `PriceBreakdown` has SIX components each carrying
+its own. `quotes` stores six `*_fair_minor` columns but only ONE
+`original_currency` and ONE `original_amount`, so **the table is deliberately
+less expressive than the type it stores**.
+
+**The measurement that makes this lossless today**, and it is the whole of the
+justification:
+
+- There are exactly TWO producers. `pricing.service.ts` and
+  `mock-provider.ts` each build every component through a one-line `fair()`
+  helper returning `{fairMinor, originalCurrency: 'FAIR'}`.
+- **Nothing anywhere sets `originalAmount`.** Not one call site in the repo.
+
+Six columns holding one value repeated six times would be storage for a
+distinction no writer makes.
+
+**When it stops being lossless, and what to do then.** The day an adapter quotes
+in a non-FAIR currency — a real carrier pricing in EUR, which is what every
+external integration will eventually be — the components can genuinely disagree,
+and the honest fix is six per-component pairs plus an additive migration. It is
+NOT to pick whichever component the reader happened to look at.
+
+**So the collapse is GUARDED, not merely documented.**
+`quoteRepository.collapseAuditTrail` refuses a divergent breakdown before any
+SQL is issued, and `quote-audit-trail.test.ts` carries both halves — the guard's
+own cases, and an assertion that today's two producers really are uniform, so
+`pricing.service` diverging goes red naming `pricing.service`. The guard rather
+than only a producer test, because adapters are the pluggable part of this
+system and the third one is written by somebody who has not read this file. The
+producer test rather than only the guard, because a UNIFORMLY non-FAIR breakdown
+is legitimately storable — so the guard alone would absorb a pricing change that
+somebody should have to notice.
+
+**A second, separate defect the guard also refuses: `quotes.original_amount` is
+`moneyMinor()` — `bigint`, integer MINOR units — while `FairMoney.originalAmount`
+is documented as a decimal MAJOR unit (`9.99` for 9.99 EUR).** The column cannot
+represent the value it is named for: a decimal is rejected outright and an
+integer is silently wrong by the currency's precision. This is inert today
+precisely because nothing writes it, which is why it went unnoticed. Whoever adds
+the six per-component pairs must correct this column's type in the same
+migration; until then, writing it is refused rather than truncated.
+
 ## What the port changes on purpose
 
 Deliberate divergences from the source, recorded here because a behaviour
@@ -146,6 +191,17 @@ bug report three months later.
   and courier_oxy_user_id = $1` — which `listVehicles` already answers that
   way. A Postgres array cannot carry a foreign key on its elements, so a
   deleted vehicle would dangle there forever.
+- **A shipment's quotes and its `quoting → quoted` flip now COMMIT TOGETHER.**
+  The source wrote `quotes` and `shipments` as two independent Mongo calls, so a
+  crash between them left a shipment stuck in `quoting` with its quotes already
+  visible to the customer. Both rows live in one database now, so
+  `quote.service.quoteShipment` wraps the inserts and the flip in one
+  transaction. The transaction deliberately does NOT span the provider fan-out:
+  holding one open across several carriers' network calls, each with its own
+  timeout, would pin a connection from a pool of ten for as long as the slowest
+  adapter takes — one slow carrier becoming a service-wide connection shortage.
+  The distance write stays outside and BEFORE the fan-out, as in the source,
+  because it is persisted up front on purpose.
 - **`cart_items.variant_id` cascades.** Deleting a variant currently leaves a
   cart line pointing at a dead variant, which fails at hydration; now the line
   vanishes. Better behaviour, but different from production.

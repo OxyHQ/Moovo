@@ -15,9 +15,9 @@ const jobFindOne = vi.fn();
 const jobFindById = vi.fn();
 const jobCreate = vi.fn();
 const shipmentFindById = vi.fn();
-const shipmentUpdateOne = vi.fn();
+const shipmentMarkBooked = vi.fn();
 const quoteFindById = vi.fn();
-const quoteUpdateOne = vi.fn();
+const quoteMarkSelected = vi.fn();
 const providerFindById = vi.fn();
 const nextJobNumber = vi.fn();
 const getAdapter = vi.fn();
@@ -34,22 +34,27 @@ vi.mock('../../models/job.js', () => ({
   },
 }));
 
-vi.mock('../../models/shipment.js', () => ({
-  Shipment: {
-    findById: (...args: unknown[]) => shipmentFindById(...args),
-    updateOne: (...args: unknown[]) => shipmentUpdateOne(...args),
-  },
+// `shipments` and `quotes` moved to Postgres, so the seams are repositories.
+// The two shape changes that come with that: a repository function RESOLVES its
+// row where `findById(...)` returned a chainable needing `.lean()`, and an
+// intent that used to be an update DOCUMENT now has a NAME, so a test asserts
+// the arguments rather than `{$set: {...}}`.
+vi.mock('../../db/transport/shipmentRepository.js', () => ({
+  findShipmentById: (...args: unknown[]) => shipmentFindById(...args),
+  markShipmentBooked: (...args: unknown[]) => shipmentMarkBooked(...args),
 }));
 
-vi.mock('../../models/quote.js', () => ({
-  Quote: {
-    findById: (...args: unknown[]) => quoteFindById(...args),
-    updateOne: (...args: unknown[]) => quoteUpdateOne(...args),
-  },
+vi.mock('../../db/transport/quoteRepository.js', () => ({
+  findQuoteById: (...args: unknown[]) => quoteFindById(...args),
+  markQuoteSelected: (...args: unknown[]) => quoteMarkSelected(...args),
 }));
 
-vi.mock('../../models/provider.js', () => ({
-  Provider: { findById: (...args: unknown[]) => providerFindById(...args) },
+// The provider seam is the repository too. The suite previously mocked
+// `models/provider.js`, which the providers port had already deleted — an inert
+// mock of a module nothing imports, so the external-provider path was running
+// against the real repository and only stayed green because no case reaches it.
+vi.mock('../../db/transport/providerRepository.js', () => ({
+  findProviderById: (...args: unknown[]) => providerFindById(...args),
 }));
 
 vi.mock('../../models/counter.js', () => ({
@@ -99,9 +104,9 @@ beforeEach(() => {
   jobFindById.mockReset();
   jobCreate.mockReset();
   shipmentFindById.mockReset();
-  shipmentUpdateOne.mockReset().mockResolvedValue({ modifiedCount: 1 });
+  shipmentMarkBooked.mockReset().mockResolvedValue(undefined);
   quoteFindById.mockReset();
-  quoteUpdateOne.mockReset().mockResolvedValue({ modifiedCount: 1 });
+  quoteMarkSelected.mockReset().mockResolvedValue(undefined);
   providerFindById.mockReset();
   nextJobNumber.mockReset().mockResolvedValue('MOV-000001');
   getAdapter.mockReset();
@@ -169,7 +174,7 @@ describe('job.service.transition — illegal transitions', () => {
 
 describe('job.service.bookShipment — idempotent booking', () => {
   const shipment = {
-    _id: 'shipment-1',
+    id: 'shipment-1',
     senderOxyUserId: 'sender-1',
     status: 'quoted',
     type: 'package',
@@ -178,7 +183,7 @@ describe('job.service.bookShipment — idempotent booking', () => {
     parcel: { sizeClass: 'small' },
   };
   const quote = {
-    _id: 'quote-1',
+    id: 'quote-1',
     shipmentId: 'shipment-1',
     source: 'moovo_courier',
     status: 'active',
@@ -187,8 +192,8 @@ describe('job.service.bookShipment — idempotent booking', () => {
   };
 
   beforeEach(() => {
-    shipmentFindById.mockReturnValue({ lean: () => Promise.resolve(shipment) });
-    quoteFindById.mockReturnValue({ lean: () => Promise.resolve(quote) });
+    shipmentFindById.mockResolvedValue(shipment);
+    quoteFindById.mockResolvedValue(quote);
   });
 
   it('creates exactly one job and marks the quote selected + shipment booked', async () => {
@@ -198,11 +203,13 @@ describe('job.service.bookShipment — idempotent booking', () => {
 
     expect(job).toMatchObject({ _id: 'job-1' });
     expect(jobCreate).toHaveBeenCalledTimes(1);
-    expect(quoteUpdateOne).toHaveBeenCalledWith({ _id: 'quote-1' }, { $set: { status: 'selected' } });
-    const shipmentSet = shipmentUpdateOne.mock.calls.find(
-      (call) => (call[1] as { $set?: { status?: string } })?.$set?.status === 'booked',
-    );
-    expect(shipmentSet).toBeDefined();
+    expect(quoteMarkSelected).toHaveBeenCalledWith('quote-1');
+    // The booking records BOTH refs, not merely the status: a shipment marked
+    // booked without its `jobId` is a shipment nobody can navigate to its job.
+    expect(shipmentMarkBooked).toHaveBeenCalledWith('shipment-1', {
+      jobId: 'job-1',
+      quoteRef: 'quote-1',
+    });
   });
 
   it('converges on the prior job when create hits a 11000 duplicate key', async () => {
@@ -213,6 +220,7 @@ describe('job.service.bookShipment — idempotent booking', () => {
 
     expect(job).toMatchObject({ _id: 'job-prior' });
     // No quote/shipment mutation on the converge path.
-    expect(quoteUpdateOne).not.toHaveBeenCalled();
+    expect(quoteMarkSelected).not.toHaveBeenCalled();
+    expect(shipmentMarkBooked).not.toHaveBeenCalled();
   });
 });

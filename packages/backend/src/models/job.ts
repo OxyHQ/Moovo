@@ -28,12 +28,19 @@ import type {
   JobPaymentInfo,
 } from '@moovo/shared-types';
 import { FairMoneySchema } from './schemas/fair-money-schema.js';
-import type { IPriceBreakdown } from './quote.js';
+/**
+ * The job's frozen snapshots are typed by the shipment/quote VALUE OBJECTS,
+ * which outlived their Mongoose models: `shipments` and `quotes` are Postgres
+ * tables now, but a job still freezes the nested endpoint, parcel and price
+ * shapes at booking, and in Postgres those become `jsonb` columns of exactly
+ * this shape. See `db/transport/shipmentShape.ts`.
+ */
+import type { PriceBreakdown } from '@moovo/shared-types';
 import type {
-  IShipmentEndpoint,
-  IParcelDetails,
-  IGeoPoint,
-} from './shipment.js';
+  ShipmentEndpointValue,
+  ParcelDetailsValue,
+  ShipmentGeoPointValue,
+} from '../db/transport/shipmentShape.js';
 
 const JOB_STATUSES: readonly JobStatus[] = [
   'requested',
@@ -61,11 +68,11 @@ export interface IJobStatusEvent {
   at: Date;
   byOxyUserId?: string;
   note?: string;
-  location?: IGeoPoint;
+  location?: ShipmentGeoPointValue;
 }
 
 export interface ILocationPing {
-  location: IGeoPoint;
+  location: ShipmentGeoPointValue;
   at: Date;
 }
 
@@ -94,16 +101,16 @@ export interface IJob {
   courierOxyUserId?: string;
   companyId?: string;
   providerRef?: string;
-  pickupSnapshot: IShipmentEndpoint;
-  dropoffSnapshot: IShipmentEndpoint;
-  parcelSnapshot: IParcelDetails;
-  quoteSnapshot: IPriceBreakdown;
+  pickupSnapshot: ShipmentEndpointValue;
+  dropoffSnapshot: ShipmentEndpointValue;
+  parcelSnapshot: ParcelDetailsValue;
+  quoteSnapshot: PriceBreakdown;
   status: JobStatus;
   statusHistory: IJobStatusEvent[];
   locationPings: ILocationPing[];
   proofOfDelivery?: IProofOfDelivery;
   payment: IJobPaymentInfo;
-  totals: IPriceBreakdown;
+  totals: PriceBreakdown;
   /** Number of dispatch waves attempted (real-time dispatch). */
   dispatchAttempts: number;
   /** SHA-256 hex hash the pickup scan is verified against (verify source). */
@@ -119,7 +126,7 @@ export interface IJob {
   updatedAt: Date;
 }
 
-const GeoPointSchema = new Schema<IGeoPoint>(
+const GeoPointSchema = new Schema<ShipmentGeoPointValue>(
   {
     type: { type: String, enum: ['Point'], required: true },
     coordinates: { type: [Number], required: true },
@@ -139,7 +146,7 @@ const ShipmentAddressSnapshotSchema = new Schema(
   { _id: false },
 );
 
-const EndpointSnapshotSchema = new Schema<IShipmentEndpoint>(
+const EndpointSnapshotSchema = new Schema<ShipmentEndpointValue>(
   {
     location: { type: GeoPointSchema, required: true },
     address: { type: ShipmentAddressSnapshotSchema, required: true },
@@ -150,7 +157,7 @@ const EndpointSnapshotSchema = new Schema<IShipmentEndpoint>(
   { _id: false },
 );
 
-const ParcelSnapshotSchema = new Schema<IParcelDetails>(
+const ParcelSnapshotSchema = new Schema<ParcelDetailsValue>(
   {
     weightKg: { type: Number, required: true },
     dimsCm: {
@@ -165,7 +172,7 @@ const ParcelSnapshotSchema = new Schema<IParcelDetails>(
   { _id: false },
 );
 
-const PriceBreakdownSnapshotSchema = new Schema<IPriceBreakdown>(
+const PriceBreakdownSnapshotSchema = new Schema<PriceBreakdown>(
   {
     base: { type: FairMoneySchema, required: true },
     distance: { type: FairMoneySchema, required: true },

@@ -36,8 +36,15 @@ import {
   type IProofOfDelivery,
 } from '../models/job.js';
 import { JobOffer } from '../models/job-offer.js';
-import { Shipment, type IShipment } from '../models/shipment.js';
-import { Quote, type IQuote } from '../models/quote.js';
+import {
+  findShipmentById,
+  markShipmentBooked,
+} from '../db/transport/shipmentRepository.js';
+import {
+  findQuoteById,
+  markQuoteSelected,
+  type QuoteRecord,
+} from '../db/transport/quoteRepository.js';
 import { CourierProfile } from '../models/courier-profile.js';
 import { nextJobNumber } from '../models/counter.js';
 import { getAdapter } from './providers/provider-registry.js';
@@ -147,7 +154,7 @@ async function loadJobDoc(filter: Record<string, unknown>): Promise<HydratedDocu
 }
 
 /** Whether a quote is still bookable (active and not lapsed). */
-function isQuoteBookable(quote: IQuote): boolean {
+function isQuoteBookable(quote: QuoteRecord): boolean {
   return quote.status === 'active' && quote.expiresAt.getTime() > Date.now();
 }
 
@@ -164,11 +171,11 @@ export async function bookShipment(
   quoteId: string,
   idempotencyKey?: string,
 ): Promise<IJob> {
-  const shipment = await Shipment.findById(shipmentId).lean<IShipment | null>();
+  const shipment = await findShipmentById(shipmentId);
   if (!shipment) {
     throw notFound('Shipment not found');
   }
-  if (String(shipment.senderOxyUserId) !== senderOxyUserId) {
+  if (shipment.senderOxyUserId !== senderOxyUserId) {
     throw forbidden('You do not own this shipment');
   }
   if (shipment.status === 'booked' && shipment.jobId) {
@@ -181,8 +188,8 @@ export async function bookShipment(
     throw conflict(`Shipment is ${shipment.status} and cannot be booked`);
   }
 
-  const quote = await Quote.findById(quoteId).lean<IQuote | null>();
-  if (!quote || String(quote.shipmentId) !== shipmentId) {
+  const quote = await findQuoteById(quoteId);
+  if (!quote || quote.shipmentId !== shipmentId) {
     throw notFound('Quote not found for this shipment');
   }
   if (!isQuoteBookable(quote)) {
@@ -196,7 +203,7 @@ export async function bookShipment(
     if (!quote.providerId) {
       throw conflict('External quote is missing its provider');
     }
-    const provider = await findProviderById(String(quote.providerId));
+    const provider = await findProviderById(quote.providerId);
     if (!provider) {
       throw notFound('Provider not found for quote');
     }
@@ -258,11 +265,8 @@ export async function bookShipment(
   }
 
   // Mark the quote selected + the shipment booked with its job/quote refs.
-  await Quote.updateOne({ _id: quoteId }, { $set: { status: 'selected' } });
-  await Shipment.updateOne(
-    { _id: shipmentId },
-    { $set: { status: 'booked', jobId: String(job._id), quoteRef: quoteId } },
-  );
+  await markQuoteSelected(quoteId);
+  await markShipmentBooked(shipmentId, { jobId: String(job._id), quoteRef: quoteId });
 
   log.general.info(
     { jobId: String(job._id), shipmentId, fulfillmentType: job.fulfillmentType },

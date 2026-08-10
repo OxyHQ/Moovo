@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { IShipmentEndpoint } from '../../../models/shipment.js';
+import type { ShipmentEndpointValue } from '../../../db/transport/shipmentShape.js';
 import { boundedText, coarseLocationLabel, note, redactEndpoint } from '../subjects/redaction.js';
 
 /** Sentinels chosen so a substring search cannot match them by accident. */
@@ -31,7 +31,7 @@ const SAFE = {
   notes: 'Ring the bell twice',
 } as const;
 
-function endpoint(overrides: Partial<IShipmentEndpoint> = {}): IShipmentEndpoint {
+function endpoint(overrides: Partial<ShipmentEndpointValue> = {}): ShipmentEndpointValue {
   return {
     location: { type: 'Point', coordinates: [2.154007, 41.390205] },
     address: {
