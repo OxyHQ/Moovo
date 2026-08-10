@@ -36,12 +36,35 @@ function setupConnectionListeners(): void {
   });
 }
 
-export async function connectDB() {
-  // Read MONGODB_URI here, after dotenv.config() has been called
-  const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/moovo';
+/**
+ * Whether Mongo is part of this deployment's configuration at all.
+ *
+ * This is the ONE definition; `routes/health.ts` reads it rather than keeping a
+ * second copy, because two representations of one fact can disagree and the
+ * place that must not happen is a readiness probe deciding whether a task
+ * receives traffic.
+ *
+ * It asks whether the environment SUPPLIES a URI, not what the URI says. That
+ * distinction used to be impossible here: `connectDB` defaulted the value to
+ * `mongodb://localhost:27017/moovo`, so the connection string was never empty
+ * and absence was undetectable. Removing the secret from a task definition then
+ * did not disable Mongo — it repointed it at localhost inside the container,
+ * where nothing answers, and every task exited after the 10s server-selection
+ * timeout. A defaulted config value cannot answer "was this configured".
+ */
+export function mongoIsConfigured(): boolean {
+  return Boolean(process.env.MONGODB_URI);
+}
 
+export async function connectDB() {
+  // Read MONGODB_URI here, after dotenv.config() has been called.
+  const MONGODB_URI = process.env.MONGODB_URI;
+
+  // No localhost default: callers must ask `mongoIsConfigured()` first, so
+  // reaching this without a URI is a programming error rather than a reason to
+  // dial a host that is not there.
   if (!MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable inside .env');
+    throw new Error('connectDB() called with no MONGODB_URI; guard it with mongoIsConfigured()');
   }
 
   // If already connected, return the mongoose instance
