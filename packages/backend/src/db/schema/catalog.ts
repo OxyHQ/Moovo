@@ -130,14 +130,36 @@ export const listings = pgTable(
     /**
      * The port of `{title:'text', description:'text', tags:'text'}`.
      *
-     * Two halves because they have different volatilities and different
-     * meanings: `to_tsvector` STEMS the prose, while `array_to_tsvector` takes
-     * each tag as a verbatim lexeme, which is what a tag is. `array_to_string`
-     * is the obvious spelling and is NOT immutable — measured against the real
-     * server, which refuses the generated column outright.
+     * THREE halves, and the third exists because two were not enough.
+     *
+     * `to_tsvector` STEMS the prose; `array_to_tsvector` takes each tag as a
+     * verbatim lexeme, which is what a tag is. But `plainto_tsquery` stems the
+     * QUERY either way, so a verbatim-only tag was findable only when it was
+     * already an English stem — measured on the server:
+     *
+     *     plainto_tsquery('english','watering')  ->  'water'
+     *     array_to_tsvector(ARRAY['watering'])   ->  'watering'     no match
+     *     array_to_tsvector(ARRAY['garden'])     vs  'garden'       match
+     *
+     * Mongo's `$text` index stemmed tag values too, so that was a functional
+     * LOSS in the port rather than a faithful translation.
+     *
+     * The third term stems the tags as well. The verbatim term is KEPT rather
+     * than replaced, which is what makes this strictly additive: every lexeme
+     * the column produced before is still produced, so no query that matched
+     * yesterday stops matching. A tag now answers to both its literal form and
+     * its stem.
+     *
+     * `array_to_string` is the obvious way to feed the tags to `to_tsvector`
+     * and is STABLE, not IMMUTABLE (`provolatile = 's'`), so the server
+     * refuses the generated column outright — as it does for `tags::text`.
+     * `moovo_tags_text` is the immutable wrapper, created in the same
+     * migration; joining a `text[]` with a constant separator really is
+     * immutable, the general function is marked stable only because an
+     * arbitrary element type's output function need not be.
      */
     searchVector: tsvector().generatedAlwaysAs(
-      sql`to_tsvector('english', coalesce(title, '') || ' ' || coalesce(description, '')) || array_to_tsvector(coalesce(tags, '{}'))`,
+      sql`to_tsvector('english', coalesce(title, '') || ' ' || coalesce(description, '')) || array_to_tsvector(coalesce(tags, '{}')) || to_tsvector('english', moovo_tags_text(coalesce(tags, '{}')))`,
     ),
     /**
      * An AVERAGE, so a float — `4.5` is the ordinary case. An integer column

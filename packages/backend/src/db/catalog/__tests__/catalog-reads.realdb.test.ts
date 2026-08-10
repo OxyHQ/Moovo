@@ -235,33 +235,58 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
     });
 
     /**
-     * A KNOWN LIMITATION, pinned so it is visible rather than discovered.
+     * The former KNOWN LIMITATION, now fixed — and inverted rather than
+     * deleted, as the case that stood here instructed.
      *
-     * The two halves of `listings.search_vector` are not symmetric:
-     * `to_tsvector` STEMS the prose, `array_to_tsvector` stores each tag
-     * verbatim — but `plainto_tsquery` stems the QUERY either way. Measured on
-     * the server: the query `watering` becomes the lexeme `water`, the stored
-     * tag stays `watering`, and they do not match; `garden` matches because it
-     * is its own stem.
+     * `listings.search_vector` used two asymmetric halves: `to_tsvector`
+     * STEMMED the prose while `array_to_tsvector` stored each tag verbatim,
+     * and `plainto_tsquery` stems the QUERY either way. So the query
+     * `watering` became the lexeme `water`, the stored tag stayed `watering`,
+     * and they did not match — a tag was findable only when it was already an
+     * English stem, where Mongo's `$text` index stemmed tag values too.
      *
-     * So a tag is findable only when it is already an English stem. Mongo's
-     * `$text` index stemmed tag values too, which makes this a small
-     * FUNCTIONAL difference rather than a faithful port. Fixing it is a
-     * generated-column change and therefore a migration, so it does not belong
-     * to a read-path slice.
-     *
-     * **If this case goes red, the fix has probably landed** — confirm the
-     * generated column now stems tags, then replace this with the positive
-     * assertion rather than deleting it.
+     * Migration `0001` adds a THIRD term that stems the tags, keeping the
+     * verbatim one, so a tag now answers to both its literal form and its
+     * stem. Both directions are asserted below, because a fix that stemmed
+     * tags INSTEAD of storing them verbatim would satisfy the first assertion
+     * alone while silently losing exact-tag matching.
      */
-    it('does NOT match a tag whose stem differs from the tag (known limitation)', async () => {
+    it('matches a tag whose stem differs from the tag, and still matches the tag itself', async () => {
       await seedListing({
         title: 'Garden hose',
         owner: 'u1',
         publishedAt: new Date('2026-01-01'),
         tags: ['watering'],
       });
-      expect((await searchListingsOffset({ q: 'watering' }, 1, 10)).listings).toHaveLength(0);
+
+      // The fix: the literal tag a user would type now finds the listing.
+      expect((await searchListingsOffset({ q: 'watering' }, 1, 10)).listings).toHaveLength(1);
+      // Its stem finds it too — that is what the new term stores.
+      expect((await searchListingsOffset({ q: 'water' }, 1, 10)).listings).toHaveLength(1);
+      // And the verbatim half is still there: a word that is its own stem is
+      // unaffected, which is what makes the migration strictly additive.
+      expect((await searchListingsOffset({ q: 'garden' }, 1, 10)).listings).toHaveLength(1);
+      // Negative control: the vector did not simply become "matches anything".
+      expect((await searchListingsOffset({ q: 'absentword' }, 1, 10)).listings).toHaveLength(0);
+    });
+
+    /**
+     * The GIN index must survive the migration.
+     *
+     * `drizzle-kit generate` emits `DROP COLUMN` + `ADD COLUMN` for a change to
+     * a generated column's expression, and dropping a column drops the indexes
+     * over it — while drizzle re-emits no index, because its snapshot never saw
+     * one change. Search would keep returning CORRECT results by sequential
+     * scan, so no functional test would notice. Migration `0001` therefore uses
+     * `ALTER COLUMN ... SET EXPRESSION`, and this asserts the outcome rather
+     * than the spelling.
+     */
+    it('keeps listings_search_vector_idx after the migration', async () => {
+      const rows = await client()<{ indexname: string }[]>`
+        SELECT indexname FROM pg_indexes
+        WHERE tablename = 'listings' AND indexname = 'listings_search_vector_idx'
+      `;
+      expect(rows.map((r) => r.indexname)).toEqual(['listings_search_vector_idx']);
     });
   });
 
