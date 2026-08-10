@@ -1,7 +1,7 @@
 /**
  * The loop that drains the moderation outbox.
  *
- * Runs on EVERY task, not on a leader. Claims are Mongo leases with an owner
+ * Runs on EVERY task, not on a leader. Claims are Postgres leases with an owner
  * check, so N tasks share the work safely and a dead task's lease is reclaimed
  * once it expires — leader election would add a failure mode (no leader, no
  * moderation) for no benefit the lease does not already provide.
@@ -73,7 +73,8 @@ export function startModerationOutboxDispatcher(): void {
 
   timer = setInterval(() => {
     // One batch at a time per task: overlapping runs would double the claim
-    // pressure without draining faster, since claims are serialised in Mongo.
+    // pressure without draining faster, since claims are serialised by the
+    // row lock the claim takes.
     if (inFlight) return;
     inFlight = runOnce(signal).finally(() => {
       inFlight = null;

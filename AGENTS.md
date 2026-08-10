@@ -10,11 +10,11 @@ providers such as DHL and FedEx. It is not a marketplace.
 > Moovo specifically. Versions are in `package.json`, never here.
 
 The repo was forked from the Mercaria marketplace shell, so inherited marketplace
-code is still on disk (`cart`, `listing`, `order`, `product-variant`, `category`
-models, plus buy/sell, shops, search and checkout surfaces). **Treat it as
-scaffolding being deleted, not as the domain.** The live courier domain is
-`courier-company`, `courier-profile`, `job`, `job-offer`, `provider`, `quote` and
-`address`. See `HANDOFF.md` for deferred work.
+code is still on disk (buy/sell, shops, search, cart, checkout and order
+surfaces, now on PostgreSQL like everything else). **Treat it as scaffolding,
+not as the domain.** The live courier domain is `courier-company`,
+`courier-profile`, `job`, `job-offer`, `provider`, `quote` and `address`. See
+`HANDOFF.md` for deferred work.
 
 ## Packages
 
@@ -23,7 +23,7 @@ scaffolding being deleted, not as the domain.** The live courier domain is
 | `@moovo/frontend` | `packages/frontend/` | Expo customer app |
 | `@moovo/courier-app` | `packages/courier-app/` | Expo app for couriers, shipped as **Moovo Go** |
 | `@moovo/fleet-dashboard` | `packages/fleet-dashboard/` | Fleet and ops dashboard, shipped as **Moovo Hub** |
-| `@moovo/backend` | `packages/backend/` | Express API (TypeScript, MongoDB, Socket.IO) |
+| `@moovo/backend` | `packages/backend/` | Express API (TypeScript, PostgreSQL, Socket.IO) |
 | `@moovo/shared-types` | `packages/shared-types/` | Domain DTOs, still largely inherited marketplace shapes awaiting courier replacements |
 
 **The root script names do not match the package names**, which is not guessable
@@ -48,17 +48,22 @@ moderation, sequences — runs on it, over the 34 tables in migration `0000`.
 Schema, conventions and the migration rules are in
 `packages/backend/src/db/schema/CONVENTIONS.md`.
 
-**Mongoose survives only for the 8 inherited marketplace models**, which are
-being ported (see `HANDOFF.md` §4). It is OPTIONAL and must never gate boot:
-`lib/mongo-bootstrap.ts` attaches to Mongo when `MONGODB_URI` is supplied and
-otherwise starts the server without it, because an unreachable Mongo used to
-kill the process before `server.listen` and take `/health/ready` with it.
+**Mongo is GONE — there are no models, no `mongoose`, no `MONGODB_URI` and no
+rollback target.** The marketplace port finished and the cut removed
+`src/models/`, `lib/db.ts`, `lib/mongo-bootstrap.ts` and `scripts/seed.ts`.
+`HANDOFF.md` §4 keeps the record.
 
-`mongoIsConfigured()` in `lib/db.ts` is the ONE discriminator, and it asks
-whether the environment SUPPLIES a URI rather than what the URI says — there is
-deliberately no localhost default any more, because a defaulted value cannot
-answer "was this configured" and removing the secret from a task definition then
-repoints Mongo inside the container instead of disabling it.
+`DATABASE_URL` is the only store configuration. `db/postgres.ts` REFUSES to
+open without it rather than defaulting to a local server, because a default
+makes a misconfigured task boot, report healthy-ish and fail every request.
+Note it does not yet gate BOOT — the expiry sweeper announces itself as not
+running and the server still listens; making it required to boot is a
+deliberate behaviour change nobody has taken yet.
+
+**`/health/ready` asks the store a REAL question** (`select 1`), never infers
+reachability from a connection string, and names the dependency in its 503
+reason. It is what the `oxy-moovo` target group health-checks (matcher 200,
+30s, threshold 3), so it decides whether a task receives traffic.
 
 ## Open decisions the Postgres port left, with owners
 

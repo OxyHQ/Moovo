@@ -14,7 +14,7 @@ import { sendSuccess } from '../utils/api-response.js';
 import { respondWithError } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
 
-/** Serialize a seller profile document to the wire (omits Mongo internals). */
+/** Serialize a seller profile row to the wire (omits storage-internal columns). */
 function toSellerProfileResponse(profile: SellerProfileRecord): Record<string, unknown> {
   return {
     id: profile.id,

@@ -21,13 +21,13 @@ import {
   requireStoreRole,
   requireStorePermission,
 } from '../store-authz.js';
-import type { IStoreMember } from '../../models/store.js';
+import type { StoreMemberRecord } from '../../db/stores/storeRepository.js';
 
-function member(role: IStoreMember['role'], permissions: StorePermission[] = []): IStoreMember {
+function member(role: StoreMemberRecord['role'], permissions: StorePermission[] = []): StoreMemberRecord {
   return { oxyUserId: 'u1', role, permissions, joinedAt: new Date() };
 }
 
-function mockReq(membership?: IStoreMember): Request {
+function mockReq(membership?: StoreMemberRecord): Request {
   return { storeMembership: membership } as unknown as Request;
 }
 

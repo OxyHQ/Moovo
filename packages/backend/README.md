@@ -9,7 +9,7 @@ is built on top of it (see `HANDOFF.md` in the repo root).
 ## What's here
 
 - Express bootstrap with graceful shutdown, process-level error handling, and CORS
-- MongoDB/Mongoose connection (`src/lib/db.ts`, db name `moovo-{NODE_ENV}`)
+- PostgreSQL via drizzle-orm + postgres.js (`src/db/postgres.ts`, opened from `DATABASE_URL`)
 - Redis client (optional) for rate-limit store + Socket.IO scaling
 - Oxy auth via `@oxyhq/core/server` (`src/middleware/auth.ts`)
 - Socket.IO with authenticated per-user rooms (`src/socket.ts`)
@@ -46,7 +46,7 @@ bun run test    # Vitest
 Copy `packages/backend/.env.example` to `packages/backend/.env` and fill in:
 
 - Server/CORS: `PORT`, `WEB_URL`
-- MongoDB: `MONGODB_URI`
+- PostgreSQL: `DATABASE_URL` (required — the service refuses to open a database without it)
 - Oxy: `OXY_API_URL`
 - Redis (optional): `REDIS_URL`
 - Web push (optional): `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
