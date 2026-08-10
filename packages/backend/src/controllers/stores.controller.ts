@@ -9,7 +9,8 @@
 import type { Request, Response } from 'express';
 import type { MerchantSummary, Listing, Pagination } from '@moovo/shared-types';
 import { findStoreByHandle } from '../db/stores/storeRepository.js';
-import { Listing as ListingModel, type IListing } from '../models/listing.js';
+import { listListingsForOwner } from '../db/catalog/catalogRepository.js';
+import { toListingRecord } from '../db/catalog/catalogShape.js';
 import { hydrateListings, toMerchantSummary } from '../services/catalog-hydration.service.js';
 import { parsePagination, buildPagination } from '../utils/pagination.js';
 import { sendSuccess } from '../utils/api-response.js';
@@ -33,25 +34,21 @@ export async function getStoreByHandle(req: Request, res: Response): Promise<voi
       throw notFound('Store not found');
     }
 
-    const storeId = store.id;
     const { page, limit } = parsePagination(req.query);
-    const filter = { ownerType: 'store' as const, storeId, status: 'active' as const };
+    const result = await listListingsForOwner(
+      { ownerType: 'store', storeId: store.id },
+      { status: 'active' },
+      page,
+      limit,
+    );
+    const listingRecords = result.listings.map(toListingRecord);
 
-    const [listingDocs, total] = await Promise.all([
-      ListingModel.find(filter)
-        .sort({ publishedAt: -1, _id: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean<IListing[]>(),
-      ListingModel.countDocuments(filter),
-    ]);
-
-    const listings = await hydrateListings(listingDocs);
+    const listings = await hydrateListings(listingRecords);
 
     const body: StorePageResponse = {
-      store: toMerchantSummary(store, listingDocs),
+      store: toMerchantSummary(store, listingRecords),
       listings,
-      pagination: buildPagination(page, limit, total),
+      pagination: buildPagination(page, limit, result.total),
     };
     sendSuccess(res, body);
   } catch (err) {

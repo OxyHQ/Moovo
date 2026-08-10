@@ -15,7 +15,8 @@ import type {
   UpdateListingInput,
   Listing as ListingDTO,
 } from '@moovo/shared-types';
-import { Listing, type IListing } from '../models/listing.js';
+import { findListingById, listListingsForOwner } from '../db/catalog/catalogRepository.js';
+import { toListingRecord, type ListingRecord } from '../db/catalog/catalogShape.js';
 import {
   createP2PListing,
   updateListing,
@@ -29,11 +30,12 @@ import { routeParam } from '../utils/request.js';
 import { log } from '../lib/logger.js';
 
 /** Load a P2P listing and assert the caller owns it, or throw NOT_FOUND/FORBIDDEN. */
-async function loadOwnedListing(listingId: string, oxyUserId: string): Promise<IListing> {
-  const listing = await Listing.findById(listingId).lean<IListing | null>();
-  if (!listing) {
+async function loadOwnedListing(listingId: string, oxyUserId: string): Promise<ListingRecord> {
+  const row = await findListingById(listingId);
+  if (!row) {
     throw notFound('Listing not found');
   }
+  const listing = toListingRecord(row);
   if (listing.ownerType !== 'user' || listing.oxyUserId !== oxyUserId) {
     throw forbidden('You do not own this listing');
   }
@@ -42,11 +44,11 @@ async function loadOwnedListing(listingId: string, oxyUserId: string): Promise<I
 
 /** Hydrate a single listing by id into its `Listing` DTO. */
 async function hydrateById(listingId: string): Promise<ListingDTO | undefined> {
-  const doc = await Listing.findById(listingId).lean<IListing | null>();
-  if (!doc) {
+  const row = await findListingById(listingId);
+  if (!row) {
     return undefined;
   }
-  const [dto] = await hydrateListings([doc]);
+  const [dto] = await hydrateListings([toListingRecord(row)]);
   return dto;
 }
 
@@ -55,19 +57,12 @@ export async function listMyListings(req: Request, res: Response): Promise<void>
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const { page, limit } = parsePagination(req.query);
-    const filter = { ownerType: 'user' as const, oxyUserId };
+    // No status filter: a seller sees their own drafts and archived listings,
+    // unlike the public browse.
+    const result = await listListingsForOwner({ ownerType: 'user', oxyUserId }, {}, page, limit);
 
-    const [docs, total] = await Promise.all([
-      Listing.find(filter)
-        .sort({ createdAt: -1, _id: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean<IListing[]>(),
-      Listing.countDocuments(filter),
-    ]);
-
-    const data = await hydrateListings(docs);
-    sendPaginated(res, data, buildPagination(page, limit, total));
+    const data = await hydrateListings(result.listings.map(toListingRecord));
+    sendPaginated(res, data, buildPagination(page, limit, result.total));
   } catch (err) {
     log.general.error({ err }, 'Failed to list seller listings');
     respondWithError(res, err, 'Failed to load your listings');

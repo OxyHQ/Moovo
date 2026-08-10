@@ -10,11 +10,13 @@
 
 import type { Request, Response } from 'express';
 import { z } from 'zod';
-import type { ListingQuery, CursorPage, Listing } from '@moovo/shared-types';
-import { Listing as ListingModel, type IListing } from '../models/listing.js';
+import type { ListingQuery, CursorPage, Listing, ListingStatus } from '@moovo/shared-types';
+import { findListingById } from '../db/catalog/catalogRepository.js';
+import { toListingRecord } from '../db/catalog/catalogShape.js';
 import { searchListingsOffset, searchListingsCursor } from '../services/search.service.js';
 import { hydrateListings } from '../services/catalog-hydration.service.js';
 import { parsePagination, buildPagination } from '../utils/pagination.js';
+import { routeParam } from '../utils/request.js';
 import { sendSuccess, sendPaginated } from '../utils/api-response.js';
 import { respondWithError, notFound, validationError } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
@@ -23,7 +25,7 @@ import { log } from '../lib/logger.js';
  * Listing statuses publicly viewable on the product-detail page. `draft` and
  * `archived` are owner/admin-only and 404 on the public read path.
  */
-const PUBLICLY_VIEWABLE_STATUSES: readonly IListing['status'][] = ['active', 'sold'];
+const PUBLICLY_VIEWABLE_STATUSES: readonly ListingStatus[] = ['active', 'sold'];
 
 /** Coerce + validate the browse query string into a typed `ListingQuery`. */
 const listingQuerySchema = z
@@ -102,13 +104,14 @@ export async function browseListings(req: Request, res: Response): Promise<void>
 
 /** GET /listings/:id — the product detail page (full hydrated listing). */
 export async function getListingById(req: Request, res: Response): Promise<void> {
-  const id = req.params.id;
+  const id = routeParam(req, 'id');
   try {
-    const doc = await ListingModel.findById(id).lean<IListing | null>();
-    if (!doc || !PUBLICLY_VIEWABLE_STATUSES.includes(doc.status)) {
+    const row = await findListingById(id);
+    const listing = row === null ? null : toListingRecord(row);
+    if (!listing || !PUBLICLY_VIEWABLE_STATUSES.includes(listing.status)) {
       throw notFound('Listing not found');
     }
-    const [dto] = await hydrateListings([doc]);
+    const [dto] = await hydrateListings([listing]);
     sendSuccess(res, dto);
   } catch (err) {
     log.general.error({ err, listingId: id }, 'Failed to load listing');

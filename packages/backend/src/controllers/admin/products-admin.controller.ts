@@ -15,7 +15,8 @@ import type {
   UpdateListingInput,
   Listing as ListingDTO,
 } from '@moovo/shared-types';
-import { Listing, type IListing } from '../../models/listing.js';
+import { findListingById, listListingsForOwner } from '../../db/catalog/catalogRepository.js';
+import { toListingRecord, type ListingRecord } from '../../db/catalog/catalogShape.js';
 import {
   createStoreProduct,
   updateListing,
@@ -43,12 +44,13 @@ function storeId(req: Request): string {
 }
 
 /** Load a product and assert it belongs to the loaded store, else NOT_FOUND/FORBIDDEN. */
-async function loadStoreProduct(req: Request): Promise<IListing> {
+async function loadStoreProduct(req: Request): Promise<ListingRecord> {
   const id = routeParam(req, 'id');
-  const listing = await Listing.findById(id).lean<IListing | null>();
-  if (!listing) {
+  const row = await findListingById(id);
+  if (!row) {
     throw notFound('Product not found');
   }
+  const listing = toListingRecord(row);
   if (listing.ownerType !== 'store' || listing.storeId !== storeId(req)) {
     throw forbidden('Product does not belong to this store');
   }
@@ -57,11 +59,11 @@ async function loadStoreProduct(req: Request): Promise<IListing> {
 
 /** Hydrate a single listing by id into its `Listing` DTO. */
 async function hydrateById(listingId: string): Promise<ListingDTO | undefined> {
-  const doc = await Listing.findById(listingId).lean<IListing | null>();
-  if (!doc) {
+  const row = await findListingById(listingId);
+  if (!row) {
     return undefined;
   }
-  const [dto] = await hydrateListings([doc]);
+  const [dto] = await hydrateListings([toListingRecord(row)]);
   return dto;
 }
 
@@ -70,19 +72,11 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
   try {
     const id = storeId(req);
     const { page, limit } = parsePagination(req.query);
-    const filter = { ownerType: 'store' as const, storeId: id };
+    // No status filter: a store admin sees drafts and archived products too.
+    const result = await listListingsForOwner({ ownerType: 'store', storeId: id }, {}, page, limit);
 
-    const [docs, total] = await Promise.all([
-      Listing.find(filter)
-        .sort({ createdAt: -1, _id: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .lean<IListing[]>(),
-      Listing.countDocuments(filter),
-    ]);
-
-    const data = await hydrateListings(docs);
-    sendPaginated(res, data, buildPagination(page, limit, total));
+    const data = await hydrateListings(result.listings.map(toListingRecord));
+    sendPaginated(res, data, buildPagination(page, limit, result.total));
   } catch (err) {
     log.general.error({ err }, 'Failed to list store products');
     respondWithError(res, err, 'Failed to load products');
@@ -106,7 +100,7 @@ export async function createProduct(req: Request, res: Response): Promise<void> 
 export async function getProduct(req: Request, res: Response): Promise<void> {
   try {
     const listing = await loadStoreProduct(req);
-    const dto = await hydrateById(String((listing as { _id: unknown })._id));
+    const dto = await hydrateById(listing.id);
     sendSuccess(res, dto);
   } catch (err) {
     log.general.error({ err, productId: req.params.id }, 'Failed to load store product');
@@ -118,7 +112,7 @@ export async function getProduct(req: Request, res: Response): Promise<void> {
 export async function patchProduct(req: Request, res: Response): Promise<void> {
   try {
     const listing = await loadStoreProduct(req);
-    const listingId = String((listing as { _id: unknown })._id);
+    const listingId = listing.id;
     await updateListing(listingId, req.body as UpdateListingInput);
     const dto = await hydrateById(listingId);
     sendSuccess(res, dto);
@@ -132,8 +126,8 @@ export async function patchProduct(req: Request, res: Response): Promise<void> {
 export async function deleteProduct(req: Request, res: Response): Promise<void> {
   try {
     const listing = await loadStoreProduct(req);
-    await archiveListing(String((listing as { _id: unknown })._id));
-    sendSuccess(res, { id: String((listing as { _id: unknown })._id), status: 'archived' });
+    await archiveListing(listing.id);
+    sendSuccess(res, { id: listing.id, status: 'archived' });
   } catch (err) {
     log.general.error({ err, productId: req.params.id }, 'Failed to delete store product');
     respondWithError(res, err, 'Failed to delete product');
@@ -144,7 +138,7 @@ export async function deleteProduct(req: Request, res: Response): Promise<void> 
 export async function createVariant(req: Request, res: Response): Promise<void> {
   try {
     const listing = await loadStoreProduct(req);
-    const listingId = String((listing as { _id: unknown })._id);
+    const listingId = listing.id;
     await addVariant(listingId, req.body as CreateStoreProductVariantInput);
     const dto = await hydrateById(listingId);
     sendSuccess(res, dto, 201);
@@ -158,7 +152,7 @@ export async function createVariant(req: Request, res: Response): Promise<void> 
 export async function patchVariant(req: Request, res: Response): Promise<void> {
   try {
     const listing = await loadStoreProduct(req);
-    const listingId = String((listing as { _id: unknown })._id);
+    const listingId = listing.id;
     await updateVariant(listingId, routeParam(req, 'variantId'), req.body as UpdateVariantInput);
     const dto = await hydrateById(listingId);
     sendSuccess(res, dto);
@@ -172,7 +166,7 @@ export async function patchVariant(req: Request, res: Response): Promise<void> {
 export async function deleteVariant(req: Request, res: Response): Promise<void> {
   try {
     const listing = await loadStoreProduct(req);
-    const listingId = String((listing as { _id: unknown })._id);
+    const listingId = listing.id;
     await removeVariant(listingId, routeParam(req, 'variantId'));
     const dto = await hydrateById(listingId);
     sendSuccess(res, dto);
@@ -186,7 +180,7 @@ export async function deleteVariant(req: Request, res: Response): Promise<void> 
 export async function setVariantInventory(req: Request, res: Response): Promise<void> {
   try {
     const listing = await loadStoreProduct(req);
-    const listingId = String((listing as { _id: unknown })._id);
+    const listingId = listing.id;
     const body = req.body as { available: number };
     await setAvailable(routeParam(req, 'variantId'), listingId, body.available);
     const dto = await hydrateById(listingId);

@@ -102,10 +102,29 @@ describe('courier hydration is independent of the marketplace models', () => {
     }
   });
 
+  /**
+   * The control names a file that STILL reaches `src/models/`, and that file
+   * changes as the port advances.
+   *
+   * It was `catalog-hydration.service.ts` until the catalogue moved to
+   * PostgreSQL, at which point this case went red — correctly. It was measuring
+   * "the traversal can resolve into `src/models/`" using a file that had
+   * stopped reaching models at all, so the assertions above would have gone on
+   * passing for a reason that had nothing to do with the boundary.
+   *
+   * Naming the file explicitly rather than searching for any importer is
+   * deliberate: an explicit name fails loudly on the slice that ports it, which
+   * forces a decision, where a search would silently keep finding something
+   * until the last model went and then fail with no clue why.
+   *
+   * **When `src/models/` is deleted, DELETE THIS WHOLE FILE.** The boundary it
+   * guards is then enforced by the models not existing, and a control that
+   * cannot be satisfied is not a gate — it is a permanent red.
+   */
   it('proves the traversal can see a model at all (positive control)', () => {
     // Without this, the passing cases above are indistinguishable from a
     // traversal that never resolves anything into src/models/.
-    const reachable = reachableFrom(path.join(SERVICES, 'catalog-hydration.service.ts'));
+    const reachable = reachableFrom(path.join(SERVICES, 'cart.service.ts'));
     const models = [...reachable.keys()].filter((file) => file.startsWith(MODELS_DIR));
     expect(models.length).toBeGreaterThan(0);
   });

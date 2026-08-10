@@ -1,20 +1,27 @@
 /**
  * Catalog write service — the SINGLE funnel for catalog mutations.
  *
- * Both the P2P seller path and the store-product path create/update `Listing`s
- * and their `ProductVariant`s through here, so the denormalized `Listing` facets
+ * Both the P2P seller path and the store-product path create/update listings
+ * and their variants through here, so the denormalized listing facets
  * (`priceRange`, `hasInventory`, `variantCount`) ALWAYS stay in sync with the
- * variant collection. `syncListingFacets` is the one place those facets are
+ * variant table. `syncListingFacets` is the one place those facets are
  * recomputed and persisted; `inventory.service` re-uses it after stock changes
  * (no duplicate facet logic anywhere).
  *
  * P2P listings hide the variant model behind a flat `price`/`quantity` API: a
- * single Shopify-style "Default Title" variant is created. Store products expand
- * `options[].values` into the cartesian product of variants (or take an explicit
- * `variants[]`).
+ * single Shopify-style "Default Title" variant is created. Store products take
+ * an explicit `variants[]`.
+ *
+ * ## What the port changed, deliberately
+ *
+ * `listing.ts`'s `pre('validate')` hook is GONE, replaced by
+ * `listings_owner_shape_check`. The hook ran on `create` and `save` and NOT on
+ * the four `updateOne` paths, so the source could break the owner invariant
+ * through an update and never notice; the CHECK covers every write. Nothing
+ * re-implements the check in JavaScript — a read-then-write guard is a race,
+ * and the constraint is what actually decides.
  */
 
-import mongoose from 'mongoose';
 import type {
   CreateP2PListingInput,
   CreateStoreProductInput,
@@ -22,10 +29,28 @@ import type {
   Money,
   UpdateListingInput,
 } from '@moovo/shared-types';
-import { Listing, type IListing, type IListingImage } from '../models/listing.js';
-import { ProductVariant, type IProductVariant } from '../models/product-variant.js';
-import { Store } from '../models/store.js';
-import { Category, type ICategory } from '../models/category.js';
+import {
+  countVariants,
+  deleteVariantRow,
+  findCategoryBySlug,
+  findListingById,
+  insertListing,
+  insertVariants,
+  listVariantsForListing,
+  updateListingFacets,
+  updateListingRow,
+  updateVariantRow,
+  type ListingPatch,
+  type NewProductVariant,
+  type ProductVariantPatch,
+} from '../db/catalog/catalogRepository.js';
+import {
+  toListingRecord,
+  toProductVariantRecord,
+  type ListingImageValue,
+  type ProductVariantRecord,
+} from '../db/catalog/catalogShape.js';
+import { incrementStoreProductCount } from '../db/stores/storeRepository.js';
 import { config } from '../config/index.js';
 import { conflict, notFound, validationError } from '../lib/errors/error-codes.js';
 import { getOrCreate as getOrCreateSellerProfile } from './seller-profile.service.js';
@@ -37,18 +62,18 @@ const DEFAULT_VARIANT_TITLE = 'Default Title';
 async function resolveCategory(
   slug: string,
 ): Promise<{ categoryId: string; categorySlugs: string[] }> {
-  const category = await Category.findOne({ slug }).lean<ICategory | null>();
+  const category = await findCategoryBySlug(slug);
   if (!category) {
     throw notFound(`Category not found: ${slug}`);
   }
   return {
-    categoryId: String((category as { _id: mongoose.Types.ObjectId })._id),
+    categoryId: category.id,
     categorySlugs: [...category.ancestorSlugs, category.slug],
   };
 }
 
-/** Map input image file ids to the persisted `IListingImage[]` shape. */
-function toListingImages(imageFileIds: string[]): IListingImage[] {
+/** Map input image file ids to the persisted image shape. */
+function toListingImages(imageFileIds: string[]): ListingImageValue[] {
   if (imageFileIds.length > config.catalog.maxImagesPerListing) {
     throw validationError(
       `A listing may have at most ${config.catalog.maxImagesPerListing} images`,
@@ -63,50 +88,49 @@ function toListingImages(imageFileIds: string[]): IListingImage[] {
  *  - `hasInventory` = any untracked variant OR any tracked variant with available>0,
  *  - `variantCount` = number of variants.
  *
- * Returns the up-to-date variant docs so callers avoid a re-query. Shared by the
+ * Returns the up-to-date variants so callers avoid a re-query. Shared by the
  * write service and `inventory.service`.
+ *
+ * With no variants the price columns are set to NULL rather than zero: an
+ * absent price is not a free one, and `listings_price_min_shape_check` pairs
+ * each amount with its currency, so both halves move together.
  */
-export async function syncListingFacets(listingId: string): Promise<IProductVariant[]> {
-  const variants = await ProductVariant.find({ listingId })
-    .sort({ position: 1 })
-    .lean<IProductVariant[]>();
+export async function syncListingFacets(listingId: string): Promise<ProductVariantRecord[]> {
+  const variants = (await listVariantsForListing(listingId)).map(toProductVariantRecord);
 
   if (variants.length === 0) {
-    await Listing.updateOne(
-      { _id: listingId },
-      { $set: { hasInventory: false, variantCount: 0 } },
-    );
+    await updateListingFacets(listingId, {
+      priceMinAmount: null,
+      priceMinCurrency: null,
+      priceMaxAmount: null,
+      priceMaxCurrency: null,
+      hasInventory: false,
+      variantCount: 0,
+    });
     return variants;
   }
 
   const amounts = variants.map((v) => v.price.amount);
   const currency = variants[0].price.currency;
-  const hasInventory = variants.some(
-    (v) => !v.inventory.tracked || v.inventory.available > 0,
-  );
+  const hasInventory = variants.some((v) => !v.inventory.tracked || v.inventory.available > 0);
 
-  await Listing.updateOne(
-    { _id: listingId },
-    {
-      $set: {
-        priceRange: {
-          min: { amount: Math.min(...amounts), currency },
-          max: { amount: Math.max(...amounts), currency },
-        },
-        hasInventory,
-        variantCount: variants.length,
-      },
-    },
-  );
+  await updateListingFacets(listingId, {
+    priceMinAmount: Math.min(...amounts),
+    priceMinCurrency: currency,
+    priceMaxAmount: Math.max(...amounts),
+    priceMaxCurrency: currency,
+    hasInventory,
+    variantCount: variants.length,
+  });
 
   return variants;
 }
 
 /**
  * Create a P2P (secondhand) listing owned by an individual user. Creates the
- * `Listing` (`ownerType: 'user'`) plus a single Default-Title variant carrying
- * the price and `inventory.available = quantity ?? 1`. Lazily ensures the
- * seller's profile exists. Returns the new listing's id.
+ * listing (`ownerType: 'user'`) plus a single Default-Title variant carrying
+ * the price and `available = quantity ?? 1`. Lazily ensures the seller's
+ * profile exists. Returns the new listing's id.
  */
 export async function createP2PListing(
   oxyUserId: string,
@@ -117,7 +141,7 @@ export async function createP2PListing(
 
   const quantity = input.quantity ?? 1;
 
-  const listing = await Listing.create({
+  const listing = await insertListing({
     ownerType: 'user',
     oxyUserId,
     title: input.title,
@@ -129,28 +153,31 @@ export async function createP2PListing(
     images: toListingImages(input.imageFileIds),
     tags: input.tags ?? [],
     options: [],
-    priceRange: {
-      min: { amount: input.price.amount, currency: input.price.currency },
-      max: { amount: input.price.amount, currency: input.price.currency },
-    },
+    priceMinAmount: input.price.amount,
+    priceMinCurrency: input.price.currency,
+    priceMaxAmount: input.price.amount,
+    priceMaxCurrency: input.price.currency,
     hasInventory: quantity > 0,
     variantCount: 1,
     publishedAt: new Date(),
   });
 
-  const listingId = String(listing._id);
+  await insertVariants([
+    {
+      listingId: listing.id,
+      title: DEFAULT_VARIANT_TITLE,
+      optionValues: [],
+      priceAmount: input.price.amount,
+      priceCurrency: input.price.currency,
+      inventoryTracked: true,
+      inventoryAvailable: quantity,
+      inventoryCommitted: 0,
+      position: 0,
+    },
+  ]);
 
-  await ProductVariant.create({
-    listingId,
-    title: DEFAULT_VARIANT_TITLE,
-    optionValues: [],
-    price: { amount: input.price.amount, currency: input.price.currency },
-    inventory: { tracked: true, available: quantity, committed: 0, levels: [] },
-    position: 0,
-  });
-
-  await syncListingFacets(listingId);
-  return listingId;
+  await syncListingFacets(listing.id);
+  return listing.id;
 }
 
 /** Human-readable variant title from its option-value tuple (e.g. `M / Black`). */
@@ -161,57 +188,43 @@ function variantTitleFromOptions(optionValues: { name: string; value: string }[]
   return optionValues.map((o) => o.value).join(' / ');
 }
 
-/** A normalized variant ready to persist. */
-interface NormalizedVariant {
-  title: string;
-  optionValues: { name: string; value: string }[];
-  sku?: string;
-  price: Money;
-  compareAtPrice?: Money;
-  inventory: { tracked: boolean; available: number; committed: number; levels: [] };
-  position: number;
-}
-
 /**
  * Resolve the variants for a store product from the explicit `input.variants`.
  * Each variant carries its own option assignments, price, and inventory; the
- * `CreateStoreProductInput` contract requires at least one. (A future
- * option-only payload would expand `options[].values` into the cartesian product
- * here — that path is not part of the current contract.)
+ * `CreateStoreProductInput` contract requires at least one.
  */
-function resolveStoreVariants(input: CreateStoreProductInput): NormalizedVariant[] {
-  if (input.variants.length > 0) {
-    return input.variants.map((v: CreateStoreProductVariantInput, position) => {
-      const variant: NormalizedVariant = {
-        title: variantTitleFromOptions(v.optionValues),
-        optionValues: v.optionValues.map((o) => ({ name: o.name, value: o.value })),
-        price: { amount: v.price.amount, currency: v.price.currency },
-        inventory: {
-          tracked: v.inventory.tracked ?? true,
-          available: v.inventory.available,
-          committed: 0,
-          levels: [],
-        },
-        position,
-      };
-      if (v.sku) {
-        variant.sku = v.sku;
-      }
-      if (v.compareAtPrice) {
-        variant.compareAtPrice = { amount: v.compareAtPrice.amount, currency: v.compareAtPrice.currency };
-      }
-      return variant;
-    });
+function resolveStoreVariants(input: CreateStoreProductInput): Omit<NewProductVariant, 'listingId'>[] {
+  if (input.variants.length === 0) {
+    // No explicit variants: a store product MUST still produce at least one.
+    throw validationError('A store product must include at least one variant');
   }
 
-  // No explicit variants: a store product MUST still produce at least one variant.
-  throw validationError('A store product must include at least one variant');
+  return input.variants.map((v: CreateStoreProductVariantInput, position) => {
+    const variant: Omit<NewProductVariant, 'listingId'> = {
+      title: variantTitleFromOptions(v.optionValues),
+      optionValues: v.optionValues.map((o) => ({ name: o.name, value: o.value })),
+      priceAmount: v.price.amount,
+      priceCurrency: v.price.currency,
+      inventoryTracked: v.inventory.tracked ?? true,
+      inventoryAvailable: v.inventory.available,
+      inventoryCommitted: 0,
+      position,
+    };
+    if (v.sku) {
+      variant.sku = v.sku;
+    }
+    if (v.compareAtPrice) {
+      variant.compareAtAmount = v.compareAtPrice.amount;
+      variant.compareAtCurrency = v.compareAtPrice.currency;
+    }
+    return variant;
+  });
 }
 
 /**
- * Create a store product. Creates the `Listing` (`ownerType: 'store'`, with the
- * supplied selectable `options[]`) plus its variants, then increments the store's
- * `productCount`. Returns the new listing's id.
+ * Create a store product. Creates the listing (`ownerType: 'store'`, with the
+ * supplied selectable `options[]`) plus its variants, then increments the
+ * store's `productCount`. Returns the new listing's id.
  */
 export async function createStoreProduct(
   storeId: string,
@@ -227,7 +240,7 @@ export async function createStoreProduct(
   }
 
   const first = variants[0];
-  const listing = await Listing.create({
+  const listing = await insertListing({
     ownerType: 'store',
     storeId,
     title: input.title,
@@ -239,83 +252,87 @@ export async function createStoreProduct(
     images: toListingImages(input.imageFileIds),
     tags: input.tags ?? [],
     options: input.options.map((o) => ({ name: o.name, values: [...o.values] })),
-    priceRange: { min: first.price, max: first.price },
+    priceMinAmount: first.priceAmount,
+    priceMinCurrency: first.priceCurrency,
+    priceMaxAmount: first.priceAmount,
+    priceMaxCurrency: first.priceCurrency,
     hasInventory: false,
     variantCount: variants.length,
     publishedAt: new Date(),
   });
 
-  const listingId = String(listing._id);
+  await insertVariants(variants.map((v) => ({ ...v, listingId: listing.id })));
 
-  await ProductVariant.insertMany(
-    variants.map((v) => ({ ...v, listingId })),
-  );
+  await syncListingFacets(listing.id);
+  await incrementStoreProductCount(storeId, 1);
 
-  await syncListingFacets(listingId);
-  await Store.updateOne({ _id: storeId }, { $inc: { productCount: 1 } });
-
-  return listingId;
+  return listing.id;
 }
 
 /**
  * Update a listing's mutable fields (title, description, tags, status, images,
  * category). Price/quantity for P2P listings flow through the listing's single
- * variant via `updateVariant`. Recomputes facets afterwards. Returns nothing;
- * callers re-hydrate the listing for the response.
+ * variant. Recomputes facets afterwards. Returns nothing; callers re-hydrate
+ * the listing for the response.
  */
 export async function updateListing(
   listingId: string,
   patch: UpdateListingInput,
 ): Promise<void> {
-  const listing = await Listing.findById(listingId);
-  if (!listing) {
+  const row = await findListingById(listingId);
+  if (!row) {
     throw notFound('Listing not found');
   }
+  const listing = toListingRecord(row);
 
-  if (patch.title !== undefined) listing.title = patch.title;
-  if (patch.description !== undefined) listing.description = patch.description;
-  if (patch.tags !== undefined) listing.tags = [...patch.tags];
-  if (patch.condition !== undefined) listing.condition = patch.condition;
+  const columns: ListingPatch = {};
+  if (patch.title !== undefined) columns.title = patch.title;
+  if (patch.description !== undefined) columns.description = patch.description;
+  if (patch.tags !== undefined) columns.tags = [...patch.tags];
+  if (patch.condition !== undefined) columns.condition = patch.condition;
   if (patch.status !== undefined) {
-    listing.status = patch.status;
-    if (patch.status === 'active' && !listing.publishedAt) {
-      listing.publishedAt = new Date();
+    columns.status = patch.status;
+    if (patch.status === 'active' && listing.publishedAt === undefined) {
+      columns.publishedAt = new Date();
     }
   }
   if (patch.category !== undefined) {
     const { categoryId, categorySlugs } = await resolveCategory(patch.category);
-    listing.categoryId = categoryId;
-    listing.categorySlugs = categorySlugs;
+    columns.categoryId = categoryId;
+    columns.categorySlugs = categorySlugs;
   }
   if (patch.imageFileIds !== undefined) {
-    listing.images = toListingImages(patch.imageFileIds);
+    columns.images = toListingImages(patch.imageFileIds);
   }
 
-  // P2P price update flows through the single variant.
+  // P2P price/quantity updates flow through the single variant, which is the
+  // lowest-positioned one. Both are read from the same fetch rather than two.
+  const p2pVariantPatch: ProductVariantPatch = {};
   if (patch.price !== undefined && listing.ownerType === 'user') {
-    const variant = await ProductVariant.findOne({ listingId }).sort({ position: 1 });
-    if (variant) {
-      variant.price = { amount: patch.price.amount, currency: patch.price.currency };
-      await variant.save();
-    }
+    p2pVariantPatch.priceAmount = patch.price.amount;
+    p2pVariantPatch.priceCurrency = patch.price.currency;
   }
-  // P2P quantity update flows through the single variant's available stock.
   if (patch.quantity !== undefined && listing.ownerType === 'user') {
-    const variant = await ProductVariant.findOne({ listingId }).sort({ position: 1 });
-    if (variant) {
-      variant.inventory.available = patch.quantity;
-      await variant.save();
+    p2pVariantPatch.inventoryAvailable = patch.quantity;
+  }
+  if (Object.keys(p2pVariantPatch).length > 0) {
+    const [first] = await listVariantsForListing(listingId);
+    if (first) {
+      await updateVariantRow(listingId, first.id, p2pVariantPatch);
     }
   }
 
-  await listing.save();
+  await updateListingRow(listingId, columns);
   await syncListingFacets(listingId);
 }
 
 /** Archive a listing (soft-delete). Used by P2P DELETE and store DELETE. */
 export async function archiveListing(listingId: string): Promise<void> {
-  const result = await Listing.updateOne({ _id: listingId }, { $set: { status: 'archived' } });
-  if (result.matchedCount === 0) {
+  // `matchedCount` semantics: archiving an ALREADY-archived listing succeeds,
+  // exactly as the source's `updateOne` did. A `status <> 'archived'` clause
+  // here would turn a harmless repeat into a 404.
+  const matched = await updateListingRow(listingId, { status: 'archived' });
+  if (!matched) {
     throw notFound('Listing not found');
   }
 }
@@ -325,38 +342,41 @@ export async function addVariant(
   listingId: string,
   input: CreateStoreProductVariantInput,
 ): Promise<string> {
-  const listing = await Listing.findById(listingId).lean<IListing | null>();
+  const listing = await findListingById(listingId);
   if (!listing) {
     throw notFound('Listing not found');
   }
 
-  const existingCount = await ProductVariant.countDocuments({ listingId });
+  const existingCount = await countVariants(listingId);
   if (existingCount + 1 > config.catalog.maxVariantsPerProduct) {
     throw validationError(
       `A product may have at most ${config.catalog.maxVariantsPerProduct} variants`,
     );
   }
 
-  const created = await ProductVariant.create({
+  const values: NewProductVariant = {
     listingId,
     title: variantTitleFromOptions(input.optionValues),
     optionValues: input.optionValues.map((o) => ({ name: o.name, value: o.value })),
-    ...(input.sku ? { sku: input.sku } : {}),
-    price: { amount: input.price.amount, currency: input.price.currency },
-    ...(input.compareAtPrice
-      ? { compareAtPrice: { amount: input.compareAtPrice.amount, currency: input.compareAtPrice.currency } }
-      : {}),
-    inventory: {
-      tracked: input.inventory.tracked ?? true,
-      available: input.inventory.available,
-      committed: 0,
-      levels: [],
-    },
+    priceAmount: input.price.amount,
+    priceCurrency: input.price.currency,
+    inventoryTracked: input.inventory.tracked ?? true,
+    inventoryAvailable: input.inventory.available,
+    inventoryCommitted: 0,
     position: existingCount,
-  });
+  };
+  if (input.sku) {
+    values.sku = input.sku;
+  }
+  if (input.compareAtPrice) {
+    values.compareAtAmount = input.compareAtPrice.amount;
+    values.compareAtCurrency = input.compareAtPrice.currency;
+  }
+
+  const [created] = await insertVariants([values]);
 
   await syncListingFacets(listingId);
-  return String(created._id);
+  return created.id;
 }
 
 /** Fields accepted when updating a variant. */
@@ -375,34 +395,35 @@ export async function updateVariant(
   variantId: string,
   patch: UpdateVariantInput,
 ): Promise<void> {
-  const variant = await ProductVariant.findOne({ _id: variantId, listingId });
-  if (!variant) {
-    throw notFound('Variant not found');
-  }
+  const columns: ProductVariantPatch = {};
 
-  if (patch.title !== undefined) variant.title = patch.title;
-  if (patch.sku !== undefined) variant.sku = patch.sku;
+  if (patch.title !== undefined) columns.title = patch.title;
+  if (patch.sku !== undefined) columns.sku = patch.sku;
   if (patch.price !== undefined) {
-    variant.price = { amount: patch.price.amount, currency: patch.price.currency };
+    columns.priceAmount = patch.price.amount;
+    columns.priceCurrency = patch.price.currency;
   }
   if (patch.compareAtPrice !== undefined) {
-    if (patch.compareAtPrice === null) {
-      variant.compareAtPrice = undefined;
-    } else {
-      variant.compareAtPrice = { amount: patch.compareAtPrice.amount, currency: patch.compareAtPrice.currency };
-    }
+    // Both halves move together — `product_variants_compare_at_shape_check`
+    // refuses an amount without its currency.
+    columns.compareAtAmount = patch.compareAtPrice === null ? null : patch.compareAtPrice.amount;
+    columns.compareAtCurrency =
+      patch.compareAtPrice === null ? null : patch.compareAtPrice.currency;
   }
   if (patch.optionValues !== undefined) {
-    variant.optionValues = patch.optionValues.map((o) => ({ name: o.name, value: o.value }));
+    columns.optionValues = patch.optionValues.map((o) => ({ name: o.name, value: o.value }));
   }
   if (patch.inventory?.tracked !== undefined) {
-    variant.inventory.tracked = patch.inventory.tracked;
+    columns.inventoryTracked = patch.inventory.tracked;
   }
   if (patch.inventory?.available !== undefined) {
-    variant.inventory.available = patch.inventory.available;
+    columns.inventoryAvailable = patch.inventory.available;
   }
 
-  await variant.save();
+  const matched = await updateVariantRow(listingId, variantId, columns);
+  if (!matched) {
+    throw notFound('Variant not found');
+  }
   await syncListingFacets(listingId);
 }
 
@@ -411,12 +432,12 @@ export async function updateVariant(
  * so removing the last variant is rejected. Recomputes facets afterwards.
  */
 export async function removeVariant(listingId: string, variantId: string): Promise<void> {
-  const count = await ProductVariant.countDocuments({ listingId });
+  const count = await countVariants(listingId);
   if (count <= 1) {
     throw conflict('A listing must keep at least one variant');
   }
-  const result = await ProductVariant.deleteOne({ _id: variantId, listingId });
-  if (result.deletedCount === 0) {
+  const deleted = await deleteVariantRow(listingId, variantId);
+  if (!deleted) {
     throw notFound('Variant not found');
   }
   await syncListingFacets(listingId);

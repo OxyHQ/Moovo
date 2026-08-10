@@ -21,7 +21,7 @@
  * preserve a value the seller had just cleared.
  */
 
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { sellerProfiles } from '../schema/stores';
 
@@ -95,6 +95,26 @@ export async function ensureSellerProfile(
     .where(eq(sellerProfiles.oxyUserId, oxyUserId))
     .limit(1);
   return toRecord(existing);
+}
+
+/**
+ * Profiles for a set of Oxy user ids, in no particular order.
+ *
+ * A READ, unlike `ensureSellerProfile` beside it: listing hydration must not
+ * create a profile as a side effect of somebody browsing. A seller with no row
+ * is simply absent from the result, and the DTO builder already falls back to
+ * the Oxy identity for that case.
+ */
+export async function findSellerProfilesByUserIds(
+  oxyUserIds: string[],
+  db: DatabaseOrTransaction = getDb(),
+): Promise<SellerProfileRecord[]> {
+  if (oxyUserIds.length === 0) return [];
+  const rows = await db
+    .select()
+    .from(sellerProfiles)
+    .where(inArray(sellerProfiles.oxyUserId, oxyUserIds));
+  return rows.map(toRecord);
 }
 
 /** The preference groups a caller may submit. */

@@ -21,7 +21,7 @@
  *    broke something.
  */
 
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { isUniqueViolation } from '@oxyhq/db';
 import type { StorePermission, StoreRole, TextTone } from '@moovo/shared-types';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
@@ -248,6 +248,66 @@ export async function listStoresForMember(
   }
 
   return rows.map((r) => toStoreRecord(r.store, byStore.get(r.store.id) ?? []));
+}
+
+/**
+ * Stores for a set of ids, in no particular order.
+ *
+ * Exists so listing hydration resolves every owning store in ONE round trip.
+ * The per-id alternative is an N+1 across the hottest read in the product, and
+ * the source avoided it the same way (`Store.find({_id: {$in: ids}})`).
+ *
+ * Members are fetched in a second statement and grouped in memory rather than
+ * joined, because a join would multiply each store row by its member count and
+ * the caller wants one record per store.
+ */
+export async function findStoresByIds(
+  storeIds: string[],
+  db: DatabaseOrTransaction = getDb(),
+): Promise<StoreRecord[]> {
+  if (storeIds.length === 0) return [];
+
+  const rows = await db.select().from(stores).where(inArray(stores.id, storeIds));
+  if (rows.length === 0) return [];
+
+  const allMembers = await db
+    .select()
+    .from(storeMembers)
+    .where(
+      inArray(
+        storeMembers.storeId,
+        rows.map((r) => r.id),
+      ),
+    )
+    .orderBy(storeMembers.joinedAt, storeMembers.id);
+
+  const byStore = new Map<string, MemberRow[]>();
+  for (const member of allMembers) {
+    const bucket = byStore.get(member.storeId);
+    if (bucket === undefined) byStore.set(member.storeId, [member]);
+    else bucket.push(member);
+  }
+
+  return rows.map((row) => toStoreRecord(row, byStore.get(row.id) ?? []));
+}
+
+/**
+ * Move a store's denormalized `productCount` by `delta`.
+ *
+ * Expressed as a SQL increment rather than read-modify-write, so two concurrent
+ * product creates cannot both read the same count and both write it back — the
+ * race the source's `$inc` had already avoided and which a JavaScript
+ * round-trip would reintroduce.
+ */
+export async function incrementStoreProductCount(
+  storeId: string,
+  delta: number,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<void> {
+  await db
+    .update(stores)
+    .set({ productCount: sql`${stores.productCount} + ${delta}` })
+    .where(eq(stores.id, storeId));
 }
 
 /** The store columns an update may set, already flattened. */
