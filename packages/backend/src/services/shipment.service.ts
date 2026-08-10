@@ -6,17 +6,24 @@
  * internal quote lands). Ownership is enforced HERE by throwing typed
  * `MoovoError`s (`NOT_FOUND`/`FORBIDDEN`) that thin controllers map onto the
  * response. Shipment DTOs are built ONLY through `shipment-hydration.service`;
- * this module loads docs and delegates serialization.
+ * this module loads records and delegates serialization.
  */
 
-import type { CreateShipmentInput } from '@moovo/shared-types';
-import { Shipment, type IShipment, type IScheduling } from '../models/shipment.js';
+import type { CreateShipmentInput, ShipmentStatus, ShipmentType } from '@moovo/shared-types';
+import {
+  countShipmentsForSender,
+  findShipmentById,
+  insertShipment,
+  listShipmentsForSender,
+  markShipmentCancelled,
+} from '../db/transport/shipmentRepository.js';
+import type { SchedulingValue, ShipmentRecord } from '../db/transport/shipmentShape.js';
 import { quoteShipment } from './quote.service.js';
 import { conflict, forbidden, notFound } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
 
 /** Map the input scheduling DTO to the persisted shape (parsing the ISO time). */
-function toScheduling(input: CreateShipmentInput['scheduling']): IScheduling {
+function toScheduling(input: CreateShipmentInput['scheduling']): SchedulingValue {
   if (!input || input.kind === 'now') {
     return { kind: 'now' };
   }
@@ -27,26 +34,26 @@ function toScheduling(input: CreateShipmentInput['scheduling']): IScheduling {
 interface ListParams {
   page: number;
   limit: number;
-  status?: IShipment['status'];
-  type?: IShipment['type'];
+  status?: ShipmentStatus;
+  type?: ShipmentType;
 }
 
-/** A page of shipment docs plus the total matching count (controller paginates). */
+/** A page of shipment records plus the total matching count (controller paginates). */
 export interface ShipmentPage {
-  data: IShipment[];
+  data: ShipmentRecord[];
   total: number;
 }
 
 /**
  * Create a shipment for `senderOxyUserId` and generate its quotes. The shipment
  * is persisted in `quoting`; `quoteShipment` writes the internal + provider
- * quotes and flips it to `quoted`. Returns the up-to-date shipment doc.
+ * quotes and flips it to `quoted`. Returns the up-to-date shipment record.
  */
 export async function createShipment(
   senderOxyUserId: string,
   input: CreateShipmentInput,
-): Promise<IShipment> {
-  const created = await Shipment.create({
+): Promise<ShipmentRecord> {
+  const created = await insertShipment({
     senderOxyUserId,
     type: input.type,
     status: 'quoting',
@@ -58,15 +65,16 @@ export async function createShipment(
     scheduling: toScheduling(input.scheduling),
   });
 
-  const shipment = created.toObject<IShipment>();
-  await quoteShipment(shipment);
+  await quoteShipment(created);
 
-  const refreshed = await Shipment.findById(created._id).lean<IShipment | null>();
+  // Re-read: `quoteShipment` writes the distance and flips the status, so the
+  // caller is handed the shipment as it now stands rather than as it was.
+  const refreshed = await findShipmentById(created.id);
   if (!refreshed) {
     throw notFound('Shipment not found');
   }
   log.general.info(
-    { shipmentId: String(refreshed._id), senderOxyUserId, type: refreshed.type },
+    { shipmentId: refreshed.id, senderOxyUserId, type: refreshed.type },
     'Created shipment',
   );
   return refreshed;
@@ -77,54 +85,53 @@ export async function listMine(
   senderOxyUserId: string,
   { page, limit, status, type }: ListParams,
 ): Promise<ShipmentPage> {
-  const filter = {
-    senderOxyUserId,
-    ...(status ? { status } : {}),
-    ...(type ? { type } : {}),
-  };
-  const [docs, total] = await Promise.all([
-    Shipment.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean<IShipment[]>(),
-    Shipment.countDocuments(filter),
+  const filter = { senderOxyUserId, status, type };
+  const [data, total] = await Promise.all([
+    listShipmentsForSender(filter, { page, limit }),
+    countShipmentsForSender(filter),
   ]);
-  return { data: docs, total };
+  return { data, total };
 }
 
 /** Get a single shipment owned by the caller, or throw NOT_FOUND/FORBIDDEN. */
-export async function getMine(senderOxyUserId: string, id: string): Promise<IShipment> {
-  const doc = await Shipment.findById(id).lean<IShipment | null>();
-  if (!doc) {
+export async function getMine(senderOxyUserId: string, id: string): Promise<ShipmentRecord> {
+  const record = await findShipmentById(id);
+  if (!record) {
     throw notFound('Shipment not found');
   }
-  if (String(doc.senderOxyUserId) !== senderOxyUserId) {
+  if (record.senderOxyUserId !== senderOxyUserId) {
     throw forbidden('You do not own this shipment');
   }
-  return doc;
+  return record;
 }
 
 /**
  * Cancel the caller's own shipment. Only a non-booked, non-terminal shipment may
  * be cancelled; a booked shipment is managed through its job.
+ *
+ * The three refusals stay in the service rather than becoming one WHERE clause:
+ * each raises a distinct typed error that a controller maps to a distinct
+ * response, and a predicate that simply matched no rows could not tell "already
+ * cancelled" from "not yours" from "does not exist".
  */
-export async function cancel(senderOxyUserId: string, id: string): Promise<IShipment> {
-  const doc = await Shipment.findById(id);
-  if (!doc) {
+export async function cancel(senderOxyUserId: string, id: string): Promise<ShipmentRecord> {
+  const record = await findShipmentById(id);
+  if (!record) {
     throw notFound('Shipment not found');
   }
-  if (String(doc.senderOxyUserId) !== senderOxyUserId) {
+  if (record.senderOxyUserId !== senderOxyUserId) {
     throw forbidden('You do not own this shipment');
   }
-  if (doc.status === 'booked') {
+  if (record.status === 'booked') {
     throw conflict('A booked shipment cannot be cancelled; cancel its job instead');
   }
-  if (doc.status === 'cancelled' || doc.status === 'expired') {
-    throw conflict(`Shipment is already ${doc.status}`);
+  if (record.status === 'cancelled' || record.status === 'expired') {
+    throw conflict(`Shipment is already ${record.status}`);
   }
-  doc.status = 'cancelled';
-  await doc.save();
+  const cancelled = await markShipmentCancelled(id);
+  if (!cancelled) {
+    throw notFound('Shipment not found');
+  }
   log.general.info({ shipmentId: id, senderOxyUserId }, 'Cancelled shipment');
-  return doc.toObject<IShipment>();
+  return cancelled;
 }

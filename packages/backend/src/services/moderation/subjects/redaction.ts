@@ -52,7 +52,10 @@
  * correctly.
  */
 
-import type { IShipmentAddress, IShipmentEndpoint } from '../../../models/shipment.js';
+import type {
+  ShipmentAddressValue,
+  ShipmentEndpointValue,
+} from '../../../db/transport/shipmentShape.js';
 
 /** §5.3 claims and labels are bounded, flat and scalar. */
 const MAX_LABEL_LENGTH = 200;
@@ -86,7 +89,7 @@ export function note(value: string | undefined): string | undefined {
  * Returns `undefined` when there is nothing safe to say, which is a normal
  * outcome and not an error.
  */
-export function coarseLocationLabel(address: IShipmentAddress | undefined): string | undefined {
+export function coarseLocationLabel(address: ShipmentAddressValue | undefined): string | undefined {
   if (!address) return undefined;
   const parts = [address.city, address.region, address.country]
     .map((part) => boundedText(part, MAX_LABEL_LENGTH))
@@ -100,7 +103,7 @@ export function coarseLocationLabel(address: IShipmentAddress | undefined): stri
 /**
  * One endpoint of a delivery, reduced to what a stranger may see.
  *
- * The return type is deliberately NOT derived from `IShipmentEndpoint`. A
+ * The return type is deliberately NOT derived from `ShipmentEndpointValue`. A
  * structural `Omit` would silently start passing any field added to the endpoint
  * later — a `recipientEmail`, a `buzzerCode`, an `accessInstructions` — and the
  * failure mode of that is a PII leak that no test knows to look for. Listing the
@@ -114,7 +117,7 @@ export interface RedactedEndpoint {
   readonly notes?: string;
 }
 
-export function redactEndpoint(endpoint: IShipmentEndpoint | undefined): RedactedEndpoint {
+export function redactEndpoint(endpoint: ShipmentEndpointValue | undefined): RedactedEndpoint {
   if (!endpoint) return {};
   const locationLabel = coarseLocationLabel(endpoint.address);
   const endpointNotes = note(endpoint.notes);

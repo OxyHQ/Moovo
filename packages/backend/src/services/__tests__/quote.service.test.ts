@@ -1,34 +1,56 @@
 /**
  * Unit tests for `quote.service.quoteShipment`.
  *
- * `mongodb-memory-server` is not available, so the Shipment/Quote/Provider
- * models and the provider registry are mocked. Tests assert the quote contract:
- * the internal Moovo-courier quote is ALWAYS present; enabled providers
- * contribute external quotes; ONE failing/throwing provider is ISOLATED (the
- * others still produce quotes, and the failure is not propagated); the shipment
- * is flipped quoting → quoted.
+ * The shipment/quote/provider repositories and the provider registry are mocked,
+ * so this suite tests the quote CONTRACT and nothing about SQL: the internal
+ * Moovo-courier quote is ALWAYS present; enabled providers contribute external
+ * quotes; ONE failing/throwing provider is ISOLATED (the others still produce
+ * quotes, and the failure is not propagated); the distance is persisted and the
+ * shipment is flipped quoting → quoted.
+ *
+ * Three shape changes came with the port, and they are the same three every
+ * retargeted suite in this repo sees:
+ *
+ *  - a repository function RESOLVES its rows, where the Mongoose call returned a
+ *    chainable needing `.lean()`;
+ *  - an id is `id`, never `_id`;
+ *  - the seam is a named function, so a test asserts the ARGUMENTS a service
+ *    passed rather than the shape of an update document. `{$set: {status:
+ *    'quoted'}}` is not something the service composes any more — the intent has
+ *    a name, `markShipmentQuoted`, and the CAS predicate that makes it safe now
+ *    lives in the repository, where a realdb test can reach it.
+ *
+ * The transaction is mocked as "run the callback" — its ATOMICITY is a property
+ * of a real server and is asserted in `quote-shipment.realdb.test.ts`, not here.
+ * A mocked transaction that resolves cannot roll anything back, so a test using
+ * one to claim atomicity would pass against code that had none.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ProviderQuote } from '@moovo/shared-types';
 
-const shipmentUpdateOne = vi.fn();
-const quoteInsertMany = vi.fn();
+const updateShipmentDistance = vi.fn();
+const markShipmentQuoted = vi.fn();
+const insertQuotes = vi.fn();
 const providerFind = vi.fn();
 const getAdapter = vi.fn();
 
-vi.mock('../../models/shipment.js', () => ({
-  Shipment: { updateOne: (...args: unknown[]) => shipmentUpdateOne(...args) },
+/** A transaction handle that simply runs its callback — see the module header. */
+const transaction = vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb({ tx: true }));
+vi.mock('../../db/postgres.js', () => ({
+  getDb: () => ({ transaction: (cb: (tx: unknown) => Promise<unknown>) => transaction(cb) }),
 }));
 
-vi.mock('../../models/quote.js', () => ({
-  Quote: { insertMany: (...args: unknown[]) => quoteInsertMany(...args), find: vi.fn() },
+vi.mock('../../db/transport/shipmentRepository.js', () => ({
+  updateShipmentDistance: (...args: unknown[]) => updateShipmentDistance(...args),
+  markShipmentQuoted: (...args: unknown[]) => markShipmentQuoted(...args),
 }));
 
-// `providers` moved to Postgres, so the seam is the repository now. Two shape
-// changes came with it: `listEnabledProvidersForType` RESOLVES rows where
-// `Provider.find(...)` returned a chainable needing `.lean()`, and a row's id
-// is `id`, not `_id`.
+vi.mock('../../db/transport/quoteRepository.js', () => ({
+  insertQuotes: (...args: unknown[]) => insertQuotes(...args),
+  listActiveQuotesForShipment: vi.fn(),
+}));
+
 vi.mock('../../db/transport/providerRepository.js', () => ({
   listEnabledProvidersForType: (...args: unknown[]) => providerFind(...args),
 }));
@@ -38,7 +60,7 @@ vi.mock('../providers/provider-registry.js', () => ({
 }));
 
 import { quoteShipment } from '../quote.service.js';
-import type { IShipment } from '../../models/shipment.js';
+import type { ShipmentRecord } from '../../db/transport/shipmentShape.js';
 
 /** A FAIR price breakdown helper. */
 function breakdown(total: number): ProviderQuote['priceBreakdown'] {
@@ -50,10 +72,10 @@ function breakdown(total: number): ProviderQuote['priceBreakdown'] {
   };
 }
 
-/** A mock shipment doc with two endpoints ~1km apart. */
-function mockShipment(): IShipment {
+/** A shipment record with two endpoints ~1.5km apart. */
+function mockShipment(): ShipmentRecord {
   return {
-    _id: 'shipment-1',
+    id: 'shipment-1',
     senderOxyUserId: 'sender-1',
     type: 'package',
     status: 'quoting',
@@ -75,16 +97,24 @@ function mockShipment(): IShipment {
     scheduling: { kind: 'now' },
     createdAt: new Date(),
     updatedAt: new Date(),
-  } as unknown as IShipment;
+  };
+}
+
+/** The quotes handed to `insertQuotes` by the call under test. */
+function writtenQuotes(): Array<{ source: string; providerId?: string }> {
+  return insertQuotes.mock.calls[0]?.[0] as Array<{ source: string; providerId?: string }>;
 }
 
 beforeEach(() => {
-  shipmentUpdateOne.mockReset().mockResolvedValue({ modifiedCount: 1 });
-  // insertMany echoes back lean-ish docs with a `toObject` mirror.
-  quoteInsertMany.mockReset().mockImplementation((docs: Record<string, unknown>[]) =>
-    Promise.resolve(
-      docs.map((d, i) => ({ ...d, _id: `quote-${i}`, toObject: () => ({ ...d, _id: `quote-${i}` }) })),
-    ),
+  updateShipmentDistance.mockReset().mockResolvedValue(undefined);
+  markShipmentQuoted.mockReset().mockResolvedValue(undefined);
+  insertQuotes
+    .mockReset()
+    .mockImplementation((docs: Record<string, unknown>[]) =>
+      Promise.resolve(docs.map((d, i) => ({ ...d, id: `quote-${i}` }))),
+    );
+  transaction.mockReset().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
+    cb({ tx: true }),
   );
   providerFind.mockReset();
   getAdapter.mockReset();
@@ -96,10 +126,10 @@ describe('quote.service.quoteShipment', () => {
 
     await quoteShipment(mockShipment());
 
-    expect(quoteInsertMany).toHaveBeenCalledTimes(1);
-    const docs = quoteInsertMany.mock.calls[0][0] as { source: string }[];
+    expect(insertQuotes).toHaveBeenCalledTimes(1);
+    const docs = writtenQuotes();
     expect(docs).toHaveLength(1);
-    expect(docs[0].source).toBe('moovo_courier');
+    expect(docs[0]?.source).toBe('moovo_courier');
   });
 
   it('contributes one external quote per enabled provider adapter', async () => {
@@ -116,7 +146,7 @@ describe('quote.service.quoteShipment', () => {
 
     await quoteShipment(mockShipment());
 
-    const docs = quoteInsertMany.mock.calls[0][0] as { source: string; providerId?: string }[];
+    const docs = writtenQuotes();
     expect(docs).toHaveLength(3); // 1 internal + 2 external
     expect(docs.filter((d) => d.source === 'moovo_courier')).toHaveLength(1);
     expect(docs.filter((d) => d.source === 'external_provider')).toHaveLength(2);
@@ -140,7 +170,7 @@ describe('quote.service.quoteShipment', () => {
     // Must NOT reject despite the failing provider.
     await expect(quoteShipment(mockShipment())).resolves.toBeDefined();
 
-    const docs = quoteInsertMany.mock.calls[0][0] as { source: string; providerId?: string }[];
+    const docs = writtenQuotes();
     // 1 internal + 1 from the good provider (the bad one is isolated/skipped).
     expect(docs).toHaveLength(2);
     expect(docs.filter((d) => d.source === 'external_provider')).toHaveLength(1);
@@ -152,11 +182,7 @@ describe('quote.service.quoteShipment', () => {
 
     await quoteShipment(mockShipment());
 
-    // First updateOne persists distance; a later updateOne flips status to quoted.
-    const statusFlip = shipmentUpdateOne.mock.calls.find(
-      (call) => (call[1] as { $set?: { status?: string } })?.$set?.status === 'quoted',
-    );
-    expect(statusFlip).toBeDefined();
+    expect(markShipmentQuoted).toHaveBeenCalledWith('shipment-1', expect.anything());
   });
 
   it('persists the computed distance on the shipment', async () => {
@@ -164,9 +190,38 @@ describe('quote.service.quoteShipment', () => {
 
     await quoteShipment(mockShipment());
 
-    const distanceUpdate = shipmentUpdateOne.mock.calls.find(
-      (call) => typeof (call[1] as { $set?: { distanceM?: number } })?.$set?.distanceM === 'number',
-    );
-    expect(distanceUpdate).toBeDefined();
+    expect(updateShipmentDistance).toHaveBeenCalledTimes(1);
+    const [shipmentId, distanceM] = updateShipmentDistance.mock.calls[0] as [string, number];
+    expect(shipmentId).toBe('shipment-1');
+    expect(distanceM).toBeGreaterThan(0);
+  });
+
+  /**
+   * The write half runs inside the transaction and the fan-out does not.
+   *
+   * Asserted through the ORDER of the mocked calls rather than by inspecting a
+   * handle: the distance write and the provider fan-out must both have happened
+   * BEFORE the transaction callback opens, because a transaction held across
+   * several carriers' network calls pins a pooled connection for as long as the
+   * slowest adapter takes. A test that only checked "the quotes were written"
+   * would pass equally well with the fan-out inside.
+   */
+  it('opens the transaction AFTER the provider fan-out, not around it', async () => {
+    const order: string[] = [];
+    providerFind.mockImplementation(async () => {
+      order.push('fan-out');
+      return [];
+    });
+    updateShipmentDistance.mockImplementation(async () => {
+      order.push('distance');
+    });
+    transaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => {
+      order.push('transaction');
+      return cb({ tx: true });
+    });
+
+    await quoteShipment(mockShipment());
+
+    expect(order).toEqual(['distance', 'fan-out', 'transaction']);
   });
 });

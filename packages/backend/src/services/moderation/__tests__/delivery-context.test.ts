@@ -29,8 +29,13 @@ function query(value: unknown) {
 vi.mock('../../../models/job.js', () => ({
   Job: { findById: (...args: unknown[]) => jobFindById(...args) },
 }));
-vi.mock('../../../models/shipment.js', () => ({
-  Shipment: { findById: (...args: unknown[]) => shipmentFindById(...args) },
+// `shipments` is Postgres now, and the seam is the PROJECTION the repository
+// exposes rather than a model plus a `.select()` string. The fixture below is
+// narrower as a result, and that narrowing is the point: the contact names,
+// phone numbers, street addresses and photo file ids are no longer values this
+// module declines to pass on — they are values it never loads.
+vi.mock('../../../db/transport/shipmentRepository.js', () => ({
+  findShipmentModerationFacts: (...args: unknown[]) => shipmentFindById(...args),
 }));
 
 import {
@@ -127,9 +132,12 @@ function job(overrides: Record<string, unknown> = {}) {
 
 function shipment(overrides: Record<string, unknown> = {}) {
   return {
-    _id: OBJECT_ID,
+    id: OBJECT_ID,
     itemDescription: 'A sealed cardboard box, contents unknown',
-    photos: [{ fileId: 'file-1', position: 0 }, { fileId: 'file-2', position: 1 }],
+    // A COUNT, computed in SQL. The file ids themselves never reach this process
+    // — `shipment-moderation-facts.realdb.test.ts` asserts the projection really
+    // withholds them, which is a claim only a real server can settle.
+    photoCount: 2,
     type: 'package' as const,
     distanceM: 12_400,
     ...overrides,
@@ -139,7 +147,7 @@ function shipment(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   jobFindById.mockReturnValue(query(job()));
-  shipmentFindById.mockReturnValue(query(shipment()));
+  shipmentFindById.mockResolvedValue(shipment());
 });
 
 describe('the exact key set a delivery may carry', () => {
@@ -231,7 +239,7 @@ describe('buildDeliveryResource', () => {
   });
 
   it('survives a shipment that no longer exists', async () => {
-    shipmentFindById.mockReturnValue(query(null));
+    shipmentFindById.mockResolvedValue(null);
     const data = facts(await buildDeliveryResource(job()));
     expect(data.itemDescription).toBeUndefined();
     expect(data.photoCount).toBe(0);

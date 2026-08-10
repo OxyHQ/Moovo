@@ -54,9 +54,17 @@ vi.mock('../../models/courier-profile.js', () => ({
   CourierProfile: { updateOne: (...args: unknown[]) => profileUpdateOne(...args) },
 }));
 
-vi.mock('../../models/shipment.js', () => ({ Shipment: { findById: vi.fn(), updateOne: vi.fn() } }));
-vi.mock('../../models/quote.js', () => ({ Quote: { findById: vi.fn(), updateOne: vi.fn() } }));
-vi.mock('../../models/provider.js', () => ({ Provider: { findById: vi.fn() } }));
+// Transport reads `job.service` performs on paths this suite does not exercise.
+// Stubbed so importing it never opens a database connection.
+vi.mock('../../db/transport/shipmentRepository.js', () => ({
+  findShipmentById: vi.fn(),
+  markShipmentBooked: vi.fn(),
+}));
+vi.mock('../../db/transport/quoteRepository.js', () => ({
+  findQuoteById: vi.fn(),
+  markQuoteSelected: vi.fn(),
+}));
+vi.mock('../../db/transport/providerRepository.js', () => ({ findProviderById: vi.fn() }));
 vi.mock('../../models/counter.js', () => ({ nextJobNumber: vi.fn() }));
 vi.mock('../providers/provider-registry.js', () => ({ getAdapter: vi.fn() }));
 

@@ -10,8 +10,8 @@
  */
 
 import type { ProviderQuote, FairMoney, JobStatus, GeoPoint } from '@moovo/shared-types';
-import type { IShipment } from '../../../models/shipment.js';
-import type { IQuote } from '../../../models/quote.js';
+import type { ShipmentRecord } from '../../../db/transport/shipmentShape.js';
+import type { QuoteRecord } from '../../../db/transport/quoteRepository.js';
 import type {
   ProviderAdapter,
   ProviderBooking,
@@ -47,7 +47,7 @@ function fair(fairMinor: number): FairMoney {
 }
 
 /** Great-circle pickup→dropoff distance for a shipment, metres. */
-function shipmentDistanceM(shipment: IShipment): number {
+function shipmentDistanceM(shipment: ShipmentRecord): number {
   return distanceMetersBetween(
     shipment.pickup.location.coordinates,
     shipment.dropoff.location.coordinates,
@@ -66,7 +66,7 @@ function makeMockAdapter(params: MockCarrierParams): ProviderAdapter {
   return {
     key: params.key,
 
-    async quote(shipment: IShipment): Promise<ProviderQuote[]> {
+    async quote(shipment: ShipmentRecord): Promise<ProviderQuote[]> {
       const distanceM = shipmentDistanceM(shipment);
       const distanceKm = distanceM / METERS_PER_KM;
       const baseFairMinor = params.baseFairMinor;
@@ -88,10 +88,10 @@ function makeMockAdapter(params: MockCarrierParams): ProviderAdapter {
       return [quote];
     },
 
-    async book(shipment: IShipment, _quote: IQuote): Promise<ProviderBooking> {
-      const bookingRef = `${params.key}-bk-${String(shipment._id)}-${Date.now()}`;
+    async book(shipment: ShipmentRecord, _quote: QuoteRecord): Promise<ProviderBooking> {
+      const bookingRef = `${params.key}-bk-${shipment.id}-${Date.now()}`;
       log.general.info(
-        { providerKey: params.key, shipmentId: String(shipment._id), bookingRef },
+        { providerKey: params.key, shipmentId: shipment.id, bookingRef },
         'Mock provider booking created',
       );
       return { bookingRef, trackingUrl: `https://example.invalid/${params.key}/${bookingRef}` };

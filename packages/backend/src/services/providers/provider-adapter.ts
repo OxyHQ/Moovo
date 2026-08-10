@@ -10,8 +10,8 @@
  */
 
 import type { JobStatus, ProviderQuote, GeoPoint } from '@moovo/shared-types';
-import type { IShipment } from '../../models/shipment.js';
-import type { IQuote } from '../../models/quote.js';
+import type { ShipmentRecord } from '../../db/transport/shipmentShape.js';
+import type { QuoteRecord } from '../../db/transport/quoteRepository.js';
 
 /** What an adapter returns from a successful `book`. */
 export interface ProviderBooking {
@@ -36,9 +36,9 @@ export interface ProviderAdapter {
   /** Stable adapter key (matches `Provider.key`). */
   key: string;
   /** Price a shipment; returns zero or more FAIR-priced quotes. */
-  quote(shipment: IShipment): Promise<ProviderQuote[]>;
+  quote(shipment: ShipmentRecord): Promise<ProviderQuote[]>;
   /** Book a shipment against a selected quote; returns the booking reference. */
-  book(shipment: IShipment, quote: IQuote): Promise<ProviderBooking>;
+  book(shipment: ShipmentRecord, quote: QuoteRecord): Promise<ProviderBooking>;
   /** Fetch the current tracking status for a booking. */
   track(bookingRef: string): Promise<ProviderTracking>;
   /** Cancel a booking, when the provider supports cancellation. */

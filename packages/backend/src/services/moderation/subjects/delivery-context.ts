@@ -14,7 +14,10 @@
 
 import { isLiveEntityId } from '@oxyhq/db';
 import { Job, type IJob } from '../../../models/job.js';
-import { Shipment, type IShipment } from '../../../models/shipment.js';
+import {
+  findShipmentModerationFacts,
+  type ShipmentModerationFacts,
+} from '../../../db/transport/shipmentRepository.js';
 import { note, redactEndpoint } from './redaction.js';
 import type { ModerationContextResource, ModerationResource } from './types.js';
 
@@ -31,7 +34,16 @@ const JOB_PROJECTION =
   'jobNumber shipmentId senderOxyUserId courierOxyUserId type fulfillmentType status ' +
   'pickupSnapshot dropoffSnapshot parcelSnapshot statusHistory proofOfDelivery.note createdAt';
 
-const SHIPMENT_PROJECTION = 'itemDescription photos type distanceM';
+/**
+ * The shipment facts a snapshot needs, and the reason this is a projection.
+ *
+ * `findShipmentModerationFacts` selects four columns and counts the photo array
+ * IN SQL, so a contact name, a phone number and two street addresses are never
+ * loaded into the process assembling material for a stranger to read — and
+ * neither are the photo file ids, which are declared as a COUNT here and never
+ * attached. The Mongo original expressed the same intent with `.select()`; the
+ * column list is now the projection itself.
+ */
 
 /**
  * The keys a delivery description is allowed to carry. THE list, not a sample.
@@ -104,10 +116,7 @@ type SnapshotJob = Pick<
   | 'createdAt'
 > & { proofOfDelivery?: { note?: string } };
 
-type SnapshotShipment = Pick<
-  IShipment,
-  '_id' | 'itemDescription' | 'photos' | 'type' | 'distanceM'
->;
+type SnapshotShipment = ShipmentModerationFacts;
 
 export async function loadSnapshotJob(jobId: string): Promise<SnapshotJob | null> {
   if (!isLiveEntityId(jobId)) return null;
@@ -116,9 +125,7 @@ export async function loadSnapshotJob(jobId: string): Promise<SnapshotJob | null
 
 async function loadShipment(shipmentId: string | undefined): Promise<SnapshotShipment | null> {
   if (shipmentId === undefined || !isLiveEntityId(shipmentId)) return null;
-  return await Shipment.findById(shipmentId)
-    .select(SHIPMENT_PROJECTION)
-    .lean<SnapshotShipment | null>();
+  return await findShipmentModerationFacts(shipmentId);
 }
 
 /**
@@ -170,7 +177,7 @@ function deliveryFacts(job: SnapshotJob, shipment: SnapshotShipment | null): Rec
      * count lets a jury answer `insufficient_context` for the right reason rather
      * than by accident. See `evidenceAttachmentsSupported` in EvidenceSnapshotService.
      */
-    photoCount: shipment?.photos?.length ?? 0,
+    photoCount: shipment?.photoCount ?? 0,
     /**
      * Whether the courier ever accepted. A complaint about a courier on a job no
      * courier was ever assigned to is a different — and usually mistaken — claim,

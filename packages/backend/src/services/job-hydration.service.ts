@@ -33,13 +33,16 @@ import type {
   IProofOfDelivery,
   IJobPaymentInfo,
 } from '../models/job.js';
-import type { IShipmentEndpoint, IParcelDetails } from '../models/shipment.js';
+import type {
+  ShipmentEndpointValue,
+  ParcelDetailsValue,
+} from '../db/transport/shipmentShape.js';
 import { getFairRate } from './faircoin-rate.service.js';
 import { resolveMedia } from './catalog-hydration.service.js';
 import { toDisplayPriceBreakdown } from '../utils/fair-display.js';
 
 /** Map a persisted endpoint snapshot to the DTO (verbatim — frozen at booking). */
-function toEndpointSnapshot(endpoint: IShipmentEndpoint): JobEndpointSnapshot {
+function toEndpointSnapshot(endpoint: ShipmentEndpointValue): JobEndpointSnapshot {
   const dto: JobEndpointSnapshot = {
     location: {
       type: 'Point',
@@ -61,7 +64,7 @@ function toEndpointSnapshot(endpoint: IShipmentEndpoint): JobEndpointSnapshot {
 }
 
 /** Map a persisted parcel snapshot to the DTO. */
-function toParcelSnapshot(parcel: IParcelDetails): JobParcelSnapshot {
+function toParcelSnapshot(parcel: ParcelDetailsValue): JobParcelSnapshot {
   const dto: JobParcelSnapshot = {
     weightKg: parcel.weightKg,
     sizeClass: parcel.sizeClass,

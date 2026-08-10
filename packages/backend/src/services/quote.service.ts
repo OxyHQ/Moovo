@@ -2,12 +2,27 @@
  * Quote service — generate + list quotes for a shipment.
  *
  * `quoteShipment` computes the pickup→dropoff distance (Haversine), persists it
- * on the shipment, writes ONE internal Moovo-courier quote SYNCHRONOUSLY (from
- * `pricing.service`), then fans out to every enabled external `Provider` via the
+ * on the shipment, prices ONE internal Moovo-courier quote (from
+ * `pricing.service`), then fans out to every enabled external provider via the
  * adapter registry under `Promise.allSettled` — per-adapter isolation, so one
  * failing/slow provider NEVER blocks the others (each failure is logged, never
  * silently swallowed). Once at least the internal quote lands, the shipment flips
  * `quoting → quoted`. All prices are FAIR (the stored source of truth).
+ *
+ * ## Where the transaction is, and where it deliberately is not
+ *
+ * The quote inserts and the `quoting → quoted` flip commit TOGETHER. They are
+ * one fact — "this shipment has been quoted" — and the source could not express
+ * that, because the two collections were separate Mongo writes; a crash between
+ * them left a shipment stuck in `quoting` with its quotes already visible. Both
+ * rows live in one database now, so the atomicity is nearly free.
+ *
+ * The transaction does NOT span the provider fan-out. Holding one open across
+ * several carriers' network calls — each with its own timeout — would pin a
+ * connection from a pool of ten for as long as the slowest adapter takes, which
+ * is exactly the shape that turns one slow carrier into a service-wide
+ * connection shortage. The distance write stays outside and BEFORE the fan-out,
+ * as in the source, because it is persisted up front on purpose.
  */
 
 import {
@@ -15,8 +30,18 @@ import {
   type ProviderRow,
 } from '../db/transport/providerRepository.js';
 import type { ProviderQuote } from '@moovo/shared-types';
-import { Shipment, type IShipment } from '../models/shipment.js';
-import { Quote, type IQuote, type IPriceBreakdown } from '../models/quote.js';
+import { getDb } from '../db/postgres.js';
+import type { ShipmentRecord } from '../db/transport/shipmentShape.js';
+import {
+  markShipmentQuoted,
+  updateShipmentDistance,
+} from '../db/transport/shipmentRepository.js';
+import {
+  insertQuotes,
+  listActiveQuotesForShipment,
+  type NewQuote,
+  type QuoteRecord,
+} from '../db/transport/quoteRepository.js';
 import { computeInternalQuote } from './pricing.service.js';
 import { getAdapter } from './providers/provider-registry.js';
 import type { ProviderAdapter } from './providers/provider-adapter.js';
@@ -24,40 +49,10 @@ import { distanceMetersBetween } from '../utils/geo.js';
 import { config } from '../config/index.js';
 import { log } from '../lib/logger.js';
 
-/** Build the persisted FAIR price breakdown from a `ProviderQuote`. */
-function toPriceBreakdown(quote: ProviderQuote): IPriceBreakdown {
-  const breakdown: IPriceBreakdown = {
-    base: quote.priceBreakdown.base,
-    distance: quote.priceBreakdown.distance,
-    size: quote.priceBreakdown.size,
-    total: quote.priceBreakdown.total,
-  };
-  if (quote.priceBreakdown.surge) {
-    breakdown.surge = quote.priceBreakdown.surge;
-  }
-  if (quote.priceBreakdown.fees) {
-    breakdown.fees = quote.priceBreakdown.fees;
-  }
-  return breakdown;
-}
-
-/** The shape passed to `Quote.create` for one quote. */
-interface QuoteCreateDoc {
-  shipmentId: string;
-  source: IQuote['source'];
-  providerId?: string;
-  providerQuoteRef?: string;
-  priceBreakdown: IPriceBreakdown;
-  etaPickupMin?: number;
-  etaDeliveryMin?: number;
-  expiresAt: Date;
-  status: 'active';
-}
-
 /** Run a provider adapter's `quote` under a hard timeout so a slow provider never blocks. */
 async function quoteWithTimeout(
   adapter: ProviderAdapter,
-  shipment: IShipment,
+  shipment: ShipmentRecord,
 ): Promise<ProviderQuote[]> {
   return Promise.race([
     adapter.quote(shipment),
@@ -74,16 +69,16 @@ async function quoteWithTimeout(
 
 /**
  * Fan out to every enabled provider that supports the shipment's type, collecting
- * the docs to persist. Per-adapter isolation via `Promise.allSettled`: a rejected
+ * the quotes to persist. Per-adapter isolation via `Promise.allSettled`: a rejected
  * adapter is logged and skipped; the others still contribute quotes.
  */
 async function collectProviderQuotes(
-  shipment: IShipment,
+  shipment: ShipmentRecord,
   providers: ProviderRow[],
   expiresAt: Date,
-): Promise<QuoteCreateDoc[]> {
+): Promise<NewQuote[]> {
   const results = await Promise.allSettled(
-    providers.map(async (provider): Promise<QuoteCreateDoc[]> => {
+    providers.map(async (provider): Promise<NewQuote[]> => {
       const adapter = getAdapter(provider.key);
       if (!adapter) {
         log.general.warn(
@@ -93,30 +88,21 @@ async function collectProviderQuotes(
         return [];
       }
       const quotes = await quoteWithTimeout(adapter, shipment);
-      return quotes.map((q) => {
-        const doc: QuoteCreateDoc = {
-          shipmentId: String(shipment._id),
-          source: 'external_provider',
-          providerId: provider.id,
-          priceBreakdown: toPriceBreakdown(q),
-          expiresAt,
-          status: 'active',
-        };
-        if (q.providerQuoteRef !== undefined) {
-          doc.providerQuoteRef = q.providerQuoteRef;
-        }
-        if (q.etaPickupMin !== undefined) {
-          doc.etaPickupMin = q.etaPickupMin;
-        }
-        if (q.etaDeliveryMin !== undefined) {
-          doc.etaDeliveryMin = q.etaDeliveryMin;
-        }
-        return doc;
-      });
+      return quotes.map((q) => ({
+        shipmentId: shipment.id,
+        source: 'external_provider',
+        providerId: provider.id,
+        providerQuoteRef: q.providerQuoteRef,
+        priceBreakdown: q.priceBreakdown,
+        etaPickupMin: q.etaPickupMin,
+        etaDeliveryMin: q.etaDeliveryMin,
+        expiresAt,
+        status: 'active',
+      }));
     }),
   );
 
-  const docs: QuoteCreateDoc[] = [];
+  const docs: NewQuote[] = [];
   results.forEach((result, idx) => {
     if (result.status === 'fulfilled') {
       docs.push(...result.value);
@@ -131,47 +117,46 @@ async function collectProviderQuotes(
 }
 
 /**
- * Generate quotes for a shipment. Computes + persists the distance, writes the
- * internal Moovo-courier quote synchronously, fans out to enabled providers, then
- * flips the shipment to `quoted`. Returns the persisted quotes (internal first).
+ * Generate quotes for a shipment. Computes + persists the distance, prices the
+ * internal Moovo-courier quote, fans out to enabled providers, then writes every
+ * quote and flips the shipment to `quoted` in ONE transaction. Returns the
+ * persisted quotes (internal first).
  */
-export async function quoteShipment(shipment: IShipment): Promise<IQuote[]> {
-  const shipmentId = String(shipment._id);
+export async function quoteShipment(shipment: ShipmentRecord): Promise<QuoteRecord[]> {
+  const shipmentId = shipment.id;
   const distanceM = distanceMetersBetween(
     shipment.pickup.location.coordinates,
     shipment.dropoff.location.coordinates,
   );
   const expiresAt = new Date(Date.now() + config.quotes.ttlMs);
 
-  // Persist the computed distance on the shipment up front.
-  await Shipment.updateOne({ _id: shipment._id }, { $set: { distanceM } });
+  // Persist the computed distance on the shipment up front — before the fan-out,
+  // so it is visible for the duration of it.
+  await updateShipmentDistance(shipmentId, distanceM);
 
-  // 1. Internal Moovo-courier quote — written synchronously (always present).
-  const internalBreakdown = computeInternalQuote({
-    distanceM,
-    sizeClass: shipment.parcel.sizeClass,
-    type: shipment.type,
-  });
-  const internalDoc: QuoteCreateDoc = {
+  // 1. Internal Moovo-courier quote — always priced, always present.
+  const internalDoc: NewQuote = {
     shipmentId,
     source: 'moovo_courier',
-    priceBreakdown: internalBreakdown,
+    priceBreakdown: computeInternalQuote({
+      distanceM,
+      sizeClass: shipment.parcel.sizeClass,
+      type: shipment.type,
+    }),
     expiresAt,
     status: 'active',
   };
 
-  // 2. External-provider fan-out (per-adapter isolated).
+  // 2. External-provider fan-out (per-adapter isolated), OUTSIDE the transaction.
   const providers = await listEnabledProvidersForType(shipment.type);
   const providerDocs = await collectProviderQuotes(shipment, providers, expiresAt);
 
-  const created = await Quote.insertMany([internalDoc, ...providerDocs]);
-  const quotes = created.map((q) => q.toObject<IQuote>());
-
-  // 3. The internal quote always lands → flip quoting → quoted.
-  await Shipment.updateOne(
-    { _id: shipment._id, status: { $in: ['draft', 'quoting'] } },
-    { $set: { status: 'quoted' } },
-  );
+  // 3. The quotes and the status flip are one fact, so they commit together.
+  const quotes = await getDb().transaction(async (tx) => {
+    const written = await insertQuotes([internalDoc, ...providerDocs], tx);
+    await markShipmentQuoted(shipmentId, tx);
+    return written;
+  });
 
   log.general.info(
     { shipmentId, distanceM, internal: 1, external: providerDocs.length },
@@ -181,9 +166,7 @@ export async function quoteShipment(shipment: IShipment): Promise<IQuote[]> {
   return quotes;
 }
 
-/** List the active quotes for a shipment (newest-priced first by source then time). */
-export async function listQuotes(shipmentId: string): Promise<IQuote[]> {
-  return Quote.find({ shipmentId, status: { $in: ['active', 'selected'] } })
-    .sort({ source: 1, createdAt: 1 })
-    .lean<IQuote[]>();
+/** List the active quotes for a shipment (by source then time). */
+export async function listQuotes(shipmentId: string): Promise<QuoteRecord[]> {
+  return listActiveQuotesForShipment(shipmentId);
 }
