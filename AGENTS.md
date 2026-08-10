@@ -33,16 +33,32 @@ from the tree: `bun run dev:courier` / `build:courier` drive `@moovo/courier-app
 `bun run build:shared-types`.
 
 Stack: Expo, NativeWind (Tailwind + postcss), Reanimated, Zustand, TanStack Query
-and expo-router on all three apps; Express, Mongoose, optional Redis and
-Socket.IO on the backend; `@oxyhq/bloom` for UI; `@oxyhq/core` (including
-`@oxyhq/core/server`) and `@oxyhq/services` for device-first auth. Client id is
+and expo-router on all three apps; Express, PostgreSQL (drizzle-orm +
+postgres.js via `@oxyhq/db`), optional Redis and Socket.IO on the backend;
+`@oxyhq/bloom` for UI; `@oxyhq/core` (including `@oxyhq/core/server`) and
+`@oxyhq/services` for device-first auth. Client id is
 `EXPO_PUBLIC_OXY_CLIENT_ID`; backend auth wiring is in
 `packages/backend/src/middleware/auth.ts`.
 
-## MongoDB
+## Databases
 
-Database `moovo-production`, passed to `mongoose.connect()` via `dbName` and
-**not** embedded in `MONGODB_URI`. See `packages/backend/src/lib/db.ts`.
+**PostgreSQL is the authority.** Every courier domain — providers,
+notifications, addresses, shipments, quotes, fleet, jobs, dispatch offers,
+moderation, sequences — runs on it, over the 34 tables in migration `0000`.
+Schema, conventions and the migration rules are in
+`packages/backend/src/db/schema/CONVENTIONS.md`.
+
+**Mongoose survives only for the 8 inherited marketplace models**, which are
+being ported (see `HANDOFF.md` §4). It is OPTIONAL and must never gate boot:
+`lib/mongo-bootstrap.ts` attaches to Mongo when `MONGODB_URI` is supplied and
+otherwise starts the server without it, because an unreachable Mongo used to
+kill the process before `server.listen` and take `/health/ready` with it.
+
+`mongoIsConfigured()` in `lib/db.ts` is the ONE discriminator, and it asks
+whether the environment SUPPLIES a URI rather than what the URI says — there is
+deliberately no localhost default any more, because a defaulted value cannot
+answer "was this configured" and removing the secret from a task definition then
+repoints Mongo inside the container instead of disabling it.
 
 ## Open decisions the Postgres port left, with owners
 
