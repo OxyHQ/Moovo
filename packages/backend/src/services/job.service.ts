@@ -49,7 +49,7 @@ import {
   markCourierOnJob,
   updateCourierAcceptanceRate,
 } from '../db/fleet/courierProfileRepository.js';
-import { nextJobNumber } from '../models/counter.js';
+import { nextJobNumber } from '../db/sequences/numberRepository.js';
 import { getAdapter } from './providers/provider-registry.js';
 import { emitJobStatus, emitJobLocation } from './job-events.service.js';
 import { verifyCode, generateCode, hashCode } from '../utils/job-codes.js';

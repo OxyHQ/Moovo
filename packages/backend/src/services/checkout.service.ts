@@ -30,7 +30,14 @@ import {
   findAddressForUser,
   type AddressRow,
 } from '../db/addresses/addressRepository.js';
-import { nextOrderNumber } from '../models/counter.js';
+/**
+ * Order numbers come from a Postgres SEQUENCE now, not the `counters`
+ * collection — `models/counter.ts` held BOTH sequences, so retiring it moved
+ * this call site along with the job one. Nothing else in this service is
+ * ported: `orders`, `listings` and `product_variants` are still Mongo, and the
+ * duplicate-idempotency-key recovery below is theirs to move.
+ */
+import { nextOrderNumber } from '../db/sequences/numberRepository.js';
 import { getCart, clearCart } from './cart.service.js';
 import { reserve, release } from './inventory.service.js';
 import { summarizeOrders } from './order-hydration.service.js';
