@@ -8,7 +8,7 @@ Moovo is Oxy's courier and transport platform: send a package, food, or a whole 
 
 - **Bun.** The package manager for every Oxy repository, never npm or yarn. The pinned version is `packageManager` in the root `package.json`, and CI installs that exact version.
 - **Node.js 22.** The runtime the API is built and deployed on. CI pins it alongside bun.
-- **MongoDB**, local or remote, to run the API. The test suite does not need one; it starts its own, and the first run downloads server binaries.
+- **PostgreSQL** to run the API (`DATABASE_URL`), and to run the tests. Start it with `docker compose -f docker-compose.postgres.yml up -d --wait postgres` — the image is `postgis/postgis:17-3.5` on port 5437, because dispatch and listing search use geography columns. Each test file creates and drops its own throwaway database on that server, so point `TEST_DATABASE_URL` at the ADMIN database (`postgres://moovo:moovo@127.0.0.1:5437/postgres`). Without a server the realdb suites SKIP; set `MOOVO_REQUIRE_POSTGRES_TESTS=1` (as CI does) to make a missing server a hard failure instead, since a skipped suite and a passing suite are the same colour.
 - **Redis**, optional. Rate limiting and Socket.IO scaling fall back gracefully without it.
 
 ## Setup
@@ -41,7 +41,7 @@ A bun workspaces monorepo, five packages:
 
 | Package | Path | Role |
 | --- | --- | --- |
-| `@moovo/backend` | `packages/backend/` | Express API (TypeScript, MongoDB, Socket.IO) |
+| `@moovo/backend` | `packages/backend/` | Express API (TypeScript, PostgreSQL, Socket.IO) |
 | `@moovo/frontend` | `packages/frontend/` | Expo customer app |
 | `@moovo/courier-app` | `packages/courier-app/` | Expo courier app (Moovo Go) |
 | `@moovo/fleet-dashboard` | `packages/fleet-dashboard/` | Fleet and ops dashboard (Moovo Hub) |

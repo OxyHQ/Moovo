@@ -160,13 +160,21 @@ jobs:
       # the migrator and the running service both read.
       #
       # Restore the line only together with a real GitHub secret, in the same
-      # change. Verified 2026-08-10: `gh secret list` shows only the two
+      # change. Verified 2026-08-11: `gh secret list` shows only the two
       # Cloudflare secrets, and the org exposes ADD_TO_PROJECT_TOKEN,
-      # CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and NPM_TOKEN — so both
-      # entries below resolve to empty strings and this step is a no-op today.
+      # CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and NPM_TOKEN — so the
+      # entry below resolves to an empty string and this step is a no-op today.
+      #
+      # MONGODB_URI was removed here when Mongo was removed from the service.
+      # It synced to /oxy/moovo/MONGODB_URI, which no task definition has
+      # referenced since `oxy-moovo:3` and which does not exist in SSM at all
+      # (verified 2026-08-11: `get-parameters` returns it under
+      # InvalidParameters, while /oxy/moovo/DATABASE_URL resolves). The task
+      # definition's secrets are derived from the RUNNING revision rather than
+      # rendered from this list, so dropping the line changes nothing the
+      # container receives.
       - name: Sync GitHub secrets -> SSM (GitHub is the source of truth)
         env:
-          APP_MONGODB_URI: ${{ secrets.MONGODB_URI }}
           SHARED_REDIS_URL: ${{ secrets.REDIS_URL }}
         run: |
           sync_secret() {
@@ -178,8 +186,6 @@ jobs:
             aws ssm put-parameter --name "$path" --value "$value" --type SecureString --overwrite >/dev/null
             echo "synced -> $path"
           }
-
-          sync_secret MONGODB_URI "$APP_MONGODB_URI" "/oxy/$APP/MONGODB_URI"
 
           # Valkey lives in the cluster's region; a URL from another region
           # leaves the service silently without a cache, so it is rejected.

@@ -1,12 +1,13 @@
 /**
  * The readiness probe, which is what decides whether a task receives traffic.
  *
- * The case that matters most is `does NOT require Mongo once Mongo is
- * unconfigured` — it is the whole reason this change exists, and it is a test of
- * a state that does not exist yet in production. Without it the Mongo-removal
- * deploy fails every ALB health check within ~90 seconds and ECS replaces the
- * tasks in a loop, while the build, the migration and the rollout all report
- * success. Nothing else in the suite would notice.
+ * This file was written around one case, `does NOT require Mongo once Mongo is
+ * unconfigured`, which tested a state that did not exist in production yet.
+ * It has since been reached and passed: production answered `not_configured`
+ * for the whole window between the cutover and this cut, so the Mongo-removal
+ * deploy never had a health check to fail. That case has now gone with the
+ * store it guarded — what is left is the property it was protecting, that
+ * readiness tracks the store the service ACTUALLY reads and nothing else.
  *
  * The Postgres probe is mocked at `db/postgres` rather than run against a real
  * server: what is under test is the DECISION the handler makes from a probe's
@@ -15,15 +16,14 @@
  * opens a connection.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import type { Server } from 'node:http';
 
 // `vi.mock` factories are hoisted above every `const`, so the state they close
 // over has to be hoisted with them.
-const { postgresQuery, mongooseState } = vi.hoisted(() => ({
+const { postgresQuery } = vi.hoisted(() => ({
   postgresQuery: vi.fn(),
-  mongooseState: { readyState: 1 },
 }));
 
 vi.mock('../../db/postgres.js', () => ({
@@ -32,8 +32,6 @@ vi.mock('../../db/postgres.js', () => ({
 }));
 
 vi.mock('../../lib/redis.js', () => ({ getRedisClient: () => null }));
-
-vi.mock('mongoose', () => ({ default: { connection: mongooseState } }));
 
 import healthRouter from '../health.js';
 
@@ -64,64 +62,35 @@ async function get(path: string): Promise<{ status: number; body: Record<string,
   }
 }
 
-const ORIGINAL_MONGODB_URI = process.env.MONGODB_URI;
-
 beforeEach(() => {
   postgresQuery.mockReset().mockResolvedValue([{ '?column?': 1 }]);
-  mongooseState.readyState = 1;
-  process.env.MONGODB_URI = 'mongodb://localhost:27017/moovo';
-});
-
-afterEach(() => {
-  if (ORIGINAL_MONGODB_URI === undefined) delete process.env.MONGODB_URI;
-  else process.env.MONGODB_URI = ORIGINAL_MONGODB_URI;
 });
 
 describe('GET /health/ready', () => {
-  it('is ready when both configured stores answer', async () => {
+  it('is ready when Postgres answers', async () => {
     const response = await get('/health/ready');
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       status: 'ready',
       postgres: 'connected',
-      mongodb: 'connected',
     });
     // The Postgres half is a REAL query, not an inference from configuration.
     expect(postgresQuery).toHaveBeenCalledTimes(1);
   });
 
   /**
-   * The case this whole change exists for.
+   * Readiness must track ONLY the stores the service reads.
    *
-   * On the deploy that removes Mongo, `MONGODB_URI` leaves the task definition
-   * and `mongoose.connection.readyState` is 0 forever. The previous handler
-   * returned 503 on exactly that, so every task would fail the ALB check within
-   * ~90 seconds and be replaced in a loop — with a green deploy.
+   * Mongo is gone, so a residual mention of it in a readiness response would be
+   * a dependency this service does not have — and the shape of the bug that
+   * makes a probe outlive its store is precisely a key nobody removed.
    */
-  it('does NOT require Mongo once Mongo is unconfigured', async () => {
-    delete process.env.MONGODB_URI;
-    mongooseState.readyState = 0;
-
+  it('names no store other than Postgres', async () => {
     const response = await get('/health/ready');
 
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({ status: 'ready', mongodb: 'not_configured' });
-  });
-
-  it('is NOT ready when Mongo is configured but disconnected', async () => {
-    mongooseState.readyState = 0;
-
-    const response = await get('/health/ready');
-
-    expect(response.status).toBe(503);
-    // The reason NAMES the store: `database_unavailable` was true of both and
-    // identified neither.
-    expect(response.body).toMatchObject({
-      status: 'not_ready',
-      reason: 'mongodb_unavailable',
-      postgres: 'connected',
-    });
+    expect(Object.keys(response.body).sort()).toEqual(['postgres', 'status']);
   });
 
   /**
@@ -168,7 +137,6 @@ describe('GET /health/live', () => {
     // Liveness must not depend on a database: a blip should never get a
     // container killed and restarted, only taken out of rotation.
     postgresQuery.mockRejectedValue(new Error('connection refused'));
-    mongooseState.readyState = 0;
 
     const response = await get('/health/live');
 
@@ -178,7 +146,7 @@ describe('GET /health/live', () => {
 });
 
 describe('GET /health', () => {
-  it('reports Postgres alongside Mongo, and is unhealthy when Postgres is down', async () => {
+  it('is unhealthy when Postgres is down', async () => {
     postgresQuery.mockRejectedValue(new Error('connection refused'));
 
     const response = await get('/health');

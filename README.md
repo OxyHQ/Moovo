@@ -9,7 +9,7 @@
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-440151?style=flat-square&logo=typescript&logoColor=white">
   <img alt="Bun" src="https://img.shields.io/badge/bun-1.3-440151?style=flat-square&logo=bun&logoColor=white">
   <img alt="Express" src="https://img.shields.io/badge/Express-4-440151?style=flat-square&logo=express&logoColor=white">
-  <img alt="MongoDB" src="https://img.shields.io/badge/MongoDB-Mongoose-440151?style=flat-square&logo=mongodb&logoColor=white">
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-Drizzle-440151?style=flat-square&logo=postgresql&logoColor=white">
 </p>
 
 ---
@@ -44,7 +44,7 @@ No local token providers, no auth interceptors, no hand rolled bearer parsing. S
 | `@moovo/frontend` | [`packages/frontend/`](packages/frontend/) | Moovo, the customer app: book a send, track jobs, shipments, orders |
 | `@moovo/courier-app` | [`packages/courier-app/`](packages/courier-app/) | Moovo Go, the courier app: job offers, vehicles, pickup and dropoff |
 | `@moovo/fleet-dashboard` | [`packages/fleet-dashboard/`](packages/fleet-dashboard/) | Moovo Hub, the fleet console: dispatch, fleet, companies, members, stats |
-| `@moovo/backend` | [`packages/backend/`](packages/backend/) | Express API: TypeScript, MongoDB via Mongoose, Socket.IO |
+| `@moovo/backend` | [`packages/backend/`](packages/backend/) | Express API: TypeScript, PostgreSQL via drizzle-orm, Socket.IO |
 | `@moovo/shared-types` | [`packages/shared-types/`](packages/shared-types/) | Domain DTOs every package imports |
 
 All three apps are Expo, render [`@oxyhq/bloom`](https://www.npmjs.com/package/@oxyhq/bloom) primitives with NativeWind, and draw maps with `react-native-maps`.

@@ -4,7 +4,6 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { bootstrapMongo } from './lib/mongo-bootstrap.js';
 import { log } from './lib/logger.js';
 import { isAbortError, isFatalError, isTransientNetworkError } from './lib/error-classification.js';
 
@@ -227,160 +226,154 @@ process.on('uncaughtException', (error) => {
   setTimeout(() => process.exit(1), 5000).unref();
 });
 
-// Mongo is optional and must NEVER gate boot — `lib/mongo-bootstrap.ts` carries
-// the reasoning and the measurement. `bootstrapMongo` does not reject, so the
-// block below always runs; everything in it (the provider adapters and
-// `seedProviders`, the socket server, the dispatchers) is Postgres-backed.
-bootstrapMongo()
-  .then(() => {
-    // Register the built-in external-provider adapters, then idempotently seed an
-    // enabled Provider doc per mock carrier so quotes surface external options.
-    import('./services/providers/register-adapters.js')
-      .then(({ registerBuiltInAdapters }) => {
-        registerBuiltInAdapters();
-        return import('./services/providers/seed-providers.js').then(({ seedProviders }) =>
-          seedProviders(),
-        );
-      })
-      .catch((err) => log.general.error({ err }, 'Provider adapter registration/seed failed'));
+// The whole start-up block is Postgres-backed: the provider adapters and
+// `seedProviders`, the socket server, the dispatchers and the expiry sweeper.
+try {
+  // Register the built-in external-provider adapters, then idempotently seed an
+  // enabled Provider doc per mock carrier so quotes surface external options.
+  import('./services/providers/register-adapters.js')
+    .then(({ registerBuiltInAdapters }) => {
+      registerBuiltInAdapters();
+      return import('./services/providers/seed-providers.js').then(({ seedProviders }) =>
+        seedProviders(),
+      );
+    })
+    .catch((err) => log.general.error({ err }, 'Provider adapter registration/seed failed'));
 
-    server.listen(PORT, '0.0.0.0', () => {
-      log.general.info({ port: PORT }, `API Server running on http://0.0.0.0:${PORT}`);
-      // Verify Redis connectivity (non-blocking)
-      import('./lib/redis.js').then(({ getRedisClient }) => {
-        const redis = getRedisClient();
-        if (redis) {
-          redis.ping()
-            .then(() => log.general.info('Redis readiness check passed'))
-            .catch((err) => log.general.warn({ err }, 'Redis readiness check failed — rate limiting will fail-open'));
-        } else {
-          log.general.info('Redis not configured (REDIS_URL not set) — rate limiting disabled');
-        }
-      }).catch((err) => log.general.error({ err }, 'Redis readiness import failed'));
-
-      // Start marketplace queue workers when Redis is configured; otherwise
-      // async jobs run inline via the producers.
-      import('./queue/connection.js').then(({ isQueueEnabled }) => {
-        if (isQueueEnabled()) {
-          import('./queue/workers.js').then(({ startWorkers }) => startWorkers())
-            .catch((err) => log.general.error({ err }, 'startWorkers import failed'));
-        } else {
-          log.general.info('Marketplace queue disabled (REDIS_URL not set) — async jobs run inline');
-        }
-      }).catch((err) => log.general.error({ err }, 'Queue connection import failed'));
-
-      /**
-       * Drains the moderation outbox on EVERY task, not on a leader.
-       *
-       * Claims are Mongo leases with an owner check, so N tasks share the work
-       * and a dead task's lease is reclaimed. It no-ops when CrowdSource is
-       * disabled — the loop is gated, never the durable record, so reports taken
-       * while the integration is off deliver when it is switched on.
-       */
-      startModerationOutboxDispatcher();
-
-      /**
-       * Reaps the rows Mongo's five TTL indexes used to reap.
-       *
-       * This call is the half of the expiry work that `@oxyhq/db` cannot
-       * supply and whose absence is undetectable by reading `db/expiry.ts`:
-       * the registry there lists every table and every retention and deletes
-       * nothing at all without something invoking it. A registry with no
-       * caller is why another Oxy service served expired rows for hours while
-       * every code search found a complete-looking implementation.
-       *
-       * Gated on `DATABASE_URL` because the sweep has no database to open
-       * without one, and this service still boots against Mongo. Announced
-       * rather than skipped silently — "expiry is not running" must be a line
-       * in the log, not an absence of one.
-       */
-      if (process.env.DATABASE_URL) {
-        startExpirySweeper();
+  server.listen(PORT, '0.0.0.0', () => {
+    log.general.info({ port: PORT }, `API Server running on http://0.0.0.0:${PORT}`);
+    // Verify Redis connectivity (non-blocking)
+    import('./lib/redis.js').then(({ getRedisClient }) => {
+      const redis = getRedisClient();
+      if (redis) {
+        redis.ping()
+          .then(() => log.general.info('Redis readiness check passed'))
+          .catch((err) => log.general.warn({ err }, 'Redis readiness check failed — rate limiting will fail-open'));
       } else {
-        log.db.warn(
-          'Expiry sweeper NOT started: DATABASE_URL is unset, so there is no ' +
-            'Postgres database to sweep. Nothing reaps the rows that Mongo TTL ' +
-            'indexes used to reap.',
-        );
+        log.general.info('Redis not configured (REDIS_URL not set) — rate limiting disabled');
       }
+    }).catch((err) => log.general.error({ err }, 'Redis readiness import failed'));
+
+    // Start marketplace queue workers when Redis is configured; otherwise
+    // async jobs run inline via the producers.
+    import('./queue/connection.js').then(({ isQueueEnabled }) => {
+      if (isQueueEnabled()) {
+        import('./queue/workers.js').then(({ startWorkers }) => startWorkers())
+          .catch((err) => log.general.error({ err }, 'startWorkers import failed'));
+      } else {
+        log.general.info('Marketplace queue disabled (REDIS_URL not set) — async jobs run inline');
+      }
+    }).catch((err) => log.general.error({ err }, 'Queue connection import failed'));
+
+    /**
+     * Drains the moderation outbox on EVERY task, not on a leader.
+     *
+     * Claims are Postgres leases with an owner check, so N tasks share the work
+     * and a dead task's lease is reclaimed. It no-ops when CrowdSource is
+     * disabled — the loop is gated, never the durable record, so reports taken
+     * while the integration is off deliver when it is switched on.
+     */
+    startModerationOutboxDispatcher();
+
+    /**
+     * Reaps the rows the five Mongo TTL indexes used to reap before the port.
+     *
+     * This call is the half of the expiry work that `@oxyhq/db` cannot
+     * supply and whose absence is undetectable by reading `db/expiry.ts`:
+     * the registry there lists every table and every retention and deletes
+     * nothing at all without something invoking it. A registry with no
+     * caller is why another Oxy service served expired rows for hours while
+     * every code search found a complete-looking implementation.
+     *
+     * Gated on `DATABASE_URL` because the sweep has no database to open
+     * without one. Announced rather than skipped silently — "expiry is not
+     * running" must be a line in the log, not an absence of one.
+     *
+     * Postgres is now the ONLY store, so an unset `DATABASE_URL` means a
+     * service with no database at all rather than one running on the other
+     * one. Making it required to boot is the right end state and is a
+     * deliberate behaviour change, so it is NOT bundled into this cut.
+     */
+    if (process.env.DATABASE_URL) {
+      startExpirySweeper();
+    } else {
+      log.db.warn(
+        'Expiry sweeper NOT started: DATABASE_URL is unset, so there is no ' +
+          'Postgres database to sweep, and nothing reaps the rows with a ' +
+          'retention.',
+      );
+    }
+  });
+
+  // Graceful shutdown handler
+  let shuttingDown = false;
+  const shutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    log.general.info(`Received ${signal}. Starting graceful shutdown...`);
+
+    // Stop accepting new connections
+    server.close(() => {
+      log.general.info('HTTP server closed (no new connections)');
     });
 
-    // Graceful shutdown handler
-    let shuttingDown = false;
-    const shutdown = async (signal: string) => {
-      if (shuttingDown) return;
-      shuttingDown = true;
-      log.general.info(`Received ${signal}. Starting graceful shutdown...`);
+    // Give in-flight requests 30 seconds to complete
+    const forceTimeout = setTimeout(() => {
+      log.general.error('Force exit after 30s grace period');
+      process.exit(1);
+    }, 30_000);
+    forceTimeout.unref();
 
-      // Stop accepting new connections
-      server.close(() => {
-        log.general.info('HTTP server closed (no new connections)');
-      });
-
-      // Give in-flight requests 30 seconds to complete
-      const forceTimeout = setTimeout(() => {
-        log.general.error('Force exit after 30s grace period');
-        process.exit(1);
-      }, 30_000);
-      forceTimeout.unref();
-
-      try {
-        // Close Socket.IO connections
-        const { getIO } = await import('./socket.js');
-        const io = getIO();
-        if (io) {
-          await new Promise<void>((resolve) => io.close(() => resolve()));
-          log.general.info('Socket.IO closed');
-        }
-
-        /**
-         * Stop claiming moderation work, and let the batch in flight reach a
-         * durable state. An event abandoned mid-delivery is not lost — its lease
-         * expires and another task reclaims it — but finishing cleanly avoids a
-         * lease-length delay on every deploy.
-         */
-        const { stopModerationOutboxDispatcher } = await import(
-          './services/moderation/moderation-outbox.dispatcher.js'
-        );
-        await stopModerationOutboxDispatcher();
-        log.general.info('Moderation outbox dispatcher stopped');
-
-        // Let a sweep in flight finish. Its DELETEs are bounded batches, so
-        // this is short; abandoning one mid-batch is safe (the next run picks
-        // the remainder up) but finishing avoids a half-run in the logs.
-        await stopExpirySweeper();
-
-        // Stop marketplace queue workers BEFORE closing Redis.
-        const { shutdownQueues } = await import('./queue/workers.js');
-        await shutdownQueues();
-        log.general.info('Marketplace queues closed');
-
-        // Close Redis connections
-        const { closeRedis } = await import('./lib/redis.js');
-        await closeRedis();
-        log.general.info('Redis connections closed');
-
-        // Close MongoDB connection
-        const mongoose = await import('mongoose');
-        await mongoose.default.connection.close();
-        log.general.info('MongoDB connection closed');
-
-        clearTimeout(forceTimeout);
-        log.general.info('Graceful shutdown complete');
-        process.exit(0);
-      } catch (error) {
-        log.general.error({ err: error }, 'Error during shutdown');
-        process.exit(1);
+    try {
+      // Close Socket.IO connections
+      const { getIO } = await import('./socket.js');
+      const io = getIO();
+      if (io) {
+        await new Promise<void>((resolve) => io.close(() => resolve()));
+        log.general.info('Socket.IO closed');
       }
-    };
 
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
-  })
-  .catch((error) => {
-    // `bootstrapMongo` never rejects, so reaching here means the startup block
-    // itself failed — binding the port, wiring the socket server. Those are
-    // genuinely fatal.
-    log.general.error({ err: error }, 'Failed to start the API server');
-    process.exit(1);
-  });
+      /**
+       * Stop claiming moderation work, and let the batch in flight reach a
+       * durable state. An event abandoned mid-delivery is not lost — its lease
+       * expires and another task reclaims it — but finishing cleanly avoids a
+       * lease-length delay on every deploy.
+       */
+      const { stopModerationOutboxDispatcher } = await import(
+        './services/moderation/moderation-outbox.dispatcher.js'
+      );
+      await stopModerationOutboxDispatcher();
+      log.general.info('Moderation outbox dispatcher stopped');
+
+      // Let a sweep in flight finish. Its DELETEs are bounded batches, so
+      // this is short; abandoning one mid-batch is safe (the next run picks
+      // the remainder up) but finishing avoids a half-run in the logs.
+      await stopExpirySweeper();
+
+      // Stop marketplace queue workers BEFORE closing Redis.
+      const { shutdownQueues } = await import('./queue/workers.js');
+      await shutdownQueues();
+      log.general.info('Marketplace queues closed');
+
+      // Close Redis connections
+      const { closeRedis } = await import('./lib/redis.js');
+      await closeRedis();
+      log.general.info('Redis connections closed');
+
+      clearTimeout(forceTimeout);
+      log.general.info('Graceful shutdown complete');
+      process.exit(0);
+    } catch (error) {
+      log.general.error({ err: error }, 'Error during shutdown');
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
+} catch (error) {
+  // Reaching here means the start-up block itself failed — binding the port,
+  // wiring the socket server. Those are genuinely fatal.
+  log.general.error({ err: error }, 'Failed to start the API server');
+  process.exit(1);
+}

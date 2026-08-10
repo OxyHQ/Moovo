@@ -1,8 +1,8 @@
 /**
  * Built-in adapter registration.
  *
- * Called once at boot (from `index.ts`'s `bootstrapMongo().then(...)` block) to
- * populate the provider registry with the adapters shipped in this build. New
+ * Called once at boot (from `index.ts`'s start-up block) to populate the
+ * provider registry with the adapters shipped in this build. New
  * carrier integrations register their adapter here — nowhere else needs to know
  * which adapters exist.
  */

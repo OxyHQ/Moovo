@@ -17,9 +17,11 @@
  * avatar and a delivery's proof-of-delivery photo are not catalogue concerns.
  *
  * The rule it enforces is shared by both halves of the product, which is
- * exactly why it belongs to neither: `services/__tests__/courier-media-isolation.test.ts`
- * fails the build if a courier hydration service can reach a marketplace model
- * again.
+ * exactly why it belongs to neither. A scanned test used to fail the build if a
+ * courier hydration service could reach a marketplace model again; it was
+ * retired with `src/models/` itself, which enforces the same thing by leaving
+ * nothing to reach. Keep this module free of catalogue imports so that stays
+ * true of whatever replaces the marketplace scaffolding.
  */
 
 import { oxyClient } from '../middleware/auth.js';
