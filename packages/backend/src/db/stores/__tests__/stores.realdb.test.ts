@@ -30,6 +30,7 @@ import {
   findMembership,
   findStoreByHandle,
   findStoreById,
+  findStoresByIds,
   insertMember,
   insertStore,
   listStoresForMember,
@@ -37,7 +38,11 @@ import {
   updateMemberRow,
   updateStoreRow,
 } from '../storeRepository';
-import { ensureSellerProfile, updateSellerPrefs } from '../sellerProfileRepository';
+import {
+  ensureSellerProfile,
+  findSellerProfilesByUserIds,
+  updateSellerPrefs,
+} from '../sellerProfileRepository';
 
 const describeIfPostgres = POSTGRES_TESTS_ENABLED ? describe : describe.skip;
 
@@ -306,6 +311,73 @@ describeIfPostgres('the store domain on a real server', () => {
       });
       expect(created.oxyUserId).toBe('seller-first-edit');
       expect(created.returnPrefs).toEqual({ accepts: true, windowDays: 14 });
+    });
+  });
+
+  /**
+   * The two batch readers listing hydration depends on.
+   *
+   * Both are `IN (...)` lookups, and an `IN` whose predicate was dropped
+   * returns EVERY row rather than none — so the failure these cases exist to
+   * catch is over-fetching, not under-fetching. Each seeds two owners and
+   * asserts the other's row is absent; a test seeding one owner would pass
+   * with the filter deleted.
+   */
+  describe('batch readers for listing hydration', () => {
+    it('returns only the requested stores, with their members', async () => {
+      const alpha = await seedStore('alpha-batch', 'owner-a');
+      const beta = await seedStore('beta-batch', 'owner-b');
+
+      const found = await findStoresByIds([alpha.id]);
+
+      expect(found.map((s) => s.handle)).toEqual(['alpha-batch']);
+      expect(found.some((s) => s.id === beta.id)).toBe(false);
+      // Members travel with the store: hydration reads the owner off the record.
+      expect(found[0].members.map((m) => m.oxyUserId)).toEqual(['owner-a']);
+    });
+
+    it('returns both stores when both are asked for', async () => {
+      const alpha = await seedStore('alpha-both', 'owner-a');
+      const beta = await seedStore('beta-both', 'owner-b');
+
+      const found = await findStoresByIds([alpha.id, beta.id]);
+
+      // The positive control for the case above: proves the single-store result
+      // was a filter doing its job and not a reader that can only ever find one.
+      expect(found.map((s) => s.handle).sort()).toEqual(['alpha-both', 'beta-both']);
+    });
+
+    it('returns an empty array for no ids without querying', async () => {
+      await seedStore('unasked-store', 'owner-a');
+      expect(await findStoresByIds([])).toEqual([]);
+    });
+
+    it('returns only the requested sellers profiles', async () => {
+      await ensureSellerProfile('seller-a');
+      await ensureSellerProfile('seller-b');
+
+      const found = await findSellerProfilesByUserIds(['seller-a']);
+
+      expect(found.map((p) => p.oxyUserId)).toEqual(['seller-a']);
+      expect(found.some((p) => p.oxyUserId === 'seller-b')).toBe(false);
+    });
+
+    it('omits a seller with no profile instead of creating one', async () => {
+      await ensureSellerProfile('seller-present');
+
+      const found = await findSellerProfilesByUserIds(['seller-present', 'seller-absent']);
+
+      expect(found.map((p) => p.oxyUserId)).toEqual(['seller-present']);
+      // The distinction from `ensureSellerProfile`: browsing must not write.
+      const [{ count }] = await client()<
+        { count: number }[]
+      >`SELECT count(*)::int AS count FROM seller_profiles`;
+      expect(count).toBe(1);
+    });
+
+    it('returns an empty array for no ids', async () => {
+      await ensureSellerProfile('unasked-seller');
+      expect(await findSellerProfilesByUserIds([])).toEqual([]);
     });
   });
 });
