@@ -35,6 +35,7 @@ import { SellerProfile, type ISellerProfile } from '../models/seller-profile.js'
 import { Store, type IStore } from '../models/store.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
 import { resolveMedia } from './media.service.js';
+import { withStoreId } from './catalog-hydration.service.js';
 import { toMerchantSummary } from './catalog-hydration.service.js';
 
 /** Map a persisted `{ amount, currency }` sub-document to the `Money` DTO. */
@@ -240,7 +241,7 @@ export async function hydrateOrders(orders: IOrder[]): Promise<OrderDTO[]> {
       dto.storeId = storeId;
       const store = storeById.get(storeId);
       if (store) {
-        dto.store = toMerchantSummary(store, []);
+        dto.store = toMerchantSummary(withStoreId(store), []);
       }
     }
 
@@ -280,7 +281,7 @@ export async function summarizeOrders(orders: IOrder[]): Promise<OrderSummary[]>
     } else if (order.sellerType === 'store' && order.storeId) {
       const store = storeById.get(String(order.storeId));
       if (store) {
-        summary.store = toMerchantSummary(store, []);
+        summary.store = toMerchantSummary(withStoreId(store), []);
       }
     }
 

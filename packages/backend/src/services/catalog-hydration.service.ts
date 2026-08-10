@@ -26,6 +26,7 @@ import type {
   ProductVariantDTO,
   MerchantSummary,
   Seller,
+  TextTone,
 } from '@moovo/shared-types';
 import { ProductVariant, type IProductVariant } from '../models/product-variant.js';
 import { SellerProfile, type ISellerProfile } from '../models/seller-profile.js';
@@ -114,11 +115,34 @@ function toSeller(
  * `ProductThumbnail`s drawn from the store's listings' images. Exported for the
  * feed's "Worth the hype" shelf.
  */
+/**
+ * The store fields a merchant summary is built from.
+ *
+ * Structural rather than `IStore` so the store domain — now on Postgres — can
+ * supply a `StoreRecord` without this function knowing which representation it
+ * came from. It is a projection, not a store reader.
+ */
+export function withStoreId<T extends { _id: unknown }>(store: T): T & { id: string } {
+  return { ...store, id: String(store._id) };
+}
+
+export interface MerchantSummarySource {
+  id: string;
+  handle: string;
+  name: string;
+  logoFileId?: string;
+  coverFileId?: string;
+  brandColor: string;
+  rating: number;
+  reviewCount: number;
+  textTone: TextTone;
+}
+
 export function toMerchantSummary(
-  store: IStore,
+  store: MerchantSummarySource,
   featuredListings: IListing[],
 ): MerchantSummary {
-  const id = String((store as { _id: mongoose.Types.ObjectId })._id);
+  const id = store.id;
   const products: ProductThumbnail[] = featuredListings
     .slice(0, config.feed.storeCardThumbnails)
     .map((listing) => {
@@ -312,7 +336,7 @@ export async function hydrateListings(
     } else if (listing.ownerType === 'store' && listing.storeId) {
       const store = storeById.get(String(listing.storeId));
       if (store) {
-        dto.store = toMerchantSummary(store, listingsByStore.get(String(listing.storeId)) ?? [listing]);
+        dto.store = toMerchantSummary(withStoreId(store), listingsByStore.get(String(listing.storeId)) ?? [listing]);
       }
     }
 

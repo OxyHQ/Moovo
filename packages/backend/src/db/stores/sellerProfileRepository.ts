@@ -1,0 +1,138 @@
+/**
+ * Every statement the seller-profile domain issues against `seller_profiles`.
+ *
+ * Both writes are upserts, and they are DIFFERENT SHAPES of upsert — porting
+ * them to one spelling would break one of them:
+ *
+ *  - `ensureSellerProfile` is the source's `$setOnInsert`-only upsert, so it is
+ *    `ON CONFLICT DO NOTHING`. On an existing row that is a genuine no-op, and
+ *    the empty `RETURNING` set IS the "already there" answer — followed by a
+ *    read, because the caller needs the row either way.
+ *  - `updateSellerPrefs` is a HYBRID (`$setOnInsert` for the key, `$set` for the
+ *    preferences), so it is `ON CONFLICT DO UPDATE` over exactly the preference
+ *    columns. Writing `DO NOTHING` here would silently discard every edit made
+ *    after the profile first existed, which is every edit but the first.
+ *
+ * **A preference GROUP is replaced wholesale, not merged.** The source assigns
+ * `shippingPrefs`/`returnPrefs` as whole sub-objects, so submitting
+ * `{note: 'x'}` clears `handlingDays`. The flattened columns must reproduce
+ * that: when a group is present, BOTH its columns are written, with an absent
+ * member becoming NULL. Merging instead would look tidier and would quietly
+ * preserve a value the seller had just cleared.
+ */
+
+import { eq } from 'drizzle-orm';
+import { getDb, type DatabaseOrTransaction } from '../postgres';
+import { sellerProfiles } from '../schema/stores';
+
+/** A `seller_profiles` row as the domain consumes it. */
+export interface SellerProfileRecord {
+  id: string;
+  oxyUserId: string;
+  isVerified: boolean;
+  rating: number;
+  reviewCount: number;
+  salesCount: number;
+  shippingPrefs?: { note?: string; handlingDays?: number };
+  returnPrefs?: { accepts?: boolean; windowDays?: number };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+type SellerProfileRow = typeof sellerProfiles.$inferSelect;
+
+/**
+ * Reassemble the two preference groups from their flat columns.
+ *
+ * A group is emitted only when at least one of its columns is set, so "never
+ * configured" stays distinguishable from "configured to nothing" — the reason
+ * the columns are nullable rather than defaulted (`db/schema/CONVENTIONS.md`).
+ */
+function toRecord(row: SellerProfileRow): SellerProfileRecord {
+  const shipping: { note?: string; handlingDays?: number } = {};
+  if (row.shippingNote !== null) shipping.note = row.shippingNote;
+  if (row.shippingHandlingDays !== null) shipping.handlingDays = row.shippingHandlingDays;
+
+  const returns: { accepts?: boolean; windowDays?: number } = {};
+  if (row.returnAccepts !== null) returns.accepts = row.returnAccepts;
+  if (row.returnWindowDays !== null) returns.windowDays = row.returnWindowDays;
+
+  return {
+    id: row.id,
+    oxyUserId: row.oxyUserId,
+    isVerified: row.isVerified,
+    rating: row.rating,
+    reviewCount: row.reviewCount,
+    salesCount: row.salesCount,
+    ...(Object.keys(shipping).length > 0 ? { shippingPrefs: shipping } : {}),
+    ...(Object.keys(returns).length > 0 ? { returnPrefs: returns } : {}),
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+/**
+ * The profile for `oxyUserId`, created empty on first use.
+ *
+ * Idempotent under concurrent first-writes: the loser of the race inserts
+ * nothing and reads the winner's row.
+ */
+export async function ensureSellerProfile(
+  oxyUserId: string,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<SellerProfileRecord> {
+  const inserted = await db
+    .insert(sellerProfiles)
+    .values({ oxyUserId })
+    .onConflictDoNothing({ target: sellerProfiles.oxyUserId })
+    .returning();
+
+  if (inserted.length > 0) return toRecord(inserted[0]);
+
+  const [existing] = await db
+    .select()
+    .from(sellerProfiles)
+    .where(eq(sellerProfiles.oxyUserId, oxyUserId))
+    .limit(1);
+  return toRecord(existing);
+}
+
+/** The preference groups a caller may submit. */
+export interface SellerPrefsPatch {
+  shippingPrefs?: { note?: string; handlingDays?: number };
+  returnPrefs?: { accepts?: boolean; windowDays?: number };
+}
+
+/** Set the seller's preferences, creating the profile if it does not exist. */
+export async function updateSellerPrefs(
+  oxyUserId: string,
+  prefs: SellerPrefsPatch,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<SellerProfileRecord> {
+  // A present group replaces BOTH its columns; an absent member of a present
+  // group becomes NULL. See the header — this mirrors the source's wholesale
+  // sub-object assignment rather than merging.
+  const columns: Partial<typeof sellerProfiles.$inferInsert> = {};
+  if (prefs.shippingPrefs !== undefined) {
+    columns.shippingNote = prefs.shippingPrefs.note ?? null;
+    columns.shippingHandlingDays = prefs.shippingPrefs.handlingDays ?? null;
+  }
+  if (prefs.returnPrefs !== undefined) {
+    columns.returnAccepts = prefs.returnPrefs.accepts ?? null;
+    columns.returnWindowDays = prefs.returnPrefs.windowDays ?? null;
+  }
+
+  // Nothing to set: the source still upserts the key, so a first call with an
+  // empty patch must create the profile rather than 404.
+  if (Object.keys(columns).length === 0) {
+    return ensureSellerProfile(oxyUserId, db);
+  }
+
+  const [row] = await db
+    .insert(sellerProfiles)
+    .values({ oxyUserId, ...columns })
+    .onConflictDoUpdate({ target: sellerProfiles.oxyUserId, set: columns })
+    .returning();
+
+  return toRecord(row);
+}

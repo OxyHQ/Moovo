@@ -11,7 +11,7 @@
 import type { Request, Response } from 'express';
 import { getRequiredOxyUserId } from '@oxyhq/core/server';
 import type { CreateStoreInput, UpdateStoreInput, Store as StoreDTO } from '@moovo/shared-types';
-import type { IStore } from '../../models/store.js';
+import type { StoreRecord } from '../../db/stores/storeRepository.js';
 import {
   createStore,
   listStoresForUser,
@@ -22,9 +22,9 @@ import { respondWithError } from '../../lib/errors/error-codes.js';
 import { log } from '../../lib/logger.js';
 
 /** Serialize a store document to the `Store` admin DTO. */
-export function toStoreDTO(store: IStore): StoreDTO {
+export function toStoreDTO(store: StoreRecord): StoreDTO {
   return {
-    id: String((store as { _id: unknown })._id),
+    id: store.id,
     handle: store.handle,
     name: store.name,
     description: store.description,
@@ -95,7 +95,7 @@ export async function updateStoreHandler(req: Request, res: Response): Promise<v
     return;
   }
   try {
-    const updated = await updateStore(String((store as { _id: unknown })._id), req.body as UpdateStoreInput);
+    const updated = await updateStore(store.id, req.body as UpdateStoreInput);
     sendSuccess(res, toStoreDTO(updated));
   } catch (err) {
     log.general.error({ err }, 'Failed to update store');
