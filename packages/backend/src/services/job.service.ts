@@ -20,6 +20,7 @@
  * `requested → accepted` edge is retained for manual assignment.
  */
 
+import { findProviderById } from '../db/transport/providerRepository.js';
 import type { HydratedDocument } from 'mongoose';
 import type {
   JobStatus,
@@ -37,7 +38,6 @@ import {
 import { JobOffer } from '../models/job-offer.js';
 import { Shipment, type IShipment } from '../models/shipment.js';
 import { Quote, type IQuote } from '../models/quote.js';
-import { Provider, type IProvider } from '../models/provider.js';
 import { CourierProfile } from '../models/courier-profile.js';
 import { nextJobNumber } from '../models/counter.js';
 import { getAdapter } from './providers/provider-registry.js';
@@ -196,7 +196,7 @@ export async function bookShipment(
     if (!quote.providerId) {
       throw conflict('External quote is missing its provider');
     }
-    const provider = await Provider.findById(quote.providerId).lean<IProvider | null>();
+    const provider = await findProviderById(String(quote.providerId));
     if (!provider) {
       throw notFound('Provider not found for quote');
     }

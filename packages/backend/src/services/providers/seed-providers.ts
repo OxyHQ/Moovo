@@ -8,7 +8,7 @@
  * operator edits to `enabled`/`supportedCountries`/`config`.
  */
 
-import { Provider } from '../../models/provider.js';
+import { insertProviderIfAbsent } from '../../db/transport/providerRepository.js';
 import { MOCK_CARRIERS } from './adapters/mock-provider.js';
 import type { ShipmentType } from '@moovo/shared-types';
 import { log } from '../../lib/logger.js';
@@ -23,22 +23,22 @@ const MOCK_SUPPORTED_TYPES: ShipmentType[] = ['package'];
 export async function seedProviders(): Promise<number> {
   let created = 0;
   for (const carrier of MOCK_CARRIERS) {
-    const result = await Provider.updateOne(
-      { key: carrier.key },
-      {
-        $setOnInsert: {
-          key: carrier.key,
-          name: carrier.name,
-          enabled: true,
-          supportedTypes: MOCK_SUPPORTED_TYPES,
-          supportedCountries: [],
-          config: {},
-        },
-      },
-      { upsert: true },
-    );
-    if (result.upsertedCount && result.upsertedCount > 0) {
-      created += result.upsertedCount;
+    // `DO NOTHING`, the port of `$setOnInsert` alone: an existing provider is
+    // left EXACTLY as it stands, so a deploy never clobbers operator edits to
+    // `enabled`/`supportedCountries`/`config`. A `DO UPDATE` here would reset
+    // all three on every boot, and the operator's change would revert itself
+    // hours later with nothing in the logs.
+    if (
+      await insertProviderIfAbsent({
+        key: carrier.key,
+        name: carrier.name,
+        enabled: true,
+        supportedTypes: MOCK_SUPPORTED_TYPES,
+        supportedCountries: [],
+        config: {},
+      })
+    ) {
+      created += 1;
     }
   }
   log.general.info({ created, total: MOCK_CARRIERS.length }, 'Seeded provider docs (idempotent)');

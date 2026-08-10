@@ -9,6 +9,7 @@
  * {@link DisplayMoney} via a rate fetched ONCE per request (`getFairRate`).
  */
 
+import { findProvidersByIds, type ProviderRow } from '../db/transport/providerRepository.js';
 import mongoose from 'mongoose';
 import type {
   Shipment as ShipmentDTO,
@@ -27,7 +28,6 @@ import type {
   IScheduling,
 } from '../models/shipment.js';
 import { type IQuote } from '../models/quote.js';
-import { Provider, type IProvider } from '../models/provider.js';
 import { resolveMedia } from './catalog-hydration.service.js';
 import { getFairRate } from './faircoin-rate.service.js';
 import { toDisplayPriceBreakdown } from '../utils/fair-display.js';
@@ -142,13 +142,11 @@ export async function hydrateQuotes(
   ];
   const [rate, providerDocs] = await Promise.all([
     getFairRate(displayCurrency),
-    providerIds.length > 0
-      ? Provider.find({ _id: { $in: providerIds } }).lean<IProvider[]>()
-      : Promise.resolve([] as IProvider[]),
+    findProvidersByIds(providerIds),
   ]);
-  const providerById = new Map<string, IProvider>();
+  const providerById = new Map<string, ProviderRow>();
   for (const p of providerDocs) {
-    providerById.set(String((p as { _id: mongoose.Types.ObjectId })._id), p);
+    providerById.set(p.id, p);
   }
 
   const views: QuoteView[] = quotes.map((quote) => {
