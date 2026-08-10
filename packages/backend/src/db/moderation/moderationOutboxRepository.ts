@@ -32,13 +32,26 @@
  * ## 3. THREE different row counts, and only one of them ported for free
  *
  * The source reads `modifiedCount` in `complete` and `fail` but `matchedCount`
- * in `renew`, and that difference is deliberate: two renewals inside the same
- * millisecond compute an IDENTICAL `leaseUntil`, so a renewal that legitimately
- * held its lease modifies nothing and `modifiedCount` would report failure.
- * Postgres has one number and it behaves like `matchedCount`, so `renew` ports
+ * in `renew`, and that difference is deliberate — see {@link
+ * renewModerationOutboxRow}, which carries the reason at the statement it
+ * belongs to rather than only here.
+ *
+ * Postgres has ONE number and it behaves like `matchedCount`, so `renew` ports
  * exactly. `complete` and `fail` always move `status` away from `processing`,
- * so the two counts coincide there — an argument, not a construction, which is
- * why the realdb suite calls each one TWICE.
+ * so the two counts coincide there — an ARGUMENT, not a construction.
+ *
+ * **And a test that compares two numbers cannot check that argument.** Under
+ * Mongoose, `timestamps: true` meant `updatedAt` changed on every match, so
+ * `modifiedCount` was 1 whenever `matchedCount` was — the two agreed for a
+ * reason that had nothing to do with `status`. A suite asserting only that the
+ * counts agree would therefore pass on the coincidence and stay passing if the
+ * `status` change were removed. The observable that DISCRIMINATES is the row
+ * itself: the second call must assert what the always-set columns did, because
+ * `updated_at` moves on any real write and is the one column that cannot tell
+ * you nothing happened. This is the same shape as the Moovo repository whose
+ * `undefined`-filter mutation survived ten tests — including the obvious empty
+ * patch — because the UPDATE never failed, it just silently bumped
+ * `updated_at`; only an assertion on that column killed it.
  */
 
 import { and, eq, gt, lte, or, sql } from 'drizzle-orm';
@@ -213,11 +226,19 @@ export async function completeModerationOutboxRow(
 /**
  * Extend only a live lease still owned by this dispatcher.
  *
- * The count read here is the one the source deliberately spelled
- * `matchedCount`: two renewals inside one millisecond compute the same
- * `leaseUntil`, so a successful renewal can change nothing. Postgres' row count
- * is a MATCH count, so it answers correctly where a "did anything change"
- * reading would report a lost lease that was never lost.
+ * **This is the one place in the domain where "did the row change" is the WRONG
+ * question, and the reason is the kind that vanishes in a port and takes a bug
+ * with it.** Two renewals landing inside the same millisecond compute an
+ * IDENTICAL `leaseUntil`, so the second changes nothing while holding its lease
+ * perfectly — the source spelled this `matchedCount` for exactly that reason,
+ * where `complete` and `fail` beside it read `modifiedCount`.
+ *
+ * Postgres' row count is a MATCH count, so it ports the correct semantics for
+ * free. Re-spelling this as a "something changed" test would report a LOST
+ * LEASE that was never lost, and the dispatcher answers a lost lease by
+ * abandoning delivery mid-flight — so the failure is dropped moderation work on
+ * a heavily-loaded task, which is precisely when two renewals share a
+ * millisecond.
  */
 export async function renewModerationOutboxRow(
   eventId: string,
