@@ -28,6 +28,7 @@ import {
 } from '../../testDatabase';
 import {
   ensureCourierProfile,
+  setCourierOnlineIfPermitted,
   findCourierProfile,
   findDispatchCandidates,
   recordCourierPing,
@@ -95,6 +96,10 @@ async function seedCourier(
   });
   await setCourierOnlineStatus(oxyUserId, 'online');
   await recordCourierPing(oxyUserId, at);
+  // Dispatch requires `active`; a fresh profile is `pending`.
+  await client()`
+    UPDATE courier_profiles SET status = 'active' WHERE oxy_user_id = ${oxyUserId}
+  `;
 }
 
 function dispatchQuery(overrides: Record<string, unknown> = {}) {
@@ -176,6 +181,89 @@ describeIfPostgres('the fleet domain on a real server', () => {
       // Availability is the courier's to set — an appeal does not put somebody
       // back on shift.
       expect((await findCourierProfile('c-online'))?.onlineStatus).toBe('offline');
+    });
+  });
+
+  /**
+   * A suspension has TWO entry paths back into dispatch, and they fail
+   * differently — so both are pinned separately.
+   *
+   * Before this pair, `suspendCourier` dropped the courier `offline` and nothing
+   * else: they toggled themselves online and were dispatched again. In a
+   * delivery marketplace that means somebody suspended for a safety reason
+   * taking deliveries the same evening.
+   */
+  describe('a suspension actually holds', () => {
+    it('refuses to put a suspended courier back online', async () => {
+      await seedCourier('c-susp', NEAR);
+      await suspendCourier('c-susp');
+
+      expect(await setCourierOnlineIfPermitted('c-susp')).toBeNull();
+      expect((await findCourierProfile('c-susp'))?.onlineStatus).toBe('offline');
+    });
+
+    it('still allows a suspended courier to go OFFLINE', async () => {
+      await seedCourier('c-susp-off', NEAR);
+      await suspendCourier('c-susp-off');
+
+      // Never guarded: stopping work must always be possible.
+      await setCourierOnlineStatus('c-susp-off', 'offline');
+      expect((await findCourierProfile('c-susp-off'))?.onlineStatus).toBe('offline');
+    });
+
+    it('allows a reinstated courier back online', async () => {
+      await seedCourier('c-back', NEAR);
+      await suspendCourier('c-back');
+      await reinstateCourier('c-back');
+
+      expect(await setCourierOnlineIfPermitted('c-back')).not.toBeNull();
+      expect((await findCourierProfile('c-back'))?.onlineStatus).toBe('online');
+    });
+
+    it('creates and permits a first-time courier, who is pending and not suspended', async () => {
+      const profile = await setCourierOnlineIfPermitted('c-new');
+      expect(profile).not.toBeNull();
+      expect(profile?.status).toBe('pending');
+    });
+
+    /**
+     * The SECOND path: a courier who was already online when the suspension
+     * landed. `suspendCourier` drops them offline, but a stale ping plus a
+     * concurrent write could leave `online_status` set — so dispatch refuses on
+     * `status` independently rather than trusting availability to carry it.
+     */
+    it('never dispatches a suspended courier even while marked online', async () => {
+      await seedCourier('c-online-susp', NEAR);
+      await suspendCourier('c-online-susp');
+      // Force the state the guard above prevents, to prove dispatch does not
+      // depend on that guard having held.
+      await client()`
+        UPDATE courier_profiles SET online_status = 'online'
+        WHERE oxy_user_id = 'c-online-susp'
+      `;
+
+      const candidates = await findDispatchCandidates(dispatchQuery());
+      expect(candidates.map((c) => c.oxyUserId)).toEqual([]);
+    });
+
+    /**
+     * The second behaviour change riding on the same predicate, named rather
+     * than left to be discovered: an unverified courier could previously go
+     * online and be offered work.
+     */
+    it('never dispatches a PENDING courier who has not completed verification', async () => {
+      await ensureCourierProfile('c-unverified');
+      await updateCourierCapability('c-unverified', {
+        eligibleJobTypes: ['package'],
+        maxWeightKg: 50,
+        maxSizeClass: 'large',
+      });
+      await setCourierOnlineIfPermitted('c-unverified');
+      await recordCourierPing('c-unverified', NEAR);
+      expect((await findCourierProfile('c-unverified'))?.status).toBe('pending');
+
+      const candidates = await findDispatchCandidates(dispatchQuery());
+      expect(candidates.map((c) => c.oxyUserId)).toEqual([]);
     });
   });
 

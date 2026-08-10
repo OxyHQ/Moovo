@@ -17,6 +17,7 @@ import {
   ensureCourierProfile,
   findCourierProfile,
   recordCourierPing,
+  setCourierOnlineIfPermitted,
   setCourierOnlineStatus,
   updateCourierCapability,
   updateCourierPayoutAccountRef,
@@ -75,9 +76,25 @@ async function setOnlineStatus(
   return setCourierOnlineStatus(oxyUserId, onlineStatus);
 }
 
-/** Mark the courier online. */
+/**
+ * Mark the courier online — unless they are suspended.
+ *
+ * The other half of the suspension fix. `suspendCourier` drops a courier
+ * `offline`, and without this check they simply toggled themselves back and
+ * re-entered dispatch: a suspension held only for as long as the suspended
+ * person left their availability alone. The dispatch predicate stops them being
+ * OFFERED work; this stops them entering the pool at all, and the two fail
+ * differently — neither alone closes both paths.
+ *
+ * Going OFFLINE is deliberately unguarded: a suspended courier must always be
+ * able to stop receiving work.
+ */
 export async function goOnline(oxyUserId: string): Promise<CourierProfileRow> {
-  return setOnlineStatus(oxyUserId, 'online');
+  const profile = await setCourierOnlineIfPermitted(oxyUserId);
+  if (!profile) {
+    throw forbidden('Your courier account is suspended and cannot go online');
+  }
+  return profile;
 }
 
 /** Mark the courier offline. */
