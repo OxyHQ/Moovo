@@ -131,13 +131,46 @@ async function upsertCourierProfile(
   return row;
 }
 
-/** Set the courier's availability. Never flips `on_job` — that is job-driven. */
+/**
+ * Set the courier's availability. Never flips `on_job` — that is job-driven.
+ *
+ * Used for going OFFLINE, which a suspended courier must always be able to do.
+ * Going ONLINE goes through {@link setCourierOnlineIfPermitted}.
+ */
 export async function setCourierOnlineStatus(
   oxyUserId: string,
   onlineStatus: string,
   db: DatabaseOrTransaction = getDb(),
 ): Promise<CourierProfileRow> {
   return upsertCourierProfile(oxyUserId, { onlineStatus }, db);
+}
+
+/**
+ * Put the courier online unless they are suspended, answering `null` if refused.
+ *
+ * The refusal is a WHERE clause on the upsert rather than a read followed by a
+ * write, so a suspension landing between the two cannot be stepped over. That
+ * matters here more than it usually would: the thing being raced is a
+ * moderation decision, and the loser of a read-then-write race is the jury.
+ *
+ * A courier with NO profile is created and allowed online — a fresh profile is
+ * `pending`, never `suspended`, and refusing first-time availability would be a
+ * different change from the one this guard exists to make.
+ */
+export async function setCourierOnlineIfPermitted(
+  oxyUserId: string,
+  db: DatabaseOrTransaction = getDb(),
+): Promise<CourierProfileRow | null> {
+  const [row] = await db
+    .insert(courierProfiles)
+    .values({ id: uuidv7(), oxyUserId, onlineStatus: 'online' })
+    .onConflictDoUpdate({
+      target: courierProfiles.oxyUserId,
+      set: { onlineStatus: 'online' },
+      setWhere: not(eq(courierProfiles.status, 'suspended')),
+    })
+    .returning();
+  return row ?? null;
 }
 
 /**
@@ -282,15 +315,17 @@ export interface DispatchCandidateQuery {
  * `sparse: true` did for the `2dsphere` index, and why the GiST index here is
  * PARTIAL on `location is not null`.
  *
- * There is deliberately NO `status = 'active'` predicate, because the source has
- * none — and that omission is load-bearing to reproduce rather than quietly
- * improve. It leaves a real gap: `suspendCourier` sets `online_status` to
- * `offline`, but nothing stops a suspended courier calling `goOnline` and
- * re-entering this result set, so a suspension only holds while they leave their
- * availability alone. Closing it is a ONE-predicate change and is deliberately
- * not made here: landing a moderation-enforcement change inside a storage port
- * makes any behaviour complaint afterwards impossible to attribute to one or the
- * other. It is reported with this PR as its own decision.
+ * `status = 'active'` is NOT in the source and is here on purpose — it is half
+ * of the suspension fix. `suspendCourier` drops the courier `offline`, but
+ * nothing stopped them calling `goOnline` and re-entering this result set, so a
+ * suspension held only while they left their availability alone. This predicate
+ * stops an already-online suspended courier being dispatched; the guard on
+ * `setCourierOnlineIfPermitted` stops them going online at all. Neither alone
+ * closes both entry paths.
+ *
+ * It also excludes `pending` couriers, who could previously go online and be
+ * dispatched before verification completed. That is a SECOND behaviour change
+ * riding on the same predicate, named here rather than left to be discovered.
  *
  * `= any(eligible_job_types)` is array CONTAINMENT — the port of Mongo's
  * `{eligibleJobTypes: <one value>}`. `eq()` would compare the whole array to a
@@ -309,6 +344,7 @@ export async function findDispatchCandidates(
     .where(
       and(
         eq(courierProfiles.onlineStatus, 'online'),
+        eq(courierProfiles.status, 'active'),
         gte(courierProfiles.lastPingAt, query.stalePingCutoff),
         sql`${query.jobType} = any(${courierProfiles.eligibleJobTypes})`,
         gte(courierProfiles.maxWeightKg, query.weightKg),
