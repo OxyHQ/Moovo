@@ -14,7 +14,6 @@
  *    recorded identically in every mode, and only the effect is gated.
  */
 
-import mongoose from 'mongoose';
 import type { ModerationEnforcementAction, ModerationEnforcementMode } from '@moovo/shared-types';
 import { config } from '../../config/index.js';
 import { log } from '../../lib/logger.js';
@@ -22,7 +21,11 @@ import {
   reinstateCourier as reinstateCourierRow,
   suspendCourier as suspendCourierRow,
 } from '../../db/fleet/courierProfileRepository.js';
-import { ModerationEnforcement } from '../../models/moderation-enforcement.js';
+import {
+  claimModerationEnforcement,
+  deleteModerationEnforcement,
+  recordModerationEnforcementEffect,
+} from '../../db/moderation/moderationEnforcementRepository.js';
 import type { EnforcementTargetType, PlannedEnforcementAction } from './enforcement-plan.js';
 
 /**
@@ -137,38 +140,29 @@ async function performEffect(
 /**
  * Claim the row for one action, or discover somebody already has it.
  *
- * The insert IS the claim: the compound index is unique, so a duplicate-key error
- * is the answer "this exact action of this exact revision has already been
- * handled" rather than a failure to work around.
+ * The insert IS the claim, against `moderation_enforcements_decision_revision_
+ * action_key`. The source inserted and caught the driver's duplicate-key error;
+ * that shape does not port, because a raised `23505` aborts the surrounding
+ * transaction and a decision plans SEVERAL actions — one already-claimed action
+ * would abandon the others. `claimModerationEnforcement` asks for
+ * `ON CONFLICT DO NOTHING RETURNING` instead, so `null` is the answer "this
+ * exact action of this exact revision has already been handled", raised by
+ * nothing.
  */
 async function claim(
   input: EnforcementInput,
   planned: PlannedEnforcementAction,
-): Promise<mongoose.Types.ObjectId | null> {
-  try {
-    const created = await ModerationEnforcement.create({
-      decisionId: input.decisionId,
-      revision: input.revision,
-      action: planned.action,
-      ...(input.caseId === undefined ? {} : { caseId: input.caseId }),
-      ...(input.reportId === undefined ? {} : { reportId: input.reportId }),
-      targetType: input.targetType,
-      targetId: input.targetId,
-      applied: false,
-      reason: planned.reason,
-    });
-    return created._id;
-  } catch (error: unknown) {
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      Number((error as { code?: unknown }).code) === 11000
-    ) {
-      return null;
-    }
-    throw error;
-  }
+): Promise<string | null> {
+  return await claimModerationEnforcement({
+    decisionId: input.decisionId,
+    revision: input.revision,
+    action: planned.action,
+    caseId: input.caseId,
+    reportId: input.reportId,
+    targetType: input.targetType,
+    targetId: input.targetId,
+    reason: planned.reason,
+  });
 }
 
 export interface EnforcementOutcome {
@@ -204,7 +198,7 @@ export async function applyEnforcementPlan(
        * effect threw would mark the action permanently done without it ever
        * having happened — the exact shape of a silently lost enforcement.
        */
-      await ModerationEnforcement.deleteOne({ _id: rowId });
+      await deleteModerationEnforcement(rowId);
       claimed -= 1;
       log.moderation.error(
         { err: error, decisionId: input.decisionId, action: planned.action },
@@ -213,16 +207,10 @@ export async function applyEnforcementPlan(
       throw error;
     }
 
-    await ModerationEnforcement.updateOne(
-      { _id: rowId },
-      {
-        $set: {
-          applied: effect.applied,
-          ...(effect.reason === undefined ? {} : { reason: effect.reason }),
-          ...(effect.applied ? { appliedAt: new Date() } : {}),
-        },
-      },
-    );
+    await recordModerationEnforcementEffect(rowId, {
+      applied: effect.applied,
+      reason: effect.reason,
+    });
     if (effect.applied) applied += 1;
   }
 

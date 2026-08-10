@@ -14,10 +14,14 @@
 
 import { DecisionSchema, type Decision } from '@oxyhq/crowdsource-contracts';
 import { log } from '../../lib/logger.js';
-import { Report, type IReport } from '../../models/report.js';
+import {
+  applyDecisionToReport,
+  findReportByCaseId,
+  type ReportRecord,
+} from '../../db/moderation/reportRepository.js';
 import { planEnforcement, type EnforcementTargetType } from './enforcement-plan.js';
 import { applyEnforcementPlan } from './moderation-enforcement.service.js';
-import type { ModerationOutboxEvent } from './moderation-outbox.service.js';
+import type { ModerationOutboxEvent } from '../../db/moderation/moderationOutboxRepository.js';
 import { reportStateForDecision } from './report-status.js';
 
 /**
@@ -44,7 +48,7 @@ export class ModerationDecisionRejectedError extends Error {
  * it is also what makes the enforcement target trustworthy: it was written by
  * Moovo at intake, not by anything that arrived over the wire.
  */
-function targetFor(report: Pick<IReport, 'reportedType' | 'reportedId'>): {
+function targetFor(report: Pick<ReportRecord, 'reportedType' | 'reportedId'>): {
   targetType: EnforcementTargetType;
   targetId: string;
 } | null {
@@ -86,7 +90,7 @@ export async function applyDecisionOutboxEvent(event: ModerationOutboxEvent): Pr
   }
   const decision: Decision = parsed.data;
 
-  const report = await Report.findOne({ crowdSourceCaseId: caseId }).lean();
+  const report = await findReportByCaseId(caseId);
   if (!report) {
     /**
      * A decision for a case this deployment has no report for. Not retryable and
@@ -101,7 +105,7 @@ export async function applyDecisionOutboxEvent(event: ModerationOutboxEvent): Pr
   const target = targetFor(report);
   if (target === null) {
     throw new ModerationDecisionRejectedError(
-      `Report '${String(report._id)}' has reported type '${report.reportedType}', which is not deliverable and cannot have a case.`,
+      `Report '${report.id}' has reported type '${report.reportedType}', which is not deliverable and cannot have a case.`,
     );
   }
 
@@ -110,7 +114,7 @@ export async function applyDecisionOutboxEvent(event: ModerationOutboxEvent): Pr
     decisionId: decision.id,
     revision: decision.revision,
     caseId,
-    reportId: String(report._id),
+    reportId: report.id,
     targetType: target.targetType,
     targetId: target.targetId,
     planned,
@@ -133,27 +137,19 @@ export async function applyDecisionOutboxEvent(event: ModerationOutboxEvent): Pr
    * `resolved`, and the report would say the courier was found in violation of
    * something they had been cleared of.
    *
-   * `$lt` on the recorded revision, with `$exists: false` for the first decision
-   * a report ever receives. A stale revision matches nothing and writes nothing;
-   * its enforcement was already claimed under its own `revision` row, so the
-   * audit trail keeps both and only the CURRENT answer reaches the report.
+   * `decision_revision < n`, with `IS NULL` for the first decision a report ever
+   * receives. A stale revision matches nothing and writes nothing; its
+   * enforcement was already claimed under its own `revision` row, so the audit
+   * trail keeps both and only the CURRENT answer reaches the report.
+   *
+   * **And this guard starts working at the cutover — it has never held.**
+   * `ReportSchema` declared no `decisionRevision` path, so Mongoose's strict
+   * mode stripped it from every `$set`: the field was never stored, the
+   * `{$lt}` arm could never match, and every late delivery of an earlier
+   * revision was applied. Storing the column is what makes the refusal real.
+   * See `db/moderation/reportRepository.ts`.
    */
-  await Report.updateOne(
-    {
-      _id: report._id,
-      $or: [
-        { decisionRevision: { $exists: false } },
-        { decisionRevision: { $lt: decision.revision } },
-      ],
-    },
-    {
-      $set: {
-        status: state.status,
-        localStatus: state.localStatus,
-        decisionRevision: decision.revision,
-      },
-    },
-  );
+  await applyDecisionToReport(report.id, decision.revision, state);
 
   log.moderation.info(
     {
@@ -161,7 +157,7 @@ export async function applyDecisionOutboxEvent(event: ModerationOutboxEvent): Pr
       decisionId: decision.id,
       revision: decision.revision,
       outcome: decision.outcome,
-      reportId: String(report._id),
+      reportId: report.id,
     },
     '[CrowdSource] decision applied',
   );

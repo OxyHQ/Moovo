@@ -12,15 +12,13 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const reportFindOne = vi.fn();
-const reportUpdateOne = vi.fn();
+const findReportByCaseId = vi.fn();
+const applyDecisionToReport = vi.fn();
 const applyEnforcementPlan = vi.fn();
 
-vi.mock('../../../models/report.js', () => ({
-  Report: {
-    findOne: (...args: unknown[]) => reportFindOne(...args),
-    updateOne: (...args: unknown[]) => reportUpdateOne(...args),
-  },
+vi.mock('../../../db/moderation/reportRepository.js', () => ({
+  findReportByCaseId: (...args: unknown[]) => findReportByCaseId(...args),
+  applyDecisionToReport: (...args: unknown[]) => applyDecisionToReport(...args),
 }));
 
 vi.mock('../moderation-enforcement.service.js', () => ({
@@ -39,7 +37,7 @@ import { decision } from './decision-fixtures.js';
 
 function event(payload: Record<string, unknown>) {
   return {
-    _id: 'moderation:decision.apply:evt_1',
+    id: 'moderation:decision.apply:evt_1',
     kind: 'decision.apply' as const,
     payload,
     attempts: 1,
@@ -51,7 +49,7 @@ function event(payload: Record<string, unknown>) {
 
 function report(overrides: Record<string, unknown> = {}) {
   return {
-    _id: 'report-1',
+    id: 'report-1',
     reportedType: 'courier',
     reportedId: 'courier-1',
     crowdSourceCaseId: 'case_1',
@@ -61,8 +59,8 @@ function report(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  reportFindOne.mockReturnValue({ lean: async () => report() });
-  reportUpdateOne.mockResolvedValue({ modifiedCount: 1 });
+  findReportByCaseId.mockResolvedValue(report());
+  applyDecisionToReport.mockResolvedValue(true);
   applyEnforcementPlan.mockResolvedValue({ claimed: 1, applied: 0 });
 });
 
@@ -85,7 +83,7 @@ describe('applying a decision', () => {
       order.push('enforce');
       return { claimed: 1, applied: 1 };
     });
-    reportUpdateOne.mockImplementation(async () => {
+    applyDecisionToReport.mockImplementation(async () => {
       order.push('status');
       return { modifiedCount: 1 };
     });
@@ -107,12 +105,26 @@ describe('applying a decision', () => {
         event({ caseId: 'case_1', decision: decision({ outcome: 'violation' }) }),
       ),
     ).rejects.toThrow('mongo down');
-    expect(reportUpdateOne).not.toHaveBeenCalled();
+    expect(applyDecisionToReport).not.toHaveBeenCalled();
   });
 });
 
-describe('the revision guard', () => {
-  it('only writes when the incoming revision is newer than the recorded one', async () => {
+/**
+ * The worker's HALF of the revision guard.
+ *
+ * The guard itself is a WHERE clause in `applyDecisionToReport`, and whether it
+ * actually refuses a stale revision is asserted against real rows in
+ * `moderation.realdb.test.ts` — in both directions. It cannot be asserted here,
+ * because against a mock the only observable is the arguments this worker passed,
+ * and a repository that ignored its `revision` parameter entirely would satisfy
+ * every assertion in this file.
+ *
+ * What IS this worker's responsibility is handing over the DECISION's revision
+ * rather than, say, the report's or a constant — a mistake the repository cannot
+ * catch, because any number it is given looks like a valid revision.
+ */
+describe('the revision the worker hands to the guard', () => {
+  it('passes the incoming decision revision, and the state it derived', async () => {
     await applyDecisionOutboxEvent(
       event({
         caseId: 'case_1',
@@ -120,25 +132,22 @@ describe('the revision guard', () => {
       }),
     );
 
-    const [filter, update] = reportUpdateOne.mock.calls[0] as [
+    const [reportId, revision, state] = applyDecisionToReport.mock.calls[0] as [
+      string,
+      number,
       Record<string, unknown>,
-      Record<string, Record<string, unknown>>,
     ];
-    expect(filter.$or).toEqual([
-      { decisionRevision: { $exists: false } },
-      { decisionRevision: { $lt: 2 } },
-    ]);
-    expect(update.$set?.decisionRevision).toBe(2);
+    expect(reportId).toBe('report-1');
+    expect(revision).toBe(2);
+    expect(state.status).toBe('dismissed');
   });
 
-  it('admits the first decision a report ever receives', async () => {
+  it('passes revision 1 for the first decision a report ever receives', async () => {
     await applyDecisionOutboxEvent(
       event({ caseId: 'case_1', decision: decision({ revision: 1 }) }),
     );
-    const [filter] = reportUpdateOne.mock.calls[0] as [Record<string, unknown>];
-    // `$exists: false` is the branch that matters here — without it a report with
-    // no recorded revision would never be updated at all.
-    expect(filter.$or).toContainEqual({ decisionRevision: { $exists: false } });
+    const [, revision] = applyDecisionToReport.mock.calls[0] as [string, number];
+    expect(revision).toBe(1);
   });
 });
 
@@ -166,7 +175,7 @@ describe('payloads that cannot be applied', () => {
   });
 
   it('completes quietly when no local report matches the case', async () => {
-    reportFindOne.mockReturnValue({ lean: async () => null });
+    findReportByCaseId.mockResolvedValue(null);
     // Retrying will never find it, so this must not throw — it would loop until
     // the event dead-lettered for a reason nobody can act on.
     await expect(
@@ -176,7 +185,7 @@ describe('payloads that cannot be applied', () => {
   });
 
   it('rejects a decision naming a report whose type is not deliverable', async () => {
-    reportFindOne.mockReturnValue({
+    findReportByCaseId.mockResolvedValue({
       lean: async () => report({ reportedType: 'listing' }),
     });
     // Impossible by construction — a local-only report is never delivered, so no

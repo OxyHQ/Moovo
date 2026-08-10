@@ -1,7 +1,7 @@
 /**
  * Unit tests for `checkout.service`.
  *
- * `mongodb-memory-server` is not available, so the cart/inventory services, the
+ * Nothing in this repo runs a Mongo server for tests, so the cart/inventory services, the
  * Listing/ProductVariant/Address/Order/Counter models, the order-hydration
  * summarizer, the media chokepoint and Redis are all mocked. Tests assert the F4
  * checkout contract: multi-seller split (one order per seller, shared

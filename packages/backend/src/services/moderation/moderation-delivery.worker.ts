@@ -19,11 +19,16 @@
  * - **Anything else** is the SDK's `retryable` to answer, and the outbox obeys it.
  */
 
-import { Report } from '../../models/report.js';
+import {
+  closeReport,
+  findReportById,
+  markReportDeliveryFailed,
+  markReportSubmitted,
+} from '../../db/moderation/reportRepository.js';
 import { log } from '../../lib/logger.js';
 import { getCrowdSourceClient } from './crowdsource-client.js';
 import { buildModerationReportInput } from './evidence-snapshot.service.js';
-import type { ModerationOutboxEvent } from './moderation-outbox.service.js';
+import type { ModerationOutboxEvent } from '../../db/moderation/moderationOutboxRepository.js';
 
 /** Thrown when there is nowhere to deliver to yet. Always retryable. */
 export class CrowdSourceUnavailableError extends Error {
@@ -50,14 +55,6 @@ export class ModerationDeliveryRejectedError extends Error {
   }
 }
 
-/** Close a report there is genuinely nothing left to do about. */
-async function closeUndeliverable(reportId: string, reason: string): Promise<void> {
-  await Report.updateOne(
-    { _id: reportId },
-    { $set: { localStatus: 'closed', localStatusReason: reason } },
-  );
-}
-
 /** Handle one `report.submit` outbox event. */
 export async function deliverReportOutboxEvent(event: ModerationOutboxEvent): Promise<void> {
   const reportId = event.payload.reportId;
@@ -65,7 +62,7 @@ export async function deliverReportOutboxEvent(event: ModerationOutboxEvent): Pr
     throw new ModerationDeliveryRejectedError('A report.submit event carried no reportId.');
   }
 
-  const report = await Report.findById(reportId).lean();
+  const report = await findReportById(reportId);
   if (!report) {
     /**
      * The report is gone but its delivery event survived. Nothing to deliver and
@@ -87,7 +84,7 @@ export async function deliverReportOutboxEvent(event: ModerationOutboxEvent): Pr
    * nothing alerts on.
    */
   const input = await buildModerationReportInput({
-    id: String(report._id),
+    id: report.id,
     reportedType: report.reportedType,
     reportedId: report.reportedId,
     reporter: report.reporter,
@@ -98,7 +95,7 @@ export async function deliverReportOutboxEvent(event: ModerationOutboxEvent): Pr
   });
 
   if (input === null) {
-    await closeUndeliverable(
+    await closeReport(
       reportId,
       'The reported item no longer exists, so there is nothing to review.',
     );
@@ -113,35 +110,23 @@ export async function deliverReportOutboxEvent(event: ModerationOutboxEvent): Pr
      * The failure is visible on the report itself, not only in the outbox row.
      * `delivery_failed` is what a reporter's receipt and the reconciliation sweep
      * both read; leaving the report at `queued` while the outbox quietly backed
-     * off would hide the problem in a collection nobody looks at. Written before
+     * off would hide the problem in a table nobody looks at. Written before
      * rethrowing so the outbox still applies its own backoff or dead-letters.
      */
-    await Report.updateOne(
-      { _id: reportId },
-      {
-        $set: {
-          localStatus: 'delivery_failed',
-          lastDeliveryError: (error instanceof Error ? error.message : String(error)).slice(0, 2_000),
-        },
-      },
+    await markReportDeliveryFailed(
+      reportId,
+      error instanceof Error ? error.message : String(error),
     );
     throw error;
   }
 
-  await Report.updateOne(
-    { _id: reportId },
-    {
-      $set: {
-        localStatus: 'submitted',
-        crowdSourceReportId: receipt.reportId,
-        crowdSourceCaseId: receipt.caseId,
-        crowdSourceMerged: receipt.merged,
-        contentSnapshotHash: input.snapshotHash,
-        submittedAt: new Date(),
-      },
-      $unset: { lastDeliveryError: '', localStatusReason: '' },
-    },
-  );
+  await markReportSubmitted(reportId, {
+    crowdSourceReportId: receipt.reportId,
+    crowdSourceCaseId: receipt.caseId,
+    crowdSourceMerged: receipt.merged,
+    contentSnapshotHash: input.snapshotHash,
+    submittedAt: new Date(),
+  });
 
   log.moderation.info(
     { reportId, caseId: receipt.caseId, merged: receipt.merged },

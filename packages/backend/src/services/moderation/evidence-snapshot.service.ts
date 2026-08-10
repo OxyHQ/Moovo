@@ -31,7 +31,7 @@
 
 import { createHash } from 'crypto';
 import type { ReportInput } from '@oxyhq/crowdsource';
-import type { IReport } from '../../models/report.js';
+import type { ReportRecord } from '../../db/moderation/reportRepository.js';
 import { REPORT_TAXONOMY_VERSION, allegationsForCategories } from './report-taxonomy.js';
 import { subjectProviderFor } from './subjects/registry.js';
 import type { ModerationSubjectSnapshot } from './subjects/types.js';
@@ -104,7 +104,7 @@ export interface ModerationReportInput {
  */
 export async function buildModerationReportInput(
   report: Pick<
-    IReport,
+    ReportRecord,
     'reportedType' | 'reportedId' | 'reporter' | 'categories' | 'details' | 'contextJobId' | 'createdAt'
   > & { id: string },
 ): Promise<ModerationReportInput | null> {

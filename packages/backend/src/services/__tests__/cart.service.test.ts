@@ -1,8 +1,8 @@
 /**
  * Unit tests for `cart.service`.
  *
- * `mongodb-memory-server` is not available, so the `Cart`, `Listing` and
- * `ProductVariant` models — plus the media chokepoint (`resolveMedia`) — are
+ * Nothing in this repo runs a Mongo server for tests, so the `Cart`, `Listing`
+ * and `ProductVariant` models — plus the media chokepoint (`resolveMedia`) — are
  * mocked. Tests cover the F3 cart contract: quantity clamps to `available`, a
  * second add of the same variant increments, cross-currency adds are rejected
  * (CONFLICT), `revalidate` flags an under-stocked line `stale`, and the subtotal

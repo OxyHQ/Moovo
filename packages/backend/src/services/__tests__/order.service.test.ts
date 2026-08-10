@@ -1,7 +1,7 @@
 /**
  * Unit tests for `order.service.transition`.
  *
- * `mongodb-memory-server` is not available, so the Order/SellerProfile/Store
+ * Nothing in this repo runs a Mongo server for tests, so the Order/SellerProfile/Store
  * models, the inventory effects (`commit`/`release`/`restock`) and the
  * order-hydration module are mocked. Tests assert the F4 lifecycle contract:
  * every LEGAL transition succeeds and saves; every ILLEGAL transition is a

@@ -66,7 +66,7 @@ vi.mock('../../services/moderation/moderation-inbound.service.js', () => ({
 }));
 
 vi.mock('../../services/moderation/moderation-event-store.js', () => ({
-  mongoProcessedEventStore: () => ({
+  sharedProcessedEventStore: () => ({
     claim: (...args: unknown[]) => claim(...args),
     release: (...args: unknown[]) => release(...args),
   }),

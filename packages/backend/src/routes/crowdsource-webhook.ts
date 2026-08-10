@@ -33,7 +33,7 @@ import {
   recordDecisionEvent,
   recordIgnoredEvent,
 } from '../services/moderation/moderation-inbound.service.js';
-import { mongoProcessedEventStore } from '../services/moderation/moderation-event-store.js';
+import { sharedProcessedEventStore } from '../services/moderation/moderation-event-store.js';
 
 /**
  * One string field out of an event payload this version does not know.
@@ -80,7 +80,7 @@ export function createCrowdSourceWebhookRoutes(): Router {
         : { previousSecret: config.crowdSource.webhookPreviousSecret }),
       // Shared across ECS tasks: the in-process default would dedupe only the
       // instance that happened to receive both copies of a redelivery.
-      store: mongoProcessedEventStore(),
+      store: sharedProcessedEventStore(),
       on: {
         /**
          * A decision, provisional or final. Both are queued: a provisional

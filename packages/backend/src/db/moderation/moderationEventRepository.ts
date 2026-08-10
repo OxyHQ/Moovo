@@ -19,7 +19,7 @@
  * dedupe only the instance that happened to receive both copies.
  */
 
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { moderationEvents } from '../schema/moderation';
 
@@ -116,17 +116,4 @@ export async function markModerationEventIgnored(
       state: 'ignored',
     })
     .where(eq(moderationEvents.id, input.eventId));
-}
-
-/** Whether an event row exists at all, for the operator trace. */
-export async function moderationEventExists(
-  eventId: string,
-  db: DatabaseOrTransaction = getDb(),
-): Promise<boolean> {
-  const [row] = await db
-    .select({ present: sql<number>`1` })
-    .from(moderationEvents)
-    .where(eq(moderationEvents.id, eventId))
-    .limit(1);
-  return row !== undefined;
 }

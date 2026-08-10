@@ -17,32 +17,32 @@
 import { uuidv7 } from '@oxyhq/db';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const reportCreate = vi.fn();
+const insertReport = vi.fn();
 const isJobParty = vi.fn();
 const enqueue = vi.fn();
-const withTransaction = vi.fn();
-const endSession = vi.fn();
-let sessionIsInTransaction = true;
+const transaction = vi.fn();
 
-vi.mock('mongoose', async () => {
-  const actual = await vi.importActual<typeof import('mongoose')>('mongoose');
-  return {
-    ...actual,
-    default: {
-      ...actual.default,
-      isValidObjectId: actual.isValidObjectId,
-      startSession: async () => ({
-        withTransaction: (...args: unknown[]) => withTransaction(...args),
-        endSession: (...args: unknown[]) => endSession(...args),
-        inTransaction: () => sessionIsInTransaction,
-      }),
-    },
-    isValidObjectId: actual.isValidObjectId,
-  };
-});
+/**
+ * A transaction handle that is only ever compared by IDENTITY.
+ *
+ * The coupling this file guards is that the enqueue receives the handle the
+ * transaction opened, rather than the root connection. Against a mock that is
+ * an identity check and nothing more — whether the REAL root handle is
+ * distinguishable from a real transaction handle is a question only a server can
+ * answer, and `moderation.realdb.test.ts` asks it there.
+ */
+const TX = { rollback: () => undefined, marker: 'the-transaction-handle' };
 
-vi.mock('../../../models/report.js', () => ({
-  Report: { create: (...args: unknown[]) => reportCreate(...args) },
+vi.mock('../../../db/postgres.js', () => ({
+  getDb: () => ({ transaction: (...args: unknown[]) => transaction(...args) }),
+}));
+
+vi.mock('../../../db/moderation/reportRepository.js', () => ({
+  insertReport: (...args: unknown[]) => insertReport(...args),
+}));
+
+vi.mock('../../../db/moderation/moderationOutboxRepository.js', () => ({
+  enqueueModerationOutboxRow: (...args: unknown[]) => enqueue(...args),
 }));
 
 // `jobs` is Postgres, and the seam is a repository function that answers a
@@ -56,17 +56,16 @@ vi.mock('../../../db/transport/jobRepository.js', () => ({
 }));
 
 vi.mock('../moderation-outbox.service.js', () => ({
-  enqueueModerationOutboxEvent: (...args: unknown[]) => enqueue(...args),
   reportSubmitEventId: (id: string) => `moderation:report.submit:${id}`,
 }));
 
 import { createReport } from '../report-intake.service.js';
 
-const VALID_JOB_ID = '507f1f77bcf86cd799439011';
+const VALID_JOB_ID = uuidv7();
 
 function storedReport(overrides: Record<string, unknown> = {}) {
   return {
-    _id: 'report-1',
+    id: 'report-1',
     reporter: 'reporter-1',
     reportedType: 'courier',
     reportedId: 'courier-1',
@@ -79,14 +78,12 @@ function storedReport(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  sessionIsInTransaction = true;
-  // Run the transaction body inline, with the session the real code would get.
-  withTransaction.mockImplementation(async (operation: (s: unknown) => Promise<void>) => {
-    await operation({ inTransaction: () => sessionIsInTransaction });
-  });
-  reportCreate.mockImplementation(async (docs: Record<string, unknown>[]) => [
-    storedReport(docs[0]),
-  ]);
+
+  // Run the transaction body inline, with the handle the real code would get.
+  transaction.mockImplementation(async (operation: (tx: unknown) => Promise<unknown>) =>
+    await operation(TX),
+  );
+  insertReport.mockImplementation(async (doc: Record<string, unknown>) => storedReport(doc));
   enqueue.mockResolvedValue('moderation:report.submit:report-1');
   isJobParty.mockResolvedValue(false);
 });
@@ -101,15 +98,16 @@ describe('a deliverable type', () => {
     });
 
     expect(result.outboxEventId).toBe('moderation:report.submit:report-1');
-    const [[docs]] = reportCreate.mock.calls as [[Record<string, unknown>[]]];
-    expect(docs[0]?.localStatus).toBe('queued');
-    expect(docs[0]?.localStatusReason).toBeUndefined();
+    const [doc] = insertReport.mock.calls[0] as [Record<string, unknown>];
+    expect(doc?.localStatus).toBe('queued');
+    expect(doc?.localStatusReason).toBeUndefined();
   });
 
-  it('enqueues INSIDE the transaction, with the same session', async () => {
-    // The coupling this file exists for: the enqueue must receive a session that
-    // is actually in a transaction, which is what `enqueueModerationOutboxEvent`
-    // itself refuses to proceed without.
+  it('enqueues INSIDE the transaction, with the transaction handle itself', async () => {
+    // The coupling this file exists for. Both writes must receive the handle the
+    // transaction opened — a caller that reached for `getDb()` instead would
+    // commit the outbox row on its own connection, leaving a report answered 201
+    // with nothing owed to deliver it.
     await createReport({
       reporter: 'reporter-1',
       reportedType: 'courier',
@@ -117,13 +115,21 @@ describe('a deliverable type', () => {
       categories: ['harassment'],
     });
 
-    expect(withTransaction).toHaveBeenCalledTimes(1);
-    const [, session] = enqueue.mock.calls[0] as [unknown, { inTransaction: () => boolean }];
-    expect(session.inTransaction()).toBe(true);
+    expect(transaction).toHaveBeenCalledTimes(1);
+    const [, reportHandle] = insertReport.mock.calls[0] as [unknown, unknown];
+    const [, outboxHandle] = enqueue.mock.calls[0] as [unknown, unknown];
+    expect(reportHandle).toBe(TX);
+    expect(outboxHandle).toBe(TX);
   });
 
-  it('always ends the session, even when the transaction throws', async () => {
-    withTransaction.mockRejectedValue(new Error('write conflict'));
+  /**
+   * There is no session to end any more — drizzle's `transaction` owns the
+   * connection and returns it whether the body resolves or throws. What still
+   * has to hold is that a failed transaction fails the CALL rather than being
+   * swallowed into a 201 for a report that was rolled back.
+   */
+  it('propagates a failed transaction instead of answering success', async () => {
+    transaction.mockRejectedValue(new Error('write conflict'));
     await expect(
       createReport({
         reporter: 'reporter-1',
@@ -132,7 +138,6 @@ describe('a deliverable type', () => {
         categories: ['harassment'],
       }),
     ).rejects.toThrow('write conflict');
-    expect(endSession).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -151,8 +156,8 @@ describe('a type with no subject provider', () => {
       // which is not defective.
       expect(enqueue).not.toHaveBeenCalled();
       expect(result.outboxEventId).toBeUndefined();
-      const [[docs]] = reportCreate.mock.calls as [[Record<string, unknown>[]]];
-      expect(docs[0]?.localStatus).toBe('received');
+      const [doc] = insertReport.mock.calls[0] as [Record<string, unknown>];
+      expect(doc?.localStatus).toBe('received');
     },
   );
 
@@ -163,11 +168,11 @@ describe('a type with no subject provider', () => {
       reportedId: 'listing-1',
       categories: ['other'],
     });
-    const [[docs]] = reportCreate.mock.calls as [[Record<string, unknown>[]]];
+    const [doc] = insertReport.mock.calls[0] as [Record<string, unknown>];
     // A missing outbox row is also what a lost write looks like; the reason is
     // what keeps the two distinguishable months later.
-    expect(String(docs[0]?.localStatusReason)).toContain('no moderation subject provider');
-    expect(String(docs[0]?.localStatusReason).length).toBeLessThanOrEqual(300);
+    expect(String(doc?.localStatusReason)).toContain('no moderation subject provider');
+    expect(String(doc?.localStatusReason).length).toBeLessThanOrEqual(300);
   });
 });
 
@@ -183,8 +188,8 @@ describe('the delivery-context ownership check', () => {
       contextJobId: VALID_JOB_ID,
     });
 
-    const [[docs]] = reportCreate.mock.calls as [[Record<string, unknown>[]]];
-    expect(docs[0]?.contextJobId).toBe(VALID_JOB_ID);
+    const [doc] = insertReport.mock.calls[0] as [Record<string, unknown>];
+    expect(doc?.contextJobId).toBe(VALID_JOB_ID);
   });
 
   it('scopes the lookup to jobs the reporter was sender or courier on', async () => {
@@ -221,8 +226,8 @@ describe('the delivery-context ownership check', () => {
       contextJobId: VALID_JOB_ID,
     });
 
-    const [[docs]] = reportCreate.mock.calls as [[Record<string, unknown>[]]];
-    expect(docs[0]?.contextJobId).toBeUndefined();
+    const [doc] = insertReport.mock.calls[0] as [Record<string, unknown>];
+    expect(doc?.contextJobId).toBeUndefined();
   });
 
   it('still stores the report when the context is dropped', async () => {
@@ -274,8 +279,8 @@ describe('the delivery-context ownership check', () => {
 
     expect(isJobParty).toHaveBeenCalledTimes(1);
     expect(result.report).toBeDefined();
-    const [[docs]] = reportCreate.mock.calls as [[Record<string, unknown>[]]];
-    expect(docs[0]?.contextJobId).toBe(postCutoverJobId);
+    const [doc] = insertReport.mock.calls[0] as [Record<string, unknown>];
+    expect(doc?.contextJobId).toBe(postCutoverJobId);
   });
 });
 
@@ -293,7 +298,7 @@ describe('identifier guards', () => {
         ...overrides,
       }),
     ).rejects.toBeInstanceOf(TypeError);
-    expect(withTransaction).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
   });
 
   /**
@@ -315,7 +320,7 @@ describe('identifier guards', () => {
         categories: ['harassment'],
       }),
     ).rejects.toBeInstanceOf(TypeError);
-    expect(withTransaction).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
   });
 
   it('refuses a reported type the enum has never heard of', async () => {
@@ -328,6 +333,6 @@ describe('identifier guards', () => {
         categories: ['other'],
       }),
     ).rejects.toBeInstanceOf(TypeError);
-    expect(withTransaction).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
   });
 });

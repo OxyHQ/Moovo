@@ -20,22 +20,44 @@
  * the reason it is called out here rather than left to read as a no-op.
  */
 
-import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, eq, isNull, lt, or } from 'drizzle-orm';
 import { uuidv7 } from '@oxyhq/db';
+import type {
+  ModerationLocalStatus,
+  ReportCategory,
+  ReportStatus,
+  ReportedType,
+} from '@moovo/shared-types';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { reports } from '../schema/moderation';
 
-/** A report, in the shape its consumers read. */
+/**
+ * A report, in the shape its consumers read.
+ *
+ * The four closed-set fields are narrowed to the shared-types unions rather
+ * than left as `string`, and that is not a typing nicety. `reports` carries a
+ * CHECK for each of them (`reports_reported_type_check`,
+ * `reports_status_check`, `reports_local_status_check`,
+ * `reports_categories_check`), all rendered from these same tuples, so a row
+ * that reached this function cannot hold anything outside them — the narrowing
+ * states a fact the database already enforces.
+ *
+ * Leaving them as `string` would push the same narrowing onto every consumer:
+ * the route's `ReportReceiptDTO`, `allegationsForCategories`, and the decision
+ * worker's target resolution all need the union, and each would have had to
+ * assert it separately. One assertion at the boundary where the constraint is
+ * known beats four where it is not.
+ */
 export interface ReportRecord {
   id: string;
   reporter: string;
-  reportedType: string;
+  reportedType: ReportedType;
   reportedId: string;
   contextJobId?: string;
-  categories: string[];
+  categories: ReportCategory[];
   details?: string;
-  status: string;
-  localStatus: string;
+  status: ReportStatus;
+  localStatus: ModerationLocalStatus;
   localStatusReason?: string;
   lastDeliveryError?: string;
   contentSnapshotHash?: string;
@@ -51,13 +73,13 @@ export interface ReportRecord {
 /** What creating a report needs — the caller supplies no id and no timestamps. */
 export interface NewReport {
   reporter: string;
-  reportedType: string;
+  reportedType: ReportedType;
   reportedId: string;
   contextJobId?: string | undefined;
-  categories: string[];
+  categories: ReportCategory[];
   details?: string | undefined;
-  status: string;
-  localStatus: string;
+  status: ReportStatus;
+  localStatus: ModerationLocalStatus;
   localStatusReason?: string | undefined;
 }
 
@@ -67,13 +89,13 @@ function toRecord(row: ReportRow): ReportRecord {
   return {
     id: row.id,
     reporter: row.reporter,
-    reportedType: row.reportedType,
+    reportedType: row.reportedType as ReportedType,
     reportedId: row.reportedId,
     ...(row.contextJobId === null ? {} : { contextJobId: row.contextJobId }),
-    categories: row.categories,
+    categories: row.categories as ReportCategory[],
     ...(row.details === null ? {} : { details: row.details }),
-    status: row.status,
-    localStatus: row.localStatus,
+    status: row.status as ReportStatus,
+    localStatus: row.localStatus as ModerationLocalStatus,
     ...(row.localStatusReason === null ? {} : { localStatusReason: row.localStatusReason }),
     ...(row.lastDeliveryError === null ? {} : { lastDeliveryError: row.lastDeliveryError }),
     ...(row.contentSnapshotHash === null ? {} : { contentSnapshotHash: row.contentSnapshotHash }),
@@ -215,7 +237,11 @@ export async function closeReport(
 export async function applyDecisionToReport(
   reportId: string,
   revision: number,
-  state: { status: string; localStatus: string; localStatusReason?: string | undefined },
+  state: {
+    status: ReportStatus;
+    localStatus: ModerationLocalStatus;
+    localStatusReason?: string | undefined;
+  },
   db: DatabaseOrTransaction = getDb(),
 ): Promise<boolean> {
   const result = await db
@@ -235,25 +261,4 @@ export async function applyDecisionToReport(
       ),
     );
   return (result.count ?? 0) === 1;
-}
-
-/** Whether this reporter already reported this object, for the operator trace. */
-export async function reportExistsForTarget(
-  reporter: string,
-  reportedType: string,
-  reportedId: string,
-  db: DatabaseOrTransaction = getDb(),
-): Promise<boolean> {
-  const [row] = await db
-    .select({ present: sql<number>`1` })
-    .from(reports)
-    .where(
-      and(
-        eq(reports.reporter, reporter),
-        eq(reports.reportedType, reportedType),
-        eq(reports.reportedId, reportedId),
-      ),
-    )
-    .limit(1);
-  return row !== undefined;
 }

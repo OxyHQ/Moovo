@@ -79,7 +79,7 @@ router.post(
       });
 
       const receipt: ReportReceiptDTO = {
-        id: String(report._id),
+        id: report.id,
         reportedType: report.reportedType,
         reportedId: report.reportedId,
         status: report.status,

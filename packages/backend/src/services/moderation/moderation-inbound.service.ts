@@ -14,31 +14,13 @@
  * "neither", and "neither" releases the claim and gets redelivered.
  */
 
-import mongoose, { type ClientSession } from 'mongoose';
-import { ModerationEvent } from '../../models/moderation-event.js';
+import { getDb } from '../../db/postgres.js';
+import { enqueueModerationOutboxRow } from '../../db/moderation/moderationOutboxRepository.js';
 import {
-  decisionApplyEventId,
-  enqueueModerationOutboxEvent,
-} from './moderation-outbox.service.js';
-
-const TRANSACTION_OPTIONS = {
-  readPreference: 'primary' as const,
-  readConcern: { level: 'snapshot' as const },
-  writeConcern: { w: 'majority' as const },
-};
-
-async function inTransaction(
-  operation: (session: ClientSession) => Promise<void>,
-): Promise<void> {
-  const session = await mongoose.startSession();
-  try {
-    await session.withTransaction(async () => {
-      await operation(session);
-    }, TRANSACTION_OPTIONS);
-  } finally {
-    await session.endSession();
-  }
-}
+  markModerationEventIgnored,
+  markModerationEventQueued,
+} from '../../db/moderation/moderationEventRepository.js';
+import { decisionApplyEventId } from './moderation-outbox.service.js';
 
 export interface RecordDecisionEventInput {
   eventId: string;
@@ -58,23 +40,20 @@ export interface RecordDecisionEventInput {
 
 /** Record a decision-bearing event and queue its application. */
 export async function recordDecisionEvent(input: RecordDecisionEventInput): Promise<void> {
-  await inTransaction(async (session) => {
+  await getDb().transaction(async (tx) => {
     const now = new Date();
-    await ModerationEvent.updateOne(
-      { _id: input.eventId },
+    await markModerationEventQueued(
       {
-        $set: {
-          type: input.type,
-          caseId: input.caseId,
-          payload: { caseId: input.caseId, decision: input.decision },
-          state: 'queued',
-          queuedAt: now,
-        },
+        eventId: input.eventId,
+        type: input.type,
+        caseId: input.caseId,
+        payload: { caseId: input.caseId, decision: input.decision },
+        queuedAt: now,
       },
-      { session },
+      tx,
     );
 
-    await enqueueModerationOutboxEvent(
+    await enqueueModerationOutboxRow(
       {
         eventId: decisionApplyEventId(input.eventId),
         kind: 'decision.apply',
@@ -83,8 +62,9 @@ export async function recordDecisionEvent(input: RecordDecisionEventInput): Prom
           caseId: input.caseId,
           decision: input.decision,
         },
+        now,
       },
-      session,
+      tx,
     );
   });
 }
@@ -102,14 +82,5 @@ export async function recordIgnoredEvent(input: {
   type: string;
   caseId?: string;
 }): Promise<void> {
-  await ModerationEvent.updateOne(
-    { _id: input.eventId },
-    {
-      $set: {
-        type: input.type,
-        ...(input.caseId === undefined ? {} : { caseId: input.caseId }),
-        state: 'ignored',
-      },
-    },
-  );
+  await markModerationEventIgnored(input);
 }
