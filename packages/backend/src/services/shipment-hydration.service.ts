@@ -27,7 +27,7 @@ import type {
   SchedulingValue,
 } from '../db/transport/shipmentShape.js';
 import { type QuoteRecord } from '../db/transport/quoteRepository.js';
-import { resolveMedia } from './catalog-hydration.service.js';
+import { resolveMedia } from './media.service.js';
 import { getFairRate } from './faircoin-rate.service.js';
 import { toDisplayPriceBreakdown } from '../utils/fair-display.js';
 

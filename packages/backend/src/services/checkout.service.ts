@@ -41,7 +41,7 @@ import { nextOrderNumber } from '../db/sequences/numberRepository.js';
 import { getCart, clearCart } from './cart.service.js';
 import { reserve, release } from './inventory.service.js';
 import { summarizeOrders } from './order-hydration.service.js';
-import { resolveMedia } from './catalog-hydration.service.js';
+import { resolveMedia } from './media.service.js';
 import { multiplyMoney, addMoney, sumMoney } from '../utils/money.js';
 import { config } from '../config/index.js';
 import { getRedisClient, withRedisTimeout } from '../lib/redis.js';

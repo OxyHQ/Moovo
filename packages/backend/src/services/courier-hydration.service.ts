@@ -8,13 +8,13 @@
  * from Oxy, never stored on the courier profile.
  *
  * Media resolution funnels through the SINGLE sanctioned chokepoint
- * (`resolveMedia` from `catalog-hydration.service`) — do NOT define another.
+ * (`resolveMedia` from `media.service`) — do NOT define another.
  */
 
 import type { Courier, TextTone } from '@moovo/shared-types';
 import type { CourierProfileRow } from '../db/fleet/courierProfileRepository.js';
 import type { CourierCompanyRecord } from '../db/fleet/courierCompanyRepository.js';
-import { resolveMedia } from './catalog-hydration.service.js';
+import { resolveMedia } from './media.service.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
 
 /** The PUBLIC presentational projection of a company (no member/permission data). */

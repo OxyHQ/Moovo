@@ -67,7 +67,7 @@ vi.mock('../order-hydration.service.js', () => ({
   summarizeOrders: (...args: unknown[]) => summarizeOrders(...args),
 }));
 
-vi.mock('../catalog-hydration.service.js', () => ({
+vi.mock('../media.service.js', () => ({
   resolveMedia: (value: string) => `resolved:${value}`,
 }));
 

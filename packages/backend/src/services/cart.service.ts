@@ -25,7 +25,7 @@ import type {
 import { Cart, type ICart } from '../models/cart.js';
 import { Listing, type IListing } from '../models/listing.js';
 import { ProductVariant, type IProductVariant } from '../models/product-variant.js';
-import { resolveMedia } from './catalog-hydration.service.js';
+import { resolveMedia } from './media.service.js';
 import { multiplyMoney, sumMoney } from '../utils/money.js';
 import { config } from '../config/index.js';
 import { conflict, notFound, validationError } from '../lib/errors/error-codes.js';
