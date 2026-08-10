@@ -17,13 +17,24 @@ import type {
   InviteCompanyMemberInput,
   UpdateCompanyMemberInput,
 } from '@moovo/shared-types';
+// The full company-permission set, from the SAME `as const` tuple that renders
+// `company_members_permissions_check`. The model exported its own copy; two
+// copies of a closed set can disagree, and the one that matters is the one the
+// database enforces.
+import { COMPANY_PERMISSIONS as ALL_COMPANY_PERMISSIONS } from '../db/schema/valueSets.js';
 import {
-  CourierCompany,
-  ALL_COMPANY_PERMISSIONS,
-  type ICompany,
-  type ICompanyMember,
-  type ICompanyServiceArea,
-} from '../models/courier-company.js';
+  companyHandleExists,
+  deleteCompanyMember,
+  findCompanyById,
+  insertCompanyWithOwner,
+  listCompaniesForMember,
+  replaceCompanyServiceAreas,
+  updateCompany as updateCompanyRow,
+  upsertCompanyMember,
+  type CompanyMemberValue,
+  type CompanyServiceAreaValue,
+  type CourierCompanyRecord,
+} from '../db/fleet/courierCompanyRepository.js';
 import { ensureUniqueSlug } from '../utils/slug.js';
 import { sendNotification } from '../lib/notification-service.js';
 import { conflict, forbidden, notFound, validationError } from '../lib/errors/error-codes.js';
@@ -33,12 +44,12 @@ import { log } from '../lib/logger.js';
 const DEFAULT_BRAND_COLOR = '#1D4ED8';
 
 /** Count the owners currently on a company. */
-function ownerCount(company: Pick<ICompany, 'members'>): number {
+function ownerCount(company: Pick<CourierCompanyRecord, 'members'>): number {
   return company.members.filter((m) => m.role === 'owner').length;
 }
 
 /** Map a service-area DTO to the persisted GeoJSON-center shape. */
-function toServiceArea(area: NonNullable<CreateCompanyInput['serviceAreas']>[number]): ICompanyServiceArea {
+function toServiceArea(area: NonNullable<CreateCompanyInput['serviceAreas']>[number]): CompanyServiceAreaValue {
   return {
     center: { type: 'Point', coordinates: [...area.center.coordinates] },
     radiusM: area.radiusM,
@@ -52,42 +63,42 @@ function toServiceArea(area: NonNullable<CreateCompanyInput['serviceAreas']>[num
 export async function createCompany(
   ownerOxyUserId: string,
   input: CreateCompanyInput,
-): Promise<ICompany> {
+): Promise<CourierCompanyRecord> {
   const handle = await ensureUniqueSlug(input.name, async (candidate) => {
-    const existing = await CourierCompany.exists({ handle: candidate });
-    return existing !== null;
+    return companyHandleExists(candidate);
   });
 
   if (handle.length === 0) {
     throw validationError('Company name must contain at least one alphanumeric character');
   }
 
-  const member: ICompanyMember = {
-    oxyUserId: ownerOxyUserId,
-    role: 'owner',
-    permissions: [...ALL_COMPANY_PERMISSIONS],
-    joinedAt: new Date(),
-  };
+  // The company row and its owner member commit TOGETHER — see the repository.
+  // The source got that atomicity for free by embedding `members` in the same
+  // document; a company with no owner is one nobody can administer.
+  const company = await insertCompanyWithOwner(
+    {
+      handle,
+      name: input.name,
+      description: input.description ?? '',
+      brandColor: input.brandColor ?? DEFAULT_BRAND_COLOR,
+      ...(input.logoFileId ? { logoFileId: input.logoFileId } : {}),
+      ...(input.coverFileId ? { coverFileId: input.coverFileId } : {}),
+      defaultCurrency: input.defaultCurrency ?? 'USD',
+    },
+    { oxyUserId: ownerOxyUserId, permissions: [...ALL_COMPANY_PERMISSIONS] },
+  );
 
-  const company = await CourierCompany.create({
-    handle,
-    name: input.name,
-    description: input.description ?? '',
-    brandColor: input.brandColor ?? DEFAULT_BRAND_COLOR,
-    ...(input.logoFileId ? { logoFileId: input.logoFileId } : {}),
-    ...(input.coverFileId ? { coverFileId: input.coverFileId } : {}),
-    defaultCurrency: input.defaultCurrency ?? 'USD',
-    serviceAreas: (input.serviceAreas ?? []).map(toServiceArea),
-    status: 'active',
-    members: [member],
-  });
-
-  return company.toObject();
+  const serviceAreas = (input.serviceAreas ?? []).map(toServiceArea);
+  if (serviceAreas.length > 0) {
+    await replaceCompanyServiceAreas(company.id, serviceAreas);
+    return getCompany(company.id);
+  }
+  return company;
 }
 
 /** Fetch a company by id, or throw NOT_FOUND. */
-export async function getCompany(companyId: string): Promise<ICompany> {
-  const company = await CourierCompany.findById(companyId).lean<ICompany | null>();
+export async function getCompany(companyId: string): Promise<CourierCompanyRecord> {
+  const company = await findCompanyById(companyId);
   if (!company) {
     throw notFound('Company not found');
   }
@@ -95,36 +106,38 @@ export async function getCompany(companyId: string): Promise<ICompany> {
 }
 
 /** List the companies the given user is a member of. */
-export async function listCompaniesForUser(oxyUserId: string): Promise<ICompany[]> {
-  return CourierCompany.find({ 'members.oxyUserId': oxyUserId })
-    .sort({ createdAt: -1 })
-    .lean<ICompany[]>();
+export async function listCompaniesForUser(oxyUserId: string): Promise<CourierCompanyRecord[]> {
+  return listCompaniesForMember(oxyUserId);
 }
 
 /** Update a company's profile fields. Returns the updated company. */
 export async function updateCompany(
   companyId: string,
   patch: UpdateCompanyInput,
-): Promise<ICompany> {
-  const company = await CourierCompany.findById(companyId);
-  if (!company) {
+): Promise<CourierCompanyRecord> {
+  const existing = await findCompanyById(companyId);
+  if (!existing) {
     throw notFound('Company not found');
   }
 
-  if (patch.name !== undefined) company.name = patch.name;
-  if (patch.description !== undefined) company.description = patch.description;
-  if (patch.brandColor !== undefined) company.brandColor = patch.brandColor;
-  if (patch.logoFileId !== undefined) company.logoFileId = patch.logoFileId;
-  if (patch.coverFileId !== undefined) company.coverFileId = patch.coverFileId;
-  if (patch.defaultCurrency !== undefined) company.defaultCurrency = patch.defaultCurrency;
-  if (patch.textTone !== undefined) company.textTone = patch.textTone;
-  if (patch.status !== undefined) company.status = patch.status;
   if (patch.serviceAreas !== undefined) {
-    company.serviceAreas = patch.serviceAreas.map(toServiceArea);
+    await replaceCompanyServiceAreas(companyId, patch.serviceAreas.map(toServiceArea));
   }
 
-  await company.save();
-  return company.toObject();
+  const updated = await updateCompanyRow(companyId, {
+    name: patch.name,
+    description: patch.description,
+    brandColor: patch.brandColor,
+    logoFileId: patch.logoFileId,
+    coverFileId: patch.coverFileId,
+    defaultCurrency: patch.defaultCurrency,
+    textTone: patch.textTone,
+    status: patch.status,
+  });
+  if (!updated) {
+    throw notFound('Company not found');
+  }
+  return updated;
 }
 
 /**
@@ -134,10 +147,10 @@ export async function updateCompany(
  */
 export async function inviteMember(
   companyId: string,
-  actor: ICompanyMember,
+  actor: CompanyMemberValue,
   input: InviteCompanyMemberInput,
-): Promise<ICompany> {
-  const company = await CourierCompany.findById(companyId);
+): Promise<CourierCompanyRecord> {
+  const company = await findCompanyById(companyId);
   if (!company) {
     throw notFound('Company not found');
   }
@@ -151,15 +164,12 @@ export async function inviteMember(
     throw forbidden('Only an owner may grant the owner role');
   }
 
-  company.members.push({
+  await upsertCompanyMember(companyId, {
     oxyUserId: input.oxyUserId,
     role: input.role,
     permissions: input.permissions ?? [],
     joinedBy: actor.oxyUserId,
-    joinedAt: new Date(),
   });
-
-  await company.save();
 
   // Best-effort: notify the invited member. A notification failure must never
   // fail the invite itself.
@@ -169,16 +179,16 @@ export async function inviteMember(
       type: 'company_member_invited',
       title: 'Company invitation',
       body: `You were added to ${company.name}`,
-      data: { companyId: String(company._id), role: input.role },
+      data: { companyId: company.id, role: input.role },
     });
   } catch (err) {
     log.general.warn(
-      { err, companyId: String(company._id) },
+      { err, companyId: company.id },
       'company_member_invited notification failed',
     );
   }
 
-  return company.toObject();
+  return getCompany(companyId);
 }
 
 /**
@@ -188,11 +198,11 @@ export async function inviteMember(
  */
 export async function updateMember(
   companyId: string,
-  actor: ICompanyMember,
+  actor: CompanyMemberValue,
   targetOxyUserId: string,
   patch: UpdateCompanyMemberInput,
-): Promise<ICompany> {
-  const company = await CourierCompany.findById(companyId);
+): Promise<CourierCompanyRecord> {
+  const company = await findCompanyById(companyId);
   if (!company) {
     throw notFound('Company not found');
   }
@@ -222,14 +232,14 @@ export async function updateMember(
     if (patch.role === 'owner' && actor.role !== 'owner') {
       throw forbidden('Only an owner may grant the owner role');
     }
-    target.role = patch.role;
-  }
-  if (patch.permissions !== undefined) {
-    target.permissions = [...patch.permissions];
   }
 
-  await company.save();
-  return company.toObject();
+  await upsertCompanyMember(companyId, {
+    oxyUserId: targetOxyUserId,
+    role: patch.role ?? target.role,
+    permissions: patch.permissions === undefined ? target.permissions : [...patch.permissions],
+  });
+  return getCompany(companyId);
 }
 
 /**
@@ -239,10 +249,10 @@ export async function updateMember(
  */
 export async function removeMember(
   companyId: string,
-  actor: ICompanyMember,
+  actor: CompanyMemberValue,
   targetOxyUserId: string,
-): Promise<ICompany> {
-  const company = await CourierCompany.findById(companyId);
+): Promise<CourierCompanyRecord> {
+  const company = await findCompanyById(companyId);
   if (!company) {
     throw notFound('Company not found');
   }
@@ -261,7 +271,6 @@ export async function removeMember(
     }
   }
 
-  company.members = company.members.filter((m) => m.oxyUserId !== targetOxyUserId);
-  await company.save();
-  return company.toObject();
+  await deleteCompanyMember(companyId, targetOxyUserId);
+  return getCompany(companyId);
 }

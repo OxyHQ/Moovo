@@ -14,7 +14,10 @@ import type {
   UpdateCompanyMemberInput,
   CompanyMember,
 } from '@moovo/shared-types';
-import type { ICompany, ICompanyMember } from '../../models/courier-company.js';
+import type {
+  CompanyMemberValue,
+  CourierCompanyRecord,
+} from '../../db/fleet/courierCompanyRepository.js';
 import {
   inviteMember,
   updateMember,
@@ -26,7 +29,7 @@ import { routeParam } from '../../utils/request.js';
 import { log } from '../../lib/logger.js';
 
 /** Serialize a company member to the `CompanyMember` DTO. */
-function toMemberDTO(member: ICompanyMember): CompanyMember {
+function toMemberDTO(member: CompanyMemberValue): CompanyMember {
   return {
     oxyUserId: member.oxyUserId,
     role: member.role,
@@ -37,7 +40,7 @@ function toMemberDTO(member: ICompanyMember): CompanyMember {
 }
 
 /** Read the loaded company + acting membership, or respond 500 if missing. */
-function loaded(req: Request, res: Response): { company: ICompany; actor: ICompanyMember } | null {
+function loaded(req: Request, res: Response): { company: CourierCompanyRecord; actor: CompanyMemberValue } | null {
   const company = req.company;
   const actor = req.companyMembership;
   if (!company || !actor) {
@@ -59,7 +62,7 @@ export async function addMember(req: Request, res: Response): Promise<void> {
   const ctx = loaded(req, res);
   if (!ctx) return;
   try {
-    const companyId = String((ctx.company as { _id: unknown })._id);
+    const companyId = ctx.company.id;
     const updated = await inviteMember(companyId, ctx.actor, req.body as InviteCompanyMemberInput);
     sendSuccess(res, updated.members.map(toMemberDTO), 201);
   } catch (err) {
@@ -74,7 +77,7 @@ export async function patchMember(req: Request, res: Response): Promise<void> {
   if (!ctx) return;
   const targetOxyUserId = routeParam(req, 'oxyUserId');
   try {
-    const companyId = String((ctx.company as { _id: unknown })._id);
+    const companyId = ctx.company.id;
     const updated = await updateMember(
       companyId,
       ctx.actor,
@@ -94,7 +97,7 @@ export async function deleteMember(req: Request, res: Response): Promise<void> {
   if (!ctx) return;
   const targetOxyUserId = routeParam(req, 'oxyUserId');
   try {
-    const companyId = String((ctx.company as { _id: unknown })._id);
+    const companyId = ctx.company.id;
     const updated = await removeMember(companyId, ctx.actor, targetOxyUserId);
     sendSuccess(res, updated.members.map(toMemberDTO));
   } catch (err) {

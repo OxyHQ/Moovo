@@ -13,8 +13,16 @@
  */
 
 import type { CreateVehicleInput, OnlineStatus } from '@moovo/shared-types';
-import { CourierProfile, type ICourierProfile } from '../models/courier-profile.js';
-import type { IVehicle } from '../models/vehicle.js';
+import {
+  ensureCourierProfile,
+  findCourierProfile,
+  recordCourierPing,
+  setCourierOnlineStatus,
+  updateCourierCapability,
+  updateCourierPayoutAccountRef,
+  type CourierProfileRow,
+} from '../db/fleet/courierProfileRepository.js';
+import type { VehicleRecord } from '../db/fleet/vehicleRepository.js';
 import {
   createForCourier,
   deleteVehicle,
@@ -24,23 +32,18 @@ import {
   type UpdateVehicleInput,
 } from './vehicle.service.js';
 import { computeVehicleCapability } from './capability.service.js';
-import { forbidden, notFound } from '../lib/errors/error-codes.js';
+import { forbidden } from '../lib/errors/error-codes.js';
 
 /**
  * Get the courier profile for `oxyUserId`, creating an empty one on first use
  * (lazy). Idempotent under concurrent first-writes via an upsert.
  */
-export async function getOrCreate(oxyUserId: string): Promise<ICourierProfile> {
-  const profile = await CourierProfile.findOneAndUpdate(
-    { oxyUserId },
-    { $setOnInsert: { oxyUserId } },
-    { returnDocument: 'after', upsert: true },
-  ).lean<ICourierProfile>();
-  return profile;
+export async function getOrCreate(oxyUserId: string): Promise<CourierProfileRow> {
+  return ensureCourierProfile(oxyUserId);
 }
 
 /** Return the courier's own profile, creating it lazily if absent. */
-export async function getMine(oxyUserId: string): Promise<ICourierProfile> {
+export async function getMine(oxyUserId: string): Promise<CourierProfileRow> {
   return getOrCreate(oxyUserId);
 }
 
@@ -55,40 +58,30 @@ export interface CourierPrefsInput {
 export async function updatePrefs(
   oxyUserId: string,
   prefs: CourierPrefsInput,
-): Promise<ICourierProfile> {
-  const set: Record<string, unknown> = {};
-  if (prefs.payout?.accountRef !== undefined) {
-    set['payout.accountRef'] = prefs.payout.accountRef;
+): Promise<CourierProfileRow> {
+  if (prefs.payout?.accountRef === undefined) {
+    // Nothing editable was supplied, so this is a plain get-or-create — NOT an
+    // update writing the same values back, which would bump `updated_at`.
+    return ensureCourierProfile(oxyUserId);
   }
-
-  const profile = await CourierProfile.findOneAndUpdate(
-    { oxyUserId },
-    { $setOnInsert: { oxyUserId }, ...(Object.keys(set).length > 0 ? { $set: set } : {}) },
-    { returnDocument: 'after', upsert: true },
-  ).lean<ICourierProfile>();
-  return profile;
+  return updateCourierPayoutAccountRef(oxyUserId, prefs.payout.accountRef);
 }
 
 /** Set the courier's availability. Does not flip `on_job` (that is job-driven). */
 async function setOnlineStatus(
   oxyUserId: string,
   onlineStatus: OnlineStatus,
-): Promise<ICourierProfile> {
-  const profile = await CourierProfile.findOneAndUpdate(
-    { oxyUserId },
-    { $setOnInsert: { oxyUserId }, $set: { onlineStatus } },
-    { returnDocument: 'after', upsert: true },
-  ).lean<ICourierProfile>();
-  return profile;
+): Promise<CourierProfileRow> {
+  return setCourierOnlineStatus(oxyUserId, onlineStatus);
 }
 
 /** Mark the courier online. */
-export async function goOnline(oxyUserId: string): Promise<ICourierProfile> {
+export async function goOnline(oxyUserId: string): Promise<CourierProfileRow> {
   return setOnlineStatus(oxyUserId, 'online');
 }
 
 /** Mark the courier offline. */
-export async function goOffline(oxyUserId: string): Promise<ICourierProfile> {
+export async function goOffline(oxyUserId: string): Promise<CourierProfileRow> {
   return setOnlineStatus(oxyUserId, 'offline');
 }
 
@@ -97,32 +90,12 @@ export async function pingLocation(
   oxyUserId: string,
   lng: number,
   lat: number,
-): Promise<ICourierProfile> {
-  const profile = await CourierProfile.findOneAndUpdate(
-    { oxyUserId },
-    {
-      $setOnInsert: { oxyUserId },
-      $set: {
-        currentLocation: { type: 'Point', coordinates: [lng, lat] },
-        lastPingAt: new Date(),
-      },
-    },
-    { returnDocument: 'after', upsert: true },
-  ).lean<ICourierProfile>();
-  return profile;
-}
-
-/** Add a vehicle id to the courier's `vehicleIds` set (idempotent). */
-async function trackVehicle(oxyUserId: string, vehicleId: string): Promise<void> {
-  await CourierProfile.updateOne(
-    { oxyUserId },
-    { $setOnInsert: { oxyUserId }, $addToSet: { vehicleIds: vehicleId } },
-    { upsert: true },
-  );
+): Promise<CourierProfileRow> {
+  return recordCourierPing(oxyUserId, { longitude: lng, latitude: lat });
 }
 
 /** List the courier's vehicles. */
-export async function listVehicles(oxyUserId: string): Promise<IVehicle[]> {
+export async function listVehicles(oxyUserId: string): Promise<VehicleRecord[]> {
   return listForCourier(oxyUserId);
 }
 
@@ -130,9 +103,13 @@ export async function listVehicles(oxyUserId: string): Promise<IVehicle[]> {
 export async function addVehicle(
   oxyUserId: string,
   input: CreateVehicleInput,
-): Promise<IVehicle> {
+): Promise<VehicleRecord> {
   const vehicle = await createForCourier(oxyUserId, input);
-  await trackVehicle(oxyUserId, String(vehicle._id));
+  // The source's `trackVehicle` pushed the id onto `courier_profiles.vehicleIds`
+  // AND upserted the profile. The array is gone — `listVehicles` derives it from
+  // `vehicles` — but the profile creation is NOT incidental: without it a courier
+  // can own a vehicle while having no profile row at all.
+  await ensureCourierProfile(oxyUserId);
   return vehicle;
 }
 
@@ -141,7 +118,7 @@ export async function patchVehicle(
   oxyUserId: string,
   vehicleId: string,
   patch: UpdateVehicleInput,
-): Promise<IVehicle> {
+): Promise<VehicleRecord> {
   return updateVehicle(vehicleId, { ownerType: 'courier', courierOxyUserId: oxyUserId }, patch);
 }
 
@@ -150,19 +127,23 @@ export async function patchVehicle(
  * clearing the capability cache if it was the active vehicle.
  */
 export async function removeVehicle(oxyUserId: string, vehicleId: string): Promise<void> {
+  const profile = await findCourierProfile(oxyUserId);
+  const wasActive = profile?.activeVehicleId === vehicleId;
+
   await deleteVehicle(vehicleId, { ownerType: 'courier', courierOxyUserId: oxyUserId });
-  const profile = await CourierProfile.findOne({ oxyUserId });
-  if (!profile) {
-    return;
+
+  // `courier_profiles.active_vehicle_id` references the deleted row `ON DELETE
+  // SET NULL`, so the pointer is already cleared by the delete itself. What the
+  // database cannot do is reset the CAPABILITY CACHE that vehicle populated —
+  // leaving it would advertise a courier as able to carry a load they no longer
+  // have a vehicle for, which dispatch reads as eligibility.
+  if (wasActive) {
+    await updateCourierCapability(oxyUserId, {
+      eligibleJobTypes: [],
+      maxWeightKg: 0,
+      maxSizeClass: 'small',
+    });
   }
-  profile.vehicleIds = profile.vehicleIds.filter((id) => id !== vehicleId);
-  if (profile.activeVehicleId === vehicleId) {
-    profile.activeVehicleId = undefined;
-    profile.eligibleJobTypes = [];
-    profile.maxWeightKg = 0;
-    profile.maxSizeClass = 'small';
-  }
-  await profile.save();
 }
 
 /**
@@ -172,7 +153,7 @@ export async function removeVehicle(oxyUserId: string, vehicleId: string): Promi
 export async function setActiveVehicle(
   oxyUserId: string,
   vehicleId: string,
-): Promise<ICourierProfile> {
+): Promise<CourierProfileRow> {
   const vehicle = await getById(vehicleId);
   if (vehicle.ownerType !== 'courier' || vehicle.courierOxyUserId !== oxyUserId) {
     throw forbidden('You do not own this vehicle');
@@ -180,23 +161,10 @@ export async function setActiveVehicle(
 
   const capability = computeVehicleCapability(vehicle.type);
 
-  const profile = await CourierProfile.findOneAndUpdate(
-    { oxyUserId },
-    {
-      $setOnInsert: { oxyUserId },
-      $addToSet: { vehicleIds: vehicleId },
-      $set: {
-        activeVehicleId: vehicleId,
-        eligibleJobTypes: capability.eligibleJobTypes,
-        maxWeightKg: capability.maxWeightKg,
-        maxSizeClass: capability.maxSizeClass,
-      },
-    },
-    { returnDocument: 'after', upsert: true },
-  ).lean<ICourierProfile | null>();
-
-  if (!profile) {
-    throw notFound('Courier profile not found');
-  }
-  return profile;
+  return updateCourierCapability(oxyUserId, {
+    activeVehicleId: vehicleId,
+    eligibleJobTypes: capability.eligibleJobTypes,
+    maxWeightKg: capability.maxWeightKg,
+    maxSizeClass: capability.maxSizeClass,
+  });
 }

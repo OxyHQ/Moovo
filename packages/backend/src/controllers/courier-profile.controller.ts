@@ -11,8 +11,11 @@
 import type { Request, Response } from 'express';
 import { getRequiredOxyUserId } from '@oxyhq/core/server';
 import type { CreateVehicleInput, Vehicle as VehicleDTO } from '@moovo/shared-types';
-import type { ICourierProfile } from '../models/courier-profile.js';
-import type { IVehicle } from '../models/vehicle.js';
+import type { CourierProfileRow } from '../db/fleet/courierProfileRepository.js';
+import {
+  listVehiclesForCourier,
+  type VehicleRecord,
+} from '../db/fleet/vehicleRepository.js';
 import {
   getMine,
   updatePrefs,
@@ -32,23 +35,36 @@ import { respondWithError } from '../lib/errors/error-codes.js';
 import { routeParam } from '../utils/request.js';
 import { log } from '../lib/logger.js';
 
-/** Serialize a courier profile document to the wire (omits Mongo internals). */
-function toCourierProfileResponse(profile: ICourierProfile): Record<string, unknown> {
+/**
+ * Serialize a courier profile to the wire.
+ *
+ * ASYNC because `vehicleIds` is a WIRE field whose column no longer exists.
+ * `courier_profiles.vehicleIds` was a hand-maintained cache of "which vehicles
+ * does this courier own", and the schema drops it because a Postgres array
+ * cannot carry a foreign key on its elements — a deleted vehicle would dangle
+ * there forever. The list is DERIVED from `vehicles` instead, which is the same
+ * query the array was a copy of, so the response is unchanged while the second
+ * authority for the fact is gone.
+ */
+async function toCourierProfileResponse(
+  profile: CourierProfileRow,
+): Promise<Record<string, unknown>> {
+  const vehicles = await listVehiclesForCourier(profile.oxyUserId);
   return {
-    id: String((profile as { _id: unknown })._id),
+    id: profile.id,
     oxyUserId: profile.oxyUserId,
     status: profile.status,
     onlineStatus: profile.onlineStatus,
-    ...(profile.currentLocation
+    ...(profile.longitude !== null && profile.latitude !== null
       ? {
           currentLocation: {
-            type: profile.currentLocation.type,
-            coordinates: [...profile.currentLocation.coordinates],
+            type: 'Point',
+            coordinates: [profile.longitude, profile.latitude],
           },
         }
       : {}),
     ...(profile.lastPingAt ? { lastPingAt: profile.lastPingAt.toISOString() } : {}),
-    vehicleIds: [...profile.vehicleIds],
+    vehicleIds: vehicles.map((vehicle) => vehicle.id),
     ...(profile.activeVehicleId ? { activeVehicleId: profile.activeVehicleId } : {}),
     eligibleJobTypes: [...profile.eligibleJobTypes],
     maxWeightKg: profile.maxWeightKg,
@@ -57,10 +73,10 @@ function toCourierProfileResponse(profile: ICourierProfile): Record<string, unkn
     reviewCount: profile.reviewCount,
     completedJobs: profile.completedJobs,
     cancelledJobs: profile.cancelledJobs,
-    ...(profile.acceptanceRate !== undefined ? { acceptanceRate: profile.acceptanceRate } : {}),
+    ...(profile.acceptanceRate !== null ? { acceptanceRate: profile.acceptanceRate } : {}),
     payout: {
-      provider: profile.payout.provider,
-      ...(profile.payout.accountRef ? { accountRef: profile.payout.accountRef } : {}),
+      provider: profile.payoutProvider,
+      ...(profile.payoutAccountRef ? { accountRef: profile.payoutAccountRef } : {}),
     },
     ...(profile.companyId ? { companyId: profile.companyId } : {}),
     createdAt: profile.createdAt.toISOString(),
@@ -69,9 +85,9 @@ function toCourierProfileResponse(profile: ICourierProfile): Record<string, unkn
 }
 
 /** Serialize a vehicle document to the `Vehicle` DTO. */
-function toVehicleDTO(vehicle: IVehicle): VehicleDTO {
+function toVehicleDTO(vehicle: VehicleRecord): VehicleDTO {
   const dto: VehicleDTO = {
-    id: String((vehicle as { _id: unknown })._id),
+    id: vehicle.id,
     ownerType: vehicle.ownerType,
     type: vehicle.type,
     capacity: {
@@ -100,7 +116,7 @@ export async function getMyProfile(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const profile = await getMine(oxyUserId);
-    sendSuccess(res, toCourierProfileResponse(profile));
+    sendSuccess(res, await toCourierProfileResponse(profile));
   } catch (err) {
     log.general.error({ err }, 'Failed to load courier profile');
     respondWithError(res, err, 'Failed to load courier profile');
@@ -112,7 +128,7 @@ export async function updateMyProfile(req: Request, res: Response): Promise<void
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const profile = await updatePrefs(oxyUserId, req.body as CourierPrefsInput);
-    sendSuccess(res, toCourierProfileResponse(profile));
+    sendSuccess(res, await toCourierProfileResponse(profile));
   } catch (err) {
     log.general.error({ err }, 'Failed to update courier profile');
     respondWithError(res, err, 'Failed to update courier profile');
@@ -124,7 +140,7 @@ export async function goOnlineHandler(req: Request, res: Response): Promise<void
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const profile = await goOnline(oxyUserId);
-    sendSuccess(res, toCourierProfileResponse(profile));
+    sendSuccess(res, await toCourierProfileResponse(profile));
   } catch (err) {
     log.general.error({ err }, 'Failed to set courier online');
     respondWithError(res, err, 'Failed to go online');
@@ -136,7 +152,7 @@ export async function goOfflineHandler(req: Request, res: Response): Promise<voi
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const profile = await goOffline(oxyUserId);
-    sendSuccess(res, toCourierProfileResponse(profile));
+    sendSuccess(res, await toCourierProfileResponse(profile));
   } catch (err) {
     log.general.error({ err }, 'Failed to set courier offline');
     respondWithError(res, err, 'Failed to go offline');
@@ -149,7 +165,7 @@ export async function pingLocationHandler(req: Request, res: Response): Promise<
     const oxyUserId = getRequiredOxyUserId(req);
     const { lng, lat } = req.body as { lng: number; lat: number };
     const profile = await pingLocation(oxyUserId, lng, lat);
-    sendSuccess(res, toCourierProfileResponse(profile));
+    sendSuccess(res, await toCourierProfileResponse(profile));
   } catch (err) {
     log.general.error({ err }, 'Failed to record courier location');
     respondWithError(res, err, 'Failed to record location');
@@ -212,7 +228,7 @@ export async function setActiveVehicleHandler(req: Request, res: Response): Prom
     const oxyUserId = getRequiredOxyUserId(req);
     const { vehicleId } = req.body as { vehicleId: string };
     const profile = await setActiveVehicle(oxyUserId, vehicleId);
-    sendSuccess(res, toCourierProfileResponse(profile));
+    sendSuccess(res, await toCourierProfileResponse(profile));
   } catch (err) {
     log.general.error({ err }, 'Failed to set active vehicle');
     respondWithError(res, err, 'Failed to set active vehicle');

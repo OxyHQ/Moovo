@@ -19,8 +19,8 @@ import type {
   Company as CompanyDTO,
   Vehicle as VehicleDTO,
 } from '@moovo/shared-types';
-import type { ICompany } from '../../models/courier-company.js';
-import type { IVehicle } from '../../models/vehicle.js';
+import type { CourierCompanyRecord } from '../../db/fleet/courierCompanyRepository.js';
+import type { VehicleRecord } from '../../db/fleet/vehicleRepository.js';
 import {
   createCompany,
   listCompaniesForUser,
@@ -39,9 +39,9 @@ import { routeParam } from '../../utils/request.js';
 import { log } from '../../lib/logger.js';
 
 /** Serialize a company document to the `Company` admin DTO. */
-export function toCompanyDTO(company: ICompany): CompanyDTO {
+export function toCompanyDTO(company: CourierCompanyRecord): CompanyDTO {
   return {
-    id: String((company as { _id: unknown })._id),
+    id: company.id,
     handle: company.handle,
     name: company.name,
     description: company.description,
@@ -75,9 +75,9 @@ export function toCompanyDTO(company: ICompany): CompanyDTO {
 }
 
 /** Serialize a company vehicle to the `Vehicle` DTO. */
-function toVehicleDTO(vehicle: IVehicle): VehicleDTO {
+function toVehicleDTO(vehicle: VehicleRecord): VehicleDTO {
   const dto: VehicleDTO = {
-    id: String((vehicle as { _id: unknown })._id),
+    id: vehicle.id,
     ownerType: vehicle.ownerType,
     type: vehicle.type,
     capacity: {
@@ -108,7 +108,7 @@ function loadedCompanyId(req: Request, res: Response): string | null {
     respondWithError(res, undefined, 'Company not loaded');
     return null;
   }
-  return String((company as { _id: unknown })._id);
+  return company.id;
 }
 
 /** POST /admin/companies — create a company; the caller becomes its owner. */

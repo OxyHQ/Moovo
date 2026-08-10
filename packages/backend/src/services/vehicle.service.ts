@@ -13,7 +13,16 @@
  */
 
 import type { CreateVehicleInput, JobType } from '@moovo/shared-types';
-import { Vehicle, type IVehicle, type IVehicleCapacity } from '../models/vehicle.js';
+import {
+  deleteVehicleRow,
+  findVehicleById,
+  insertVehicle,
+  listVehiclesForCompany,
+  listVehiclesForCourier,
+  updateVehicleRow,
+  type VehicleCapacityValue,
+  type VehicleRecord,
+} from '../db/fleet/vehicleRepository.js';
 import { computeVehicleCapability } from './capability.service.js';
 import { forbidden, notFound } from '../lib/errors/error-codes.js';
 
@@ -28,7 +37,7 @@ export interface UpdateVehicleInput {
   label?: string;
   plate?: string;
   capacity?: CreateVehicleInput['capacity'];
-  status?: IVehicle['status'];
+  status?: VehicleRecord['status'];
 }
 
 /**
@@ -39,9 +48,9 @@ export interface UpdateVehicleInput {
 function buildCapacity(
   type: CreateVehicleInput['type'],
   input: CreateVehicleInput['capacity'],
-): { capacity: IVehicleCapacity; eligibleJobTypes: JobType[] } {
+): { capacity: VehicleCapacityValue; eligibleJobTypes: JobType[] } {
   const capability = computeVehicleCapability(type);
-  const capacity: IVehicleCapacity = {
+  const capacity: VehicleCapacityValue = {
     maxWeightKg: input?.maxWeightKg ?? capability.maxWeightKg,
   };
   if (input?.maxVolumeL !== undefined) {
@@ -54,18 +63,18 @@ function buildCapacity(
 }
 
 /** List the vehicles a courier owns (newest first). */
-export async function listForCourier(courierOxyUserId: string): Promise<IVehicle[]> {
-  return Vehicle.find({ courierOxyUserId }).sort({ createdAt: -1 }).lean<IVehicle[]>();
+export async function listForCourier(courierOxyUserId: string): Promise<VehicleRecord[]> {
+  return listVehiclesForCourier(courierOxyUserId);
 }
 
 /** List the vehicles a company owns (newest first). */
-export async function listForCompany(companyId: string): Promise<IVehicle[]> {
-  return Vehicle.find({ companyId }).sort({ createdAt: -1 }).lean<IVehicle[]>();
+export async function listForCompany(companyId: string): Promise<VehicleRecord[]> {
+  return listVehiclesForCompany(companyId);
 }
 
 /** Fetch a vehicle by id, or throw NOT_FOUND. */
-export async function getById(vehicleId: string): Promise<IVehicle> {
-  const vehicle = await Vehicle.findById(vehicleId).lean<IVehicle | null>();
+export async function getById(vehicleId: string): Promise<VehicleRecord> {
+  const vehicle = await findVehicleById(vehicleId);
   if (!vehicle) {
     throw notFound('Vehicle not found');
   }
@@ -76,9 +85,9 @@ export async function getById(vehicleId: string): Promise<IVehicle> {
 export async function createForCourier(
   courierOxyUserId: string,
   input: CreateVehicleInput,
-): Promise<IVehicle> {
+): Promise<VehicleRecord> {
   const { capacity, eligibleJobTypes } = buildCapacity(input.type, input.capacity);
-  const vehicle = await Vehicle.create({
+  return insertVehicle({
     ownerType: 'courier',
     courierOxyUserId,
     type: input.type,
@@ -86,18 +95,16 @@ export async function createForCourier(
     ...(input.plate ? { plate: input.plate } : {}),
     capacity,
     eligibleJobTypes,
-    status: 'active',
   });
-  return vehicle.toObject();
 }
 
 /** Create a vehicle owned by a company. */
 export async function createForCompany(
   companyId: string,
   input: CreateVehicleInput,
-): Promise<IVehicle> {
+): Promise<VehicleRecord> {
   const { capacity, eligibleJobTypes } = buildCapacity(input.type, input.capacity);
-  const vehicle = await Vehicle.create({
+  return insertVehicle({
     ownerType: 'company',
     companyId,
     type: input.type,
@@ -105,13 +112,11 @@ export async function createForCompany(
     ...(input.plate ? { plate: input.plate } : {}),
     capacity,
     eligibleJobTypes,
-    status: 'active',
   });
-  return vehicle.toObject();
 }
 
 /** Assert that `vehicle` is owned by `owner`, else throw FORBIDDEN. */
-function assertOwnership(vehicle: IVehicle, owner: VehicleOwner): void {
+function assertOwnership(vehicle: VehicleRecord, owner: VehicleOwner): void {
   if (owner.ownerType === 'courier') {
     if (vehicle.ownerType !== 'courier' || vehicle.courierOxyUserId !== owner.courierOxyUserId) {
       throw forbidden('You do not own this vehicle');
@@ -129,42 +134,45 @@ export async function updateVehicle(
   vehicleId: string,
   owner: VehicleOwner,
   patch: UpdateVehicleInput,
-): Promise<IVehicle> {
-  const vehicle = await Vehicle.findById(vehicleId);
+): Promise<VehicleRecord> {
+  const vehicle = await findVehicleById(vehicleId);
   if (!vehicle) {
     throw notFound('Vehicle not found');
   }
-  assertOwnership(vehicle.toObject(), owner);
+  assertOwnership(vehicle, owner);
 
-  if (patch.label !== undefined) vehicle.label = patch.label;
-  if (patch.plate !== undefined) vehicle.plate = patch.plate;
-  if (patch.status !== undefined) vehicle.status = patch.status;
+  const set: Parameters<typeof updateVehicleRow>[1] = {};
+  if (patch.label !== undefined) set.label = patch.label;
+  if (patch.plate !== undefined) set.plate = patch.plate;
+  if (patch.status !== undefined) set.status = patch.status;
 
   // If the type changes, recompute capability; otherwise merge capacity overrides
   // onto the existing type.
-  const nextType = patch.type ?? vehicle.type;
+  const nextType = (patch.type ?? vehicle.type) as CreateVehicleInput['type'];
   if (patch.type !== undefined || patch.capacity !== undefined) {
-    const mergedInput: CreateVehicleInput['capacity'] = {
+    const { capacity, eligibleJobTypes } = buildCapacity(nextType, {
       maxWeightKg: patch.capacity?.maxWeightKg,
       maxVolumeL: patch.capacity?.maxVolumeL,
       maxDimsCm: patch.capacity?.maxDimsCm,
-    };
-    const { capacity, eligibleJobTypes } = buildCapacity(nextType, mergedInput);
-    vehicle.type = nextType;
-    vehicle.capacity = capacity;
-    vehicle.eligibleJobTypes = eligibleJobTypes;
+    });
+    set.type = nextType;
+    set.capacity = capacity;
+    set.eligibleJobTypes = eligibleJobTypes;
   }
 
-  await vehicle.save();
-  return vehicle.toObject();
+  const updated = await updateVehicleRow(vehicleId, set);
+  if (!updated) {
+    throw notFound('Vehicle not found');
+  }
+  return updated;
 }
 
 /** Delete a vehicle the `owner` owns. */
 export async function deleteVehicle(vehicleId: string, owner: VehicleOwner): Promise<void> {
-  const vehicle = await Vehicle.findById(vehicleId);
+  const vehicle = await findVehicleById(vehicleId);
   if (!vehicle) {
     throw notFound('Vehicle not found');
   }
-  assertOwnership(vehicle.toObject(), owner);
-  await vehicle.deleteOne();
+  assertOwnership(vehicle, owner);
+  await deleteVehicleRow(vehicleId);
 }

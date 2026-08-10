@@ -50,8 +50,9 @@ vi.mock('../../models/job-offer.js', () => ({
   NON_TERMINAL_OFFER_STATUSES: ['offered'],
 }));
 
-vi.mock('../../models/courier-profile.js', () => ({
-  CourierProfile: { updateOne: (...args: unknown[]) => profileUpdateOne(...args) },
+vi.mock('../../db/fleet/courierProfileRepository.js', () => ({
+  markCourierOnJob: (...args: unknown[]) => profileUpdateOne(...args),
+  updateCourierAcceptanceRate: vi.fn(),
 }));
 
 // Transport reads `job.service` performs on paths this suite does not exercise.
@@ -90,7 +91,7 @@ beforeEach(() => {
   offerUpdateOne.mockResolvedValue({ modifiedCount: 1 });
   offerUpdateMany.mockResolvedValue({ modifiedCount: 0 });
   offerAggregate.mockResolvedValue([]);
-  profileUpdateOne.mockResolvedValue({ modifiedCount: 1 });
+  profileUpdateOne.mockResolvedValue(undefined);
   emitJobStatus.mockResolvedValue(undefined);
 });
 
@@ -126,10 +127,9 @@ describe('accept — offer-gated CAS', () => {
     expect(to).toHaveBeenCalledWith('user:c3');
     expect(emit).toHaveBeenCalledWith('job:offer_taken', { jobId: 'job-1' });
     // Courier flipped to on_job.
-    expect(profileUpdateOne).toHaveBeenCalledWith(
-      { oxyUserId: 'c1' },
-      { $set: { onlineStatus: 'on_job' } },
-    );
+    // The intent has a NAME now, so the assertion is the argument rather than
+    // the shape of an update document.
+    expect(profileUpdateOne).toHaveBeenCalledWith('c1');
     // Sender notified of acceptance.
     expect(emitJobStatus).toHaveBeenCalledWith(expect.objectContaining({ _id: 'job-1' }), 'accepted');
   });

@@ -202,6 +202,19 @@ bug report three months later.
   adapter takes — one slow carrier becoming a service-wide connection shortage.
   The distance write stays outside and BEFORE the fan-out, as in the source,
   because it is persisted up front on purpose.
+- **A company and its OWNER member now commit together.** The source embedded
+  `members` in the company document, so seeding the owner was atomic for free;
+  they are two tables now, and a company with no owner is one nobody can
+  administer and no endpoint can repair. `insertCompanyWithOwner` is that
+  transaction. `replaceCompanyServiceAreas` is transactional for the same
+  reason — a failure between the delete and the insert would leave a company
+  that serves nowhere.
+- **Adding an existing company member CONVERGES instead of duplicating.** The
+  source pushed into an array with no uniqueness, so re-adding somebody
+  produced a second entry that shadowed the first depending on which the reader
+  hit; `company_members_company_oxy_user_key` makes that unrepresentable and
+  `upsertCompanyMember` updates the one row. `joined_at`/`joined_by` are set
+  only on INSERT — re-adding must not rewrite when somebody originally joined.
 - **`cart_items.variant_id` cascades.** Deleting a variant currently leaves a
   cart line pointing at a dead variant, which fails at hydration; now the line
   vanishes. Better behaviour, but different from production.
