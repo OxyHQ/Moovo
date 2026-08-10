@@ -50,6 +50,36 @@ later phase it will be removed/replaced by the Moovo courier/transport domain
 (deliveries, shipments, couriers, providers, fulfillment routing between
 Moovo's own couriers and external providers like DHL/FedEx).
 
+**This is the last thing holding the Mongo connection open.** Every courier
+domain is on PostgreSQL as of #57; `lib/db.ts` and `MONGODB_URI` survive only
+because 26 files (22 of them non-test) still import one of 8 inherited
+marketplace models — cart, category, listing, order, product-variant, review,
+seller-profile, store. Whether that code is PORTED or DELETED is a product
+decision, not an engineering one, and it is the only open question left.
+
+### Two things whoever does that work needs, which are cheap to lose
+
+**A closed booking window was never actually hit, and that retires the repair
+rather than the bug.** `port/jobs-dispatch` closed a booking window; Moovo has
+zero shipments in production, so nobody had reached it. Nobody hit it because
+nothing has run through that path yet, not because the path was safe. Anything
+that reasons "this has never gone wrong in production" about a pre-launch
+service is reasoning from an empty sample.
+
+**Map the TRANSACTION boundaries before proposing how to split the work — not
+the import graph.** Importer counts look like they identify separable units and
+they do not, and the error is in the direction that looks tidy. Measured during
+the moderation port: the four models had 1 / 1 / 2 / 4 importers, which reads as
+four independent sub-units, but the outbox transaction couples `reports` +
+`moderation_outboxes` (intake) and `moderation_events` + `moderation_outboxes`
+(inbound) — and a Mongo `ClientSession` cannot enlist a Postgres write. So no
+ordering avoided an intermediate state that destroyed exactly the atomicity the
+outbox exists for; three models had to move together and only enforcement (~4%
+of the change) was genuinely free-standing. The marketplace models share
+`checkout`/`cart`/`order` transactions in the same way, so expect the same
+answer there: the seam is where the transactions are, and finding it needs a
+measurement rather than a census.
+
 ## 5. Branding assets
 
 Icons and splash images under `packages/frontend/assets/` and
