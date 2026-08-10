@@ -96,34 +96,39 @@ async function seedStore(handle: string): Promise<string> {
   return store.id;
 }
 
+/** The column values every seeded order shares, so a case states only what it varies. */
+function newOrderValues(overrides: Partial<NewOrder> = {}): NewOrder {
+  orderSeq += 1;
+  return {
+    orderNumber: `MRC-${String(orderSeq).padStart(6, '0')}`,
+    buyerOxyUserId: 'buyer-a',
+    sellerType: 'user',
+    sellerOxyUserId: 'seller-a',
+    shipToRecipientName: 'R',
+    shipToLine1: 'L1',
+    shipToCity: 'C',
+    shipToPostalCode: 'P',
+    shipToCountry: 'ES',
+    shippingMethod: 'standard',
+    shippingLabel: 'Standard',
+    shippingCostAmount: 0,
+    shippingCostCurrency: 'USD',
+    subtotalAmount: 1000,
+    subtotalCurrency: 'USD',
+    grandTotalAmount: 1000,
+    grandTotalCurrency: 'USD',
+    ...overrides,
+  };
+}
+
 /** A P2P order from `buyer` to `seller`, with one line. */
 async function seedOrder(
   buyer: string,
   seller: string,
   overrides: Partial<NewOrder> = {},
 ): Promise<string> {
-  orderSeq += 1;
   const order = await insertOrder(
-    {
-      orderNumber: `MRC-${String(orderSeq).padStart(6, '0')}`,
-      buyerOxyUserId: buyer,
-      sellerType: 'user',
-      sellerOxyUserId: seller,
-      shipToRecipientName: 'R',
-      shipToLine1: 'L1',
-      shipToCity: 'C',
-      shipToPostalCode: 'P',
-      shipToCountry: 'ES',
-      shippingMethod: 'standard',
-      shippingLabel: 'Standard',
-      shippingCostAmount: 0,
-      shippingCostCurrency: 'USD',
-      subtotalAmount: 1000,
-      subtotalCurrency: 'USD',
-      grandTotalAmount: 1000,
-      grandTotalCurrency: 'USD',
-      ...overrides,
-    },
+    newOrderValues({ buyerOxyUserId: buyer, sellerOxyUserId: seller, ...overrides }),
     [
       {
         listingId: 'listing-1',
@@ -432,6 +437,60 @@ describeIfPostgres('the order repository on a real server', () => {
       expect(found.some((r) => r.order.id === paidOld)).toBe(false);
       // The sweep releases stock per line, so the lines must travel with it.
       expect(found[0].items).toHaveLength(1);
+    });
+  });
+
+  /**
+   * A duplicate `idempotencyKey` is answered by `ON CONFLICT … DO NOTHING`, not
+   * by an exception.
+   *
+   * **The REPEATED call is the whole test, and that is why this was missing.**
+   * A single insert answers identically whether the conflict is expressed as a
+   * returned null or as a thrown `23505` — so a suite that only ever inserts
+   * once cannot tell the two apart, and this file did only that until now
+   * (`insertOrder` was reached solely through `seedOrder`, which sets no key).
+   *
+   * It matters because `insertOrder` wraps its INSERT in `db.transaction`: a
+   * raised `23505` aborts the transaction with `25P02`, and every later
+   * statement inside it — including the read that recovers the prior order —
+   * fails too. That is the Mongo E11000-then-read-back recovery failing to
+   * port, and it surfaces as checkout 500ing on a replay rather than
+   * converging.
+   */
+  describe('a duplicate idempotency key is answered, not thrown', () => {
+    it('returns null on the SECOND insert with the same key', async () => {
+      const first = await insertOrder(newOrderValues({ idempotencyKey: 'idem-1' }), []);
+      expect(first).not.toBeNull();
+
+      // The discriminator. A throw here — rather than a null — is the defect.
+      const second = await insertOrder(newOrderValues({ idempotencyKey: 'idem-1' }), []);
+      expect(second).toBeNull();
+
+      // …and the first order is intact rather than half-written.
+      if (first === null) throw new Error('first insert returned null');
+      const stored = await findOrderById(first.id);
+      expect(stored?.order.idempotencyKey).toBe('idem-1');
+      expect(stored?.order.orderNumber).toBe(first.orderNumber);
+    });
+
+    it('permits any number of orders with NO key, so the partial index has not collapsed', async () => {
+      // Postgres treats every NULL as distinct, which is what the source's
+      // `sparse: true` meant. A plain (non-partial) unique would also allow
+      // this, so it is paired with the case above rather than standing alone.
+      const a = await insertOrder(newOrderValues({}), []);
+      const b = await insertOrder(newOrderValues({}), []);
+      expect(a).not.toBeNull();
+      expect(b).not.toBeNull();
+    });
+
+    it('still SURFACES a duplicate order number rather than swallowing it', async () => {
+      // The `ON CONFLICT` targets `idempotency_key` specifically. A bare
+      // `DO NOTHING` would silently absorb this too, turning a real bug into a
+      // null the caller reads as "already processed".
+      await insertOrder(newOrderValues({ orderNumber: 'MRC-DUP-01' }), []);
+      await expect(
+        insertOrder(newOrderValues({ orderNumber: 'MRC-DUP-01' }), []),
+      ).rejects.toThrow();
     });
   });
 });
