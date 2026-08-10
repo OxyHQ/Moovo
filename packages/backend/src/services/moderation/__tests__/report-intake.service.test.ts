@@ -18,7 +18,7 @@ import { uuidv7 } from '@oxyhq/db';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const reportCreate = vi.fn();
-const jobFindOne = vi.fn();
+const isJobParty = vi.fn();
 const enqueue = vi.fn();
 const withTransaction = vi.fn();
 const endSession = vi.fn();
@@ -45,8 +45,14 @@ vi.mock('../../../models/report.js', () => ({
   Report: { create: (...args: unknown[]) => reportCreate(...args) },
 }));
 
-vi.mock('../../../models/job.js', () => ({
-  Job: { findOne: (...args: unknown[]) => jobFindOne(...args) },
+// `jobs` is Postgres, and the seam is a repository function that answers a
+// BOOLEAN. The ownership predicate is no longer a filter object a test can
+// inspect field by field — it is a WHERE clause inside `isJobParty`, and
+// `job-dispatch.realdb.test.ts` pins it against a real server, which is the only
+// place a predicate can be pinned at all. What stays assertable here is the pair
+// of ARGUMENTS: the job asked about, and the reporter asked about on it.
+vi.mock('../../../db/transport/jobRepository.js', () => ({
+  isJobParty: (...args: unknown[]) => isJobParty(...args),
 }));
 
 vi.mock('../moderation-outbox.service.js', () => ({
@@ -57,11 +63,6 @@ vi.mock('../moderation-outbox.service.js', () => ({
 import { createReport } from '../report-intake.service.js';
 
 const VALID_JOB_ID = '507f1f77bcf86cd799439011';
-
-/** A chainable `findOne().select().lean()`. */
-function jobQuery(value: unknown) {
-  return { select: () => ({ lean: async () => value }) };
-}
 
 function storedReport(overrides: Record<string, unknown> = {}) {
   return {
@@ -87,7 +88,7 @@ beforeEach(() => {
     storedReport(docs[0]),
   ]);
   enqueue.mockResolvedValue('moderation:report.submit:report-1');
-  jobFindOne.mockReturnValue(jobQuery(null));
+  isJobParty.mockResolvedValue(false);
 });
 
 describe('a deliverable type', () => {
@@ -172,7 +173,7 @@ describe('a type with no subject provider', () => {
 
 describe('the delivery-context ownership check', () => {
   it('attaches the delivery when the reporter was a party to it', async () => {
-    jobFindOne.mockReturnValue(jobQuery({ _id: VALID_JOB_ID }));
+    isJobParty.mockResolvedValue(true);
 
     await createReport({
       reporter: 'sender-1',
@@ -187,7 +188,7 @@ describe('the delivery-context ownership check', () => {
   });
 
   it('scopes the lookup to jobs the reporter was sender or courier on', async () => {
-    jobFindOne.mockReturnValue(jobQuery({ _id: VALID_JOB_ID }));
+    isJobParty.mockResolvedValue(true);
     await createReport({
       reporter: 'sender-1',
       reportedType: 'courier',
@@ -196,10 +197,7 @@ describe('the delivery-context ownership check', () => {
       contextJobId: VALID_JOB_ID,
     });
 
-    expect(jobFindOne).toHaveBeenCalledWith({
-      _id: VALID_JOB_ID,
-      $or: [{ senderOxyUserId: 'sender-1' }, { courierOxyUserId: 'sender-1' }],
-    });
+    expect(isJobParty).toHaveBeenCalledWith(VALID_JOB_ID, 'sender-1');
   });
 
   /**
@@ -213,7 +211,7 @@ describe('the delivery-context ownership check', () => {
    * so it would never appear in the attacker's own traffic.
    */
   it('DROPS a delivery the reporter had nothing to do with', async () => {
-    jobFindOne.mockReturnValue(jobQuery(null));
+    isJobParty.mockResolvedValue(false);
 
     await createReport({
       reporter: 'a-stranger',
@@ -230,7 +228,7 @@ describe('the delivery-context ownership check', () => {
   it('still stores the report when the context is dropped', async () => {
     // Deliberately silent: the report is valid and still delivered, and a 403
     // here would tell a prober which job ids exist.
-    jobFindOne.mockReturnValue(jobQuery(null));
+    isJobParty.mockResolvedValue(false);
     const result = await createReport({
       reporter: 'a-stranger',
       reportedType: 'courier',
@@ -242,7 +240,7 @@ describe('the delivery-context ownership check', () => {
     expect(enqueue).toHaveBeenCalledTimes(1);
   });
 
-  it('never queries Mongo for a malformed job id', async () => {
+  it('never queries the database for a malformed job id', async () => {
     await createReport({
       reporter: 'reporter-1',
       reportedType: 'courier',
@@ -250,7 +248,7 @@ describe('the delivery-context ownership check', () => {
       categories: ['harassment'],
       contextJobId: 'not-an-object-id',
     });
-    expect(jobFindOne).not.toHaveBeenCalled();
+    expect(isJobParty).not.toHaveBeenCalled();
   });
 
   it('looks up a uuid v7 job id — the shape every job created after the cutover has', async () => {
@@ -264,7 +262,7 @@ describe('the delivery-context ownership check', () => {
     // reported for conduct on a post-cutover job would reach the jury with no
     // delivery attached and nothing logged to say why.
     const postCutoverJobId = uuidv7();
-    jobFindOne.mockReturnValue(jobQuery({ _id: postCutoverJobId }));
+    isJobParty.mockResolvedValue(true);
 
     const result = await createReport({
       reporter: 'reporter-1',
@@ -274,7 +272,7 @@ describe('the delivery-context ownership check', () => {
       contextJobId: postCutoverJobId,
     });
 
-    expect(jobFindOne).toHaveBeenCalledTimes(1);
+    expect(isJobParty).toHaveBeenCalledTimes(1);
     expect(result.report).toBeDefined();
     const [[docs]] = reportCreate.mock.calls as [[Record<string, unknown>[]]];
     expect(docs[0]?.contextJobId).toBe(postCutoverJobId);

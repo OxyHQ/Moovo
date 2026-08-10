@@ -52,10 +52,27 @@
  * correctly.
  */
 
-import type {
-  ShipmentAddressValue,
-  ShipmentEndpointValue,
-} from '../../../db/transport/shipmentShape.js';
+/**
+ * The MOST a place may be described as, on the way in.
+ *
+ * Deliberately not `ShipmentAddressValue` and deliberately not derived from it.
+ * The return types below already refuse to emit a street; this refuses to
+ * ACCEPT one, so the moderation path has no type through which `line1` or a
+ * postcode could arrive in the first place — and `findJobModerationFacts` never
+ * selects those columns, so nothing loads them either. Two independent walls,
+ * where the source had one.
+ *
+ * A new endpoint field is therefore invisible here until somebody widens this
+ * interface on purpose, which is the same argument {@link RedactedEndpoint}
+ * makes about the way out.
+ */
+export interface CoarsePlace {
+  readonly city?: string;
+  readonly region?: string;
+  readonly country?: string;
+  /** The user's own delivery instructions. */
+  readonly notes?: string;
+}
 
 /** §5.3 claims and labels are bounded, flat and scalar. */
 const MAX_LABEL_LENGTH = 200;
@@ -89,9 +106,9 @@ export function note(value: string | undefined): string | undefined {
  * Returns `undefined` when there is nothing safe to say, which is a normal
  * outcome and not an error.
  */
-export function coarseLocationLabel(address: ShipmentAddressValue | undefined): string | undefined {
-  if (!address) return undefined;
-  const parts = [address.city, address.region, address.country]
+export function coarseLocationLabel(place: CoarsePlace | undefined): string | undefined {
+  if (!place) return undefined;
+  const parts = [place.city, place.region, place.country]
     .map((part) => boundedText(part, MAX_LABEL_LENGTH))
     .filter((part): part is string => part !== undefined);
   if (parts.length === 0) return undefined;
@@ -103,7 +120,7 @@ export function coarseLocationLabel(address: ShipmentAddressValue | undefined): 
 /**
  * One endpoint of a delivery, reduced to what a stranger may see.
  *
- * The return type is deliberately NOT derived from `ShipmentEndpointValue`. A
+ * The return type is deliberately NOT derived from the persisted endpoint. A
  * structural `Omit` would silently start passing any field added to the endpoint
  * later — a `recipientEmail`, a `buzzerCode`, an `accessInstructions` — and the
  * failure mode of that is a PII leak that no test knows to look for. Listing the
@@ -117,10 +134,10 @@ export interface RedactedEndpoint {
   readonly notes?: string;
 }
 
-export function redactEndpoint(endpoint: ShipmentEndpointValue | undefined): RedactedEndpoint {
-  if (!endpoint) return {};
-  const locationLabel = coarseLocationLabel(endpoint.address);
-  const endpointNotes = note(endpoint.notes);
+export function redactEndpoint(place: CoarsePlace | undefined): RedactedEndpoint {
+  if (!place) return {};
+  const locationLabel = coarseLocationLabel(place);
+  const endpointNotes = note(place.notes);
   return {
     ...(locationLabel === undefined ? {} : { locationLabel }),
     ...(endpointNotes === undefined ? {} : { notes: endpointNotes }),

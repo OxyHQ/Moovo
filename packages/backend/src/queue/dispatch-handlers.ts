@@ -10,7 +10,9 @@
  *
  * `handleExpireOffers` runs on a short cadence (`config.dispatch.expireOffersIntervalMs`):
  * 1. Flip every `offered` offer past its `expiresAt` to `expired` (semantic flip
- *    BEFORE the model's TTL backstop can reap it).
+ *    BEFORE the expiry sweep's unconditional delete can reap it — see
+ *    `db/expiry.ts`, where `job_offers` is registered as a bounded-growth
+ *    backstop precisely behind this flip).
  * 2. For each job still awaiting a courier (`requested`/`offered`, non-terminal,
  *    with NO `accepted` offer): re-dispatch the next (wider) wave when
  *    `dispatchAttempts < config.dispatch.maxWaves`, otherwise cancel it
@@ -19,15 +21,23 @@
  * Best-effort throughout: a per-job failure is logged and the sweep continues.
  */
 
-import { Job, type IJob } from '../models/job.js';
-import { JobOffer } from '../models/job-offer.js';
+import {
+  findJobById,
+  listJobsAwaitingCourier,
+} from '../db/transport/jobRepository.js';
+import type { JobRecord } from '../db/transport/jobShape.js';
+import {
+  expireLapsedOffers,
+  jobHasOfferInStatus,
+  supersedeLiveOffers,
+} from '../db/transport/jobOfferRepository.js';
 import { sendNotification } from '../lib/notification-service.js';
 import { config } from '../config/index.js';
 import { log } from '../lib/logger.js';
 import type { DispatchWaveJob } from './types.js';
 
 /** Statuses a job can be in while still awaiting a courier (re-dispatchable). */
-const AWAITING_COURIER_STATUSES: readonly IJob['status'][] = ['requested', 'offered'];
+const AWAITING_COURIER_STATUSES: readonly JobRecord['status'][] = ['requested', 'offered'];
 
 /** Fire a notification, swallowing (and warning on) any failure. NEVER throws. */
 async function notifySafe(options: Parameters<typeof sendNotification>[0]): Promise<void> {
@@ -42,22 +52,25 @@ async function notifySafe(options: Parameters<typeof sendNotification>[0]): Prom
 }
 
 /** Cancel a job that exhausted its dispatch waves with no taker + notify the sender. */
-async function cancelNoCourier(job: IJob): Promise<void> {
+async function cancelNoCourier(job: JobRecord): Promise<void> {
   const { transition } = await import('../services/job.service.js');
-  const doc = await Job.findById(job._id);
-  if (!doc || doc.status === 'cancelled' || doc.status === 'delivered') {
+  // Re-read: the sweep's candidate list was taken before the loop, so this job
+  // may have been accepted, delivered or cancelled while earlier jobs were
+  // being dispatched.
+  const current = await findJobById(job.id);
+  if (!current || current.status === 'cancelled' || current.status === 'delivered') {
     return;
   }
-  await transition(doc, 'cancelled', { note: 'no_courier' });
-  await JobOffer.updateMany({ jobId: String(job._id), status: 'offered' }, { $set: { status: 'superseded' } });
+  await transition(current, 'cancelled', { note: 'no_courier' });
+  await supersedeLiveOffers(job.id, undefined);
   await notifySafe({
-    userId: String(job.senderOxyUserId),
+    userId: job.senderOxyUserId,
     type: 'dispatch_no_courier',
     title: 'No courier available',
     body: 'We could not find a courier for your job. Please try again.',
-    data: { jobId: String(job._id), jobNumber: job.jobNumber },
+    data: { jobId: job.id, jobNumber: job.jobNumber },
   });
-  log.general.info({ jobId: String(job._id) }, 'Job cancelled — no courier found after max waves');
+  log.general.info({ jobId: job.id }, 'Job cancelled — no courier found after max waves');
 }
 
 /**
@@ -67,20 +80,18 @@ async function cancelNoCourier(job: IJob): Promise<void> {
 export async function handleExpireOffers(): Promise<void> {
   const now = new Date();
 
-  // 1. Flip stale live offers to `expired` (semantic, before the TTL backstop).
-  const expired = await JobOffer.updateMany(
-    { status: 'offered', expiresAt: { $lt: now } },
-    { $set: { status: 'expired' } },
-  );
-  if (expired.modifiedCount > 0) {
-    log.general.info({ count: expired.modifiedCount }, 'Expired stale job offers');
+  // 1. Flip stale live offers to `expired` (semantic, before the expiry sweep's
+  //    unconditional delete). The count comes off the affected-row count the
+  //    server reported — an UPDATE with no RETURNING resolves to an EMPTY array
+  //    whether it changed a thousand rows or none, so a `.length` here would
+  //    report zero forever and read as a quiet sweep rather than a broken one.
+  const expiredCount = await expireLapsedOffers(now);
+  if (expiredCount > 0) {
+    log.general.info({ count: expiredCount }, 'Expired stale job offers');
   }
 
   // 2. Find jobs still awaiting a courier with NO live offer (all expired/none).
-  const awaiting = await Job.find({
-    fulfillmentType: 'moovo_courier',
-    status: { $in: [...AWAITING_COURIER_STATUSES] },
-  }).lean<IJob[]>();
+  const awaiting = await listJobsAwaitingCourier(AWAITING_COURIER_STATUSES);
   if (awaiting.length === 0) {
     return;
   }
@@ -89,25 +100,28 @@ export async function handleExpireOffers(): Promise<void> {
 
   for (const job of awaiting) {
     try {
-      const jobId = String(job._id);
+      // Both checks stay PER JOB rather than folded into the query above: the
+      // loop dispatches as it goes, so by the time it reaches this job an
+      // earlier iteration may have taken seconds, and a live or accepted offer
+      // can have appeared in between. Asking once up front would answer about a
+      // world that no longer exists.
+      //
       // Skip if this job still has a live offer (its window has not elapsed).
-      const liveOffer = await JobOffer.exists({ jobId, status: 'offered' });
-      if (liveOffer) {
+      if (await jobHasOfferInStatus(job.id, 'offered')) {
         continue;
       }
       // An accepted offer means the job is being handled — skip (a status race).
-      const acceptedOffer = await JobOffer.exists({ jobId, status: 'accepted' });
-      if (acceptedOffer) {
+      if (await jobHasOfferInStatus(job.id, 'accepted')) {
         continue;
       }
 
       if (job.dispatchAttempts < config.dispatch.maxWaves) {
-        await dispatchJob(jobId);
+        await dispatchJob(job.id);
       } else {
         await cancelNoCourier(job);
       }
     } catch (err) {
-      log.general.warn({ err, jobId: String(job._id) }, 'Offer sweep: per-job step failed (skipping)');
+      log.general.warn({ err, jobId: job.id }, 'Offer sweep: per-job step failed (skipping)');
     }
   }
 }

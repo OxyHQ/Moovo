@@ -16,7 +16,7 @@
  */
 
 import type { JobStatus } from '@moovo/shared-types';
-import type { IJob } from '../models/job.js';
+import type { JobRecord } from '../db/transport/jobShape.js';
 import type { NotificationType } from '../lib/notification-service.js';
 import { EVENTS, type JobSocketEvent } from '../lib/socket-events.js';
 import { getIO } from '../socket.js';
@@ -94,19 +94,19 @@ async function notifySafe(options: Parameters<typeof sendNotification>[0]): Prom
  * attached is a silent no-op, and a notification failure is logged not thrown.
  * No-op for non-lifecycle statuses (`requested`/`offered` are dispatch-internal).
  */
-export async function emitJobStatus(job: IJob, status: JobStatus): Promise<void> {
+export async function emitJobStatus(job: JobRecord, status: JobStatus): Promise<void> {
   if (!isLifecycleStatus(status)) {
     return;
   }
   const meta = STATUS_META[status];
-  const jobId = String(job._id);
-  const senderId = String(job.senderOxyUserId);
+  const jobId = job.id;
+  const senderId = job.senderOxyUserId;
   const payload = { jobId, status, jobNumber: job.jobNumber };
 
   const io = getIO();
   if (io) {
     io.to(`user:${senderId}`).emit(meta.event, payload);
-    const courierId = job.courierOxyUserId ? String(job.courierOxyUserId) : undefined;
+    const courierId = job.courierOxyUserId;
     if (courierId && courierId !== senderId) {
       io.to(`user:${courierId}`).emit(meta.event, payload);
     }
@@ -125,13 +125,13 @@ export async function emitJobStatus(job: IJob, status: JobStatus): Promise<void>
  * Emit a live courier location ping to the sender during an active job. Silent
  * no-op when no IO is attached. Carries only the coordinates + timestamp.
  */
-export function emitJobLocation(job: IJob, lng: number, lat: number): void {
+export function emitJobLocation(job: JobRecord, lng: number, lat: number): void {
   const io = getIO();
   if (!io) {
     return;
   }
-  io.to(`user:${String(job.senderOxyUserId)}`).emit(EVENTS.JOB_LOCATION, {
-    jobId: String(job._id),
+  io.to(`user:${job.senderOxyUserId}`).emit(EVENTS.JOB_LOCATION, {
+    jobId: job.id,
     location: { type: 'Point' as const, coordinates: [lng, lat] },
     at: new Date().toISOString(),
   });

@@ -10,11 +10,13 @@
  * them into columns. They do not die, for two reasons that have nothing to do
  * with Mongo:
  *
- *  - **`jobs.pickup_snapshot`, `dropoff_snapshot` and `parcel_snapshot` are
- *    `jsonb`.** A job freezes the endpoints and parcel at booking, and the
- *    frozen copy is read as a unit and never compared across rows, which is
- *    what earns jsonb there. So the nested shape is the declared CONTENT of
- *    three live Postgres columns, not a legacy of the driver.
+ *  - **A job freezes the endpoints and the parcel at booking**, and reads them
+ *    back through these same types — see `jobShape.ts`, whose `JobRecord`
+ *    declares `pickupSnapshot`, `dropoffSnapshot` and `parcelSnapshot` as the
+ *    value objects below. `jobs` FLATTENS all three into columns exactly as
+ *    `shipments` does; only `quote_snapshot` and `totals` are jsonb there, and
+ *    a `PriceBreakdown` is what earns it, being read as a unit and never
+ *    compared across rows.
  *  - **`ProviderAdapter` takes a whole shipment.** Every external carrier is
  *    integrated behind that one interface, and an adapter reads
  *    `shipment.pickup.location.coordinates`. Handing adapters a 30-column flat

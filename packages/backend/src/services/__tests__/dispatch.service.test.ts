@@ -1,21 +1,24 @@
 /**
  * Unit tests for `dispatch.service` (candidate selection + offer fan-out).
  *
- * `mongodb-memory-server` is not available, so Job/JobOffer/CourierProfile, the
- * rate + display helpers, geo, the socket, and the notification service are
- * mocked. Tests assert: the candidate query carries the right
- * onlineStatus/lastPingAt/eligibleJobTypes/$nearSphere/limit shape; that N offers
- * are created, the job moves `requested → offered`, and each candidate is emitted
- * a `job:offer`; and that ZERO candidates leaves the job `requested` (no cancel)
- * while still bumping `dispatchAttempts`.
+ * The repositories, the rate + display helpers, geo, the socket and the
+ * notification service are mocked. Tests assert: the candidate query carries the
+ * right pickup/type/weight/staleness/limit shape; that N offers are created, the
+ * job moves `requested → offered`, and each candidate is emitted a `job:offer`;
+ * and that ZERO candidates leaves the job `requested` (no cancel) while still
+ * bumping `dispatchAttempts`.
+ *
+ * The two properties a mock cannot hold are elsewhere: nearest-first candidate
+ * ORDERING is pinned by `fleet.realdb.test.ts` against a real PostGIS server,
+ * and the accept race the offers feed is pinned by `job-dispatch.realdb.test.ts`.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const jobFindById = vi.fn();
-const jobUpdateOne = vi.fn();
-const offerFind = vi.fn();
-const offerCreate = vi.fn();
+const findJobById = vi.fn();
+const setDispatchAttempts = vi.fn();
+const listCourierIdsWithLiveOffer = vi.fn();
+const insertJobOffer = vi.fn();
 const profileFind = vi.fn();
 const transition = vi.fn();
 const emit = vi.fn();
@@ -24,19 +27,14 @@ const getIO = vi.fn(() => ({ to }));
 const sendNotification = vi.fn();
 const isEligible = vi.fn();
 
-vi.mock('../../models/job.js', () => ({
-  Job: {
-    findById: (...args: unknown[]) => jobFindById(...args),
-    updateOne: (...args: unknown[]) => jobUpdateOne(...args),
-  },
+vi.mock('../../db/transport/jobRepository.js', () => ({
+  findJobById: (...args: unknown[]) => findJobById(...args),
+  setDispatchAttempts: (...args: unknown[]) => setDispatchAttempts(...args),
 }));
 
-vi.mock('../../models/job-offer.js', () => ({
-  JobOffer: {
-    find: (...args: unknown[]) => offerFind(...args),
-    create: (...args: unknown[]) => offerCreate(...args),
-  },
-  NON_TERMINAL_OFFER_STATUSES: ['offered'],
+vi.mock('../../db/transport/jobOfferRepository.js', () => ({
+  insertJobOffer: (...args: unknown[]) => insertJobOffer(...args),
+  listCourierIdsWithLiveOffer: (...args: unknown[]) => listCourierIdsWithLiveOffer(...args),
 }));
 
 // `courier_profiles` is Postgres now, so the seam is the repository — and the
@@ -78,10 +76,10 @@ vi.mock('../job.service.js', () => ({
 
 import { dispatchJob } from '../dispatch.service.js';
 
-/** A NON-lean mock job doc (dispatch loads it with `Job.findById` non-lean). */
+/** Only the fields `dispatchJob` reads off a job record. */
 function mockJob(overrides: Record<string, unknown> = {}) {
   return {
-    _id: 'job-1',
+    id: 'job-1',
     shipmentId: 'shipment-1',
     fulfillmentType: 'moovo_courier',
     status: 'requested',
@@ -113,19 +111,24 @@ function mockCandidate(oxyUserId: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  jobUpdateOne.mockResolvedValue({ modifiedCount: 1 });
-  offerFind.mockReturnValue({ select: () => ({ lean: () => Promise.resolve([]) }) });
-  offerCreate.mockImplementation((doc: { courierOxyUserId: string }) =>
-    Promise.resolve({ _id: `offer-${doc.courierOxyUserId}` }),
+  setDispatchAttempts.mockResolvedValue(undefined);
+  listCourierIdsWithLiveOffer.mockResolvedValue([]);
+  insertJobOffer.mockImplementation((input: { courierOxyUserId: string }) =>
+    Promise.resolve({ id: `offer-${input.courierOxyUserId}` }),
   );
-  transition.mockResolvedValue(undefined);
+  // `transition` RETURNS the moved record now, and `dispatchJob` reassigns from
+  // it — a mock resolving `undefined` would leave the wave building offers from
+  // nothing, which is the shape of the bug this echo exists to avoid hiding.
+  transition.mockImplementation((job: Record<string, unknown>, next: string) =>
+    Promise.resolve({ ...job, status: next }),
+  );
   sendNotification.mockResolvedValue(undefined);
   isEligible.mockReturnValue(true);
 });
 
 describe('dispatchJob — candidate selection', () => {
   it('queries online, non-stale, type-eligible couriers near the pickup, limited to waveSize', async () => {
-    jobFindById.mockResolvedValue(mockJob());
+    findJobById.mockResolvedValue(mockJob());
     let capturedQuery: Record<string, unknown> = {};
     profileFind.mockImplementation((query: Record<string, unknown>) => {
       capturedQuery = query;
@@ -145,14 +148,14 @@ describe('dispatchJob — candidate selection', () => {
 
 describe('dispatchJob — offer fan-out', () => {
   it('creates one offer per candidate, moves the job offered, and emits each candidate', async () => {
-    jobFindById.mockResolvedValue(mockJob());
+    findJobById.mockResolvedValue(mockJob());
     profileFind.mockResolvedValue([mockCandidate('c1'), mockCandidate('c2')]);
 
     const result = await dispatchJob('job-1');
 
     expect(result.offered).toBe(2);
     expect(result.wave).toBe(1);
-    expect(offerCreate).toHaveBeenCalledTimes(2);
+    expect(insertJobOffer).toHaveBeenCalledTimes(2);
     // First wave transitions requested → offered.
     expect(transition).toHaveBeenCalledTimes(1);
     expect(transition.mock.calls[0][1]).toBe('offered');
@@ -161,24 +164,24 @@ describe('dispatchJob — offer fan-out', () => {
     expect(to).toHaveBeenCalledWith('user:c2');
     expect(emit).toHaveBeenCalledWith('job:offer', expect.objectContaining({ jobId: 'job-1' }));
     // dispatchAttempts bumped to 1.
-    expect(jobUpdateOne).toHaveBeenCalledWith({ _id: 'job-1' }, { $set: { dispatchAttempts: 1 } });
+    expect(setDispatchAttempts).toHaveBeenCalledWith('job-1', 1);
   });
 
   it('does NOT transition on a re-dispatch wave (job already offered)', async () => {
-    jobFindById.mockResolvedValue(mockJob({ status: 'offered', dispatchAttempts: 1 }));
+    findJobById.mockResolvedValue(mockJob({ status: 'offered', dispatchAttempts: 1 }));
     profileFind.mockResolvedValue([mockCandidate('c3')]);
 
     const result = await dispatchJob('job-1');
 
     expect(result.wave).toBe(2);
     expect(transition).not.toHaveBeenCalled();
-    expect(offerCreate).toHaveBeenCalledTimes(1);
+    expect(insertJobOffer).toHaveBeenCalledTimes(1);
   });
 });
 
 describe('dispatchJob — zero candidates', () => {
   it('leaves the job requested (no transition, no cancel) but bumps dispatchAttempts', async () => {
-    jobFindById.mockResolvedValue(mockJob());
+    findJobById.mockResolvedValue(mockJob());
     profileFind.mockResolvedValue([]);
 
     const result = await dispatchJob('job-1');
@@ -186,18 +189,18 @@ describe('dispatchJob — zero candidates', () => {
     expect(result.offered).toBe(0);
     expect(result.wave).toBe(1);
     expect(transition).not.toHaveBeenCalled();
-    expect(offerCreate).not.toHaveBeenCalled();
-    expect(jobUpdateOne).toHaveBeenCalledWith({ _id: 'job-1' }, { $set: { dispatchAttempts: 1 } });
+    expect(insertJobOffer).not.toHaveBeenCalled();
+    expect(setDispatchAttempts).toHaveBeenCalledWith('job-1', 1);
   });
 
   it('filters out candidates that fail the precise eligibility gate', async () => {
-    jobFindById.mockResolvedValue(mockJob());
+    findJobById.mockResolvedValue(mockJob());
     profileFind.mockResolvedValue([mockCandidate('c1')]);
     isEligible.mockReturnValue(false);
 
     const result = await dispatchJob('job-1');
 
     expect(result.offered).toBe(0);
-    expect(offerCreate).not.toHaveBeenCalled();
+    expect(insertJobOffer).not.toHaveBeenCalled();
   });
 });

@@ -1,115 +1,96 @@
 /**
- * Unit tests for `job.service` (transitions + idempotent booking).
+ * The transition GRAPH, in isolation.
  *
- * `mongodb-memory-server` is not available, so the Job/Shipment/Quote/Provider
- * models, the counter, and the provider registry are mocked. Tests assert: every
- * LEGAL transition succeeds and calls the CAS with a current-status guard; every
- * ILLEGAL transition throws CONFLICT before the CAS; and an idempotent booking
- * converges on the prior job on a Mongo 11000 duplicate-key error.
+ * `JOB_TRANSITIONS` decides which moves are legal before any statement is
+ * issued, and that decision is pure — so it is checked here, against mocked
+ * repositories, where all twenty-one cases run in milliseconds.
+ *
+ * What is NOT here, deliberately: everything whose correctness is a property of
+ * the SERVER. The CAS predicate under concurrency, the audit entry committing
+ * with the status change, and idempotent booking converging on one job all live
+ * in `db/transport/__tests__/job-dispatch.realdb.test.ts`. A mocked `update`
+ * accepts any statement and reports whatever the mock was told to, so a suite
+ * like this one can prove a guard was PASSED to the repository and can never
+ * prove it guards anything.
+ *
+ * The one assertion here that is about the CAS is the negative: an illegal
+ * transition must throw before the repository is called at all, and the mock is
+ * exactly the right instrument for "this was never invoked".
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const jobFindOneAndUpdate = vi.fn();
-const jobFindOne = vi.fn();
-const jobFindById = vi.fn();
-const jobCreate = vi.fn();
-const shipmentFindById = vi.fn();
-const shipmentMarkBooked = vi.fn();
-const quoteFindById = vi.fn();
-const quoteMarkSelected = vi.fn();
-const providerFindById = vi.fn();
-const nextJobNumber = vi.fn();
-const getAdapter = vi.fn();
+const casJobStatus = vi.fn();
+const insertJobStatusEvent = vi.fn();
 
-vi.mock('../../models/job.js', () => ({
-  Job: {
-    findOneAndUpdate: (...args: unknown[]) => jobFindOneAndUpdate(...args),
-    findOne: (...args: unknown[]) => jobFindOne(...args),
-    findById: (...args: unknown[]) => jobFindById(...args),
-    create: (...args: unknown[]) => jobCreate(...args),
-    findByIdAndUpdate: vi.fn(),
-    countDocuments: vi.fn(),
-    find: vi.fn(),
-  },
+vi.mock('../../db/transport/jobRepository.js', () => ({
+  casJobStatus: (...args: unknown[]) => casJobStatus(...args),
+  insertJobStatusEvent: (...args: unknown[]) => insertJobStatusEvent(...args),
+  attachHistory: vi.fn(),
+  casJobAccepted: vi.fn(),
+  countJobs: vi.fn(),
+  findJobById: vi.fn(),
+  findJobByIdempotencyKey: vi.fn(),
+  findJobWithHistory: vi.fn(),
+  insertJobIfAbsent: vi.fn(),
+  insertLocationPing: vi.fn(),
+  listJobs: vi.fn(),
 }));
 
-// `shipments` and `quotes` moved to Postgres, so the seams are repositories.
-// The two shape changes that come with that: a repository function RESOLVES its
-// row where `findById(...)` returned a chainable needing `.lean()`, and an
-// intent that used to be an update DOCUMENT now has a NAME, so a test asserts
-// the arguments rather than `{$set: {...}}`.
+/**
+ * `transaction(cb)` runs its callback with a handle and returns what it returns.
+ *
+ * That is all this suite needs from a transaction and all a mock can honestly
+ * offer: atomicity is not a property a fake can have, which is why the
+ * "CAS and audit entry commit together" claim is proved against a real server
+ * instead of here.
+ */
+vi.mock('../../db/postgres.js', () => ({
+  getDb: () => ({ transaction: async (cb: (tx: unknown) => unknown) => cb('TX') }),
+}));
+
+// Seams `job.service` imports but no case below reaches. Stubbed so importing
+// the module never opens a database connection.
+vi.mock('../../db/transport/jobOfferRepository.js', () => ({
+  countOfferOutcomesForCourier: vi.fn(),
+  findLiveOfferForCourier: vi.fn(),
+  setOfferStatus: vi.fn(),
+  supersedeLiveOffers: vi.fn(),
+}));
 vi.mock('../../db/transport/shipmentRepository.js', () => ({
-  findShipmentById: (...args: unknown[]) => shipmentFindById(...args),
-  markShipmentBooked: (...args: unknown[]) => shipmentMarkBooked(...args),
+  findShipmentById: vi.fn(),
+  markShipmentBooked: vi.fn(),
 }));
-
 vi.mock('../../db/transport/quoteRepository.js', () => ({
-  findQuoteById: (...args: unknown[]) => quoteFindById(...args),
-  markQuoteSelected: (...args: unknown[]) => quoteMarkSelected(...args),
+  findQuoteById: vi.fn(),
+  markQuoteSelected: vi.fn(),
 }));
-
-// The provider seam is the repository too. The suite previously mocked
-// `models/provider.js`, which the providers port had already deleted — an inert
-// mock of a module nothing imports, so the external-provider path was running
-// against the real repository and only stayed green because no case reaches it.
-vi.mock('../../db/transport/providerRepository.js', () => ({
-  findProviderById: (...args: unknown[]) => providerFindById(...args),
+vi.mock('../../db/transport/providerRepository.js', () => ({ findProviderById: vi.fn() }));
+vi.mock('../../db/fleet/courierProfileRepository.js', () => ({
+  markCourierOnJob: vi.fn(),
+  updateCourierAcceptanceRate: vi.fn(),
 }));
+vi.mock('../../db/sequences/numberRepository.js', () => ({ nextJobNumber: vi.fn() }));
+vi.mock('../providers/provider-registry.js', () => ({ getAdapter: vi.fn() }));
 
-vi.mock('../../db/sequences/numberRepository.js', () => ({
-  nextJobNumber: (...args: unknown[]) => nextJobNumber(...args),
-}));
-
-vi.mock('../providers/provider-registry.js', () => ({
-  getAdapter: (...args: unknown[]) => getAdapter(...args),
-}));
-
-import { transition, bookShipment } from '../job.service.js';
-import type { IJob } from '../../models/job.js';
-import type { HydratedDocument } from 'mongoose';
+import { transition } from '../job.service.js';
+import type { JobRecord } from '../../db/transport/jobShape.js';
 import type { JobStatus } from '@moovo/shared-types';
 import { isMoovoError } from '../../lib/errors/error-codes.js';
 import { ErrorCodes } from '../../utils/api-response.js';
 
-/** A mock job doc with a mutable status + history. */
-function mockJob(status: JobStatus): HydratedDocument<IJob> {
-  const doc = {
-    _id: 'job-1',
-    status,
-    fulfillmentType: 'moovo_courier' as const,
-    courierOxyUserId: 'courier-1',
-    statusHistory: [] as IJob['statusHistory'],
-  };
-  return doc as unknown as HydratedDocument<IJob>;
-}
-
-/** A FAIR breakdown for booking tests. */
-function breakdown() {
-  return {
-    base: { fairMinor: 100, originalCurrency: 'FAIR' as const },
-    distance: { fairMinor: 200, originalCurrency: 'FAIR' as const },
-    size: { fairMinor: 0, originalCurrency: 'FAIR' as const },
-    total: { fairMinor: 300, originalCurrency: 'FAIR' as const },
-  };
+/** Only the fields `transition` reads. */
+function jobAt(status: JobStatus): JobRecord {
+  return { id: 'job-1', status } as JobRecord;
 }
 
 beforeEach(() => {
-  jobFindOneAndUpdate
+  casJobStatus
     .mockReset()
-    .mockImplementation((filter: { _id: unknown }, update: { $set: { status: JobStatus } }) =>
-      Promise.resolve({ _id: filter._id, status: update.$set.status }),
+    .mockImplementation((write: { jobId: string; to: JobStatus }) =>
+      Promise.resolve({ id: write.jobId, status: write.to }),
     );
-  jobFindOne.mockReset();
-  jobFindById.mockReset();
-  jobCreate.mockReset();
-  shipmentFindById.mockReset();
-  shipmentMarkBooked.mockReset().mockResolvedValue(undefined);
-  quoteFindById.mockReset();
-  quoteMarkSelected.mockReset().mockResolvedValue(undefined);
-  providerFindById.mockReset();
-  nextJobNumber.mockReset().mockResolvedValue('MOV-000001');
-  getAdapter.mockReset();
+  insertJobStatusEvent.mockReset().mockResolvedValue(undefined);
 });
 
 describe('job.service.transition — legal transitions', () => {
@@ -130,12 +111,25 @@ describe('job.service.transition — legal transitions', () => {
 
   for (const { from, to } of legal) {
     it(`allows ${from} → ${to} and CASes with a current-status guard`, async () => {
-      const doc = mockJob(from);
-      await transition(doc, to, { actorOxyUserId: 'actor-1' });
-      expect(doc.status).toBe(to);
-      expect(jobFindOneAndUpdate).toHaveBeenCalledTimes(1);
-      const [filter] = jobFindOneAndUpdate.mock.calls[0];
-      expect((filter as { status: JobStatus }).status).toBe(from);
+      const moved = await transition(jobAt(from), to, { actorOxyUserId: 'actor-1' });
+
+      // The RETURNED record is the persisted one. The source patched an
+      // in-memory copy and callers read that; asserting the return value is the
+      // difference between "the service says so" and "the write said so".
+      expect(moved.status).toBe(to);
+      expect(casJobStatus).toHaveBeenCalledTimes(1);
+      const [write] = casJobStatus.mock.calls[0];
+      expect(write).toMatchObject({ jobId: 'job-1', from, to });
+    });
+
+    it(`records ${from} → ${to} in the audit trail, in the CAS's transaction`, async () => {
+      await transition(jobAt(from), to, { actorOxyUserId: 'actor-1' });
+
+      expect(insertJobStatusEvent).toHaveBeenCalledTimes(1);
+      const [event, handle] = insertJobStatusEvent.mock.calls[0];
+      expect(event).toMatchObject({ jobId: 'job-1', status: to, byOxyUserId: 'actor-1' });
+      // The same handle the CAS was given, which is what makes them one commit.
+      expect(handle).toBe(casJobStatus.mock.calls[0][1]);
     });
   }
 });
@@ -155,72 +149,33 @@ describe('job.service.transition — illegal transitions', () => {
 
   for (const { from, to } of illegal) {
     it(`rejects ${from} → ${to} with CONFLICT (before the CAS)`, async () => {
-      const doc = mockJob(from);
-      await expect(transition(doc, to, {})).rejects.toSatisfy(
+      await expect(transition(jobAt(from), to, {})).rejects.toSatisfy(
         (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.CONFLICT,
       );
-      expect(jobFindOneAndUpdate).not.toHaveBeenCalled();
+      expect(casJobStatus).not.toHaveBeenCalled();
+      expect(insertJobStatusEvent).not.toHaveBeenCalled();
     });
   }
 
-  it('a lost CAS (concurrent transition) throws CONFLICT', async () => {
-    jobFindOneAndUpdate.mockReset().mockResolvedValue(null);
-    const doc = mockJob('requested');
-    await expect(transition(doc, 'accepted', {})).rejects.toSatisfy(
+  it('a lost CAS (concurrent transition) throws CONFLICT and writes no audit entry', async () => {
+    casJobStatus.mockReset().mockResolvedValue(null);
+
+    await expect(transition(jobAt('requested'), 'accepted', {})).rejects.toSatisfy(
       (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.CONFLICT,
     );
-  });
-});
-
-describe('job.service.bookShipment — idempotent booking', () => {
-  const shipment = {
-    id: 'shipment-1',
-    senderOxyUserId: 'sender-1',
-    status: 'quoted',
-    type: 'package',
-    pickup: {},
-    dropoff: {},
-    parcel: { sizeClass: 'small' },
-  };
-  const quote = {
-    id: 'quote-1',
-    shipmentId: 'shipment-1',
-    source: 'moovo_courier',
-    status: 'active',
-    expiresAt: new Date(Date.now() + 60_000),
-    priceBreakdown: breakdown(),
-  };
-
-  beforeEach(() => {
-    shipmentFindById.mockResolvedValue(shipment);
-    quoteFindById.mockResolvedValue(quote);
+    // A loser must leave no trace: an entry saying the job was accepted, beside
+    // a status that says it was not, is worse than either state on its own.
+    expect(insertJobStatusEvent).not.toHaveBeenCalled();
   });
 
-  it('creates exactly one job and marks the quote selected + shipment booked', async () => {
-    jobCreate.mockResolvedValue({ toObject: () => ({ _id: 'job-1', status: 'requested' }) });
+  it('attaches proof of delivery only on the delivered edge', async () => {
+    const proof = { at: new Date(), note: 'left with neighbour' };
 
-    const job = await bookShipment('sender-1', 'shipment-1', 'quote-1', 'idem-1');
+    await transition(jobAt('in_transit'), 'delivered', { proofOfDelivery: proof });
+    expect(casJobStatus.mock.calls[0][0]).toMatchObject({ proofOfDelivery: proof });
 
-    expect(job).toMatchObject({ _id: 'job-1' });
-    expect(jobCreate).toHaveBeenCalledTimes(1);
-    expect(quoteMarkSelected).toHaveBeenCalledWith('quote-1');
-    // The booking records BOTH refs, not merely the status: a shipment marked
-    // booked without its `jobId` is a shipment nobody can navigate to its job.
-    expect(shipmentMarkBooked).toHaveBeenCalledWith('shipment-1', {
-      jobId: 'job-1',
-      quoteRef: 'quote-1',
-    });
-  });
-
-  it('converges on the prior job when create hits a 11000 duplicate key', async () => {
-    jobCreate.mockRejectedValue({ code: 11000 });
-    jobFindOne.mockReturnValue({ lean: () => Promise.resolve({ _id: 'job-prior', status: 'requested' }) });
-
-    const job = await bookShipment('sender-1', 'shipment-1', 'quote-1', 'idem-1');
-
-    expect(job).toMatchObject({ _id: 'job-prior' });
-    // No quote/shipment mutation on the converge path.
-    expect(quoteMarkSelected).not.toHaveBeenCalled();
-    expect(shipmentMarkBooked).not.toHaveBeenCalled();
+    casJobStatus.mockClear();
+    await transition(jobAt('accepted'), 'picked_up', { proofOfDelivery: proof });
+    expect(casJobStatus.mock.calls[0][0]).not.toHaveProperty('proofOfDelivery');
   });
 });

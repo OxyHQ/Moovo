@@ -13,7 +13,10 @@
  */
 
 import { isLiveEntityId } from '@oxyhq/db';
-import { Job, type IJob } from '../../../models/job.js';
+import {
+  findJobModerationFacts,
+  type JobModerationFacts,
+} from '../../../db/transport/jobRepository.js';
 import {
   findShipmentModerationFacts,
   type ShipmentModerationFacts,
@@ -24,15 +27,21 @@ import type { ModerationContextResource, ModerationResource } from './types.js';
 /**
  * The job, projected to exactly what a snapshot needs.
  *
- * An explicit projection rather than the whole document, and the exclusions are
- * the point: `pickupCode`, `dropoffCode`, `pickupCodeHash`, `dropoffCodeHash` and
- * `payment.reference` are never even LOADED here. A `.select()` is a weaker
- * guarantee than not fetching, but it means an accidental spread of this object
- * cannot leak a delivery verification code, because the field is not on it.
+ * `findJobModerationFacts` names its columns, and the exclusions are the point:
+ * `pickup_code`, `dropoff_code`, both code HASHES and `payment_reference` are
+ * never even LOADED here, so an accidental spread of this object cannot leak a
+ * delivery verification code — the field is not on it. Neither are the two
+ * contact names or the two phone numbers, and neither is a street: the
+ * projection selects `city`/`region`/`country` and the user's own note, which
+ * is the whole of what {@link redactEndpoint} would have been allowed to keep
+ * anyway. The Mongo original expressed the same intent as a `.select()` string;
+ * the column list is now the projection itself.
+ *
+ * `statusHistory` was in that string and is NOT here, because nothing below
+ * reads it — it is not among {@link DELIVERY_FACT_KEYS} and never reached a
+ * jury. Dropping it means the snapshot needs no child-table read at all, which
+ * is the same "not fetched beats not passed on" argument one step further.
  */
-const JOB_PROJECTION =
-  'jobNumber shipmentId senderOxyUserId courierOxyUserId type fulfillmentType status ' +
-  'pickupSnapshot dropoffSnapshot parcelSnapshot statusHistory proofOfDelivery.note createdAt';
 
 /**
  * The shipment facts a snapshot needs, and the reason this is a projection.
@@ -99,28 +108,13 @@ function distanceKm(shipment: SnapshotShipment | null): number | undefined {
   return Math.round(metres / METRES_PER_KM);
 }
 
-type SnapshotJob = Pick<
-  IJob,
-  | '_id'
-  | 'jobNumber'
-  | 'shipmentId'
-  | 'senderOxyUserId'
-  | 'courierOxyUserId'
-  | 'type'
-  | 'fulfillmentType'
-  | 'status'
-  | 'pickupSnapshot'
-  | 'dropoffSnapshot'
-  | 'parcelSnapshot'
-  | 'statusHistory'
-  | 'createdAt'
-> & { proofOfDelivery?: { note?: string } };
+type SnapshotJob = JobModerationFacts;
 
 type SnapshotShipment = ShipmentModerationFacts;
 
 export async function loadSnapshotJob(jobId: string): Promise<SnapshotJob | null> {
   if (!isLiveEntityId(jobId)) return null;
-  return await Job.findById(jobId).select(JOB_PROJECTION).lean<SnapshotJob | null>();
+  return await findJobModerationFacts(jobId);
 }
 
 async function loadShipment(shipmentId: string | undefined): Promise<SnapshotShipment | null> {
@@ -142,10 +136,20 @@ async function loadShipment(shipmentId: string | undefined): Promise<SnapshotShi
  * document being posted through this field.
  */
 function deliveryFacts(job: SnapshotJob, shipment: SnapshotShipment | null): Record<string, string | number | boolean> {
-  const pickup = redactEndpoint(job.pickupSnapshot);
-  const dropoff = redactEndpoint(job.dropoffSnapshot);
+  const pickup = redactEndpoint({
+    city: job.pickupCity,
+    region: job.pickupRegion,
+    country: job.pickupCountry,
+    notes: job.pickupNotes,
+  });
+  const dropoff = redactEndpoint({
+    city: job.dropoffCity,
+    region: job.dropoffRegion,
+    country: job.dropoffCountry,
+    notes: job.dropoffNotes,
+  });
   const itemDescription = note(shipment?.itemDescription);
-  const proofNote = note(job.proofOfDelivery?.note);
+  const proofNote = note(job.proofNote);
   const distance = distanceKm(shipment);
 
   return {
@@ -156,10 +160,10 @@ function deliveryFacts(job: SnapshotJob, shipment: SnapshotShipment | null): Rec
     fulfillment: job.fulfillmentType,
     // The parcel, which is the substance of a prohibited-item allegation.
     ...(itemDescription === undefined ? {} : { itemDescription }),
-    parcelSizeClass: job.parcelSnapshot.sizeClass,
-    parcelWeightKg: job.parcelSnapshot.weightKg,
-    parcelPieces: job.parcelSnapshot.pieces,
-    ...(job.parcelSnapshot.fragile === undefined ? {} : { parcelFragile: job.parcelSnapshot.fragile }),
+    parcelSizeClass: job.parcelSizeClass,
+    parcelWeightKg: job.parcelWeightKg,
+    parcelPieces: job.parcelPieces,
+    parcelFragile: job.parcelFragile,
     // Coarse place labels only — city/region/country, never a street or a postcode.
     ...(pickup.locationLabel === undefined ? {} : { pickupArea: pickup.locationLabel }),
     ...(dropoff.locationLabel === undefined ? {} : { dropoffArea: dropoff.locationLabel }),
@@ -195,7 +199,7 @@ export async function buildDeliveryResource(
   return {
     type: 'metadata',
     data: deliveryFacts(job, shipment),
-    ...(job.createdAt === undefined ? {} : { createdAt: new Date(job.createdAt) }),
+    createdAt: job.createdAt,
   };
 }
 

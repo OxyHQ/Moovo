@@ -1,36 +1,39 @@
 /**
  * Unit tests for the transport dispatch handlers (`handleExpireOffers`).
  *
- * Models (Job, JobOffer), the dispatch service, the job service transition, and
- * the notification service are mocked. Tests assert: stale `offered` offers are
+ * The repositories, the dispatch service, the job service transition, and the
+ * notification service are mocked. Tests assert: stale `offered` offers are
  * flipped to `expired`; a job still awaiting a courier (no live/accepted offer)
  * with `dispatchAttempts < maxWaves` is re-dispatched (next wave); and a job that
  * exhausted its waves is cancelled (`no_courier`) and its sender notified.
+ *
+ * The flip's COUNT is the interesting half and cannot be settled here: this
+ * suite can only prove the handler logs whatever the repository reported.
+ * Whether `expireLapsedOffers` reports a real number — rather than the constant
+ * zero a `.length` on a RETURNING-less update would give — is pinned against a
+ * real server in `db/transport/__tests__/job-dispatch.realdb.test.ts`.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const jobFind = vi.fn();
-const jobFindById = vi.fn();
-const offerUpdateMany = vi.fn();
-const offerExists = vi.fn();
+const listJobsAwaitingCourier = vi.fn();
+const findJobById = vi.fn();
+const expireLapsedOffers = vi.fn();
+const supersedeLiveOffers = vi.fn();
+const jobHasOfferInStatus = vi.fn();
 const dispatchJob = vi.fn();
 const transition = vi.fn();
 const sendNotification = vi.fn();
 
-vi.mock('../../models/job.js', () => ({
-  Job: {
-    find: (...args: unknown[]) => jobFind(...args),
-    findById: (...args: unknown[]) => jobFindById(...args),
-  },
+vi.mock('../../db/transport/jobRepository.js', () => ({
+  listJobsAwaitingCourier: (...args: unknown[]) => listJobsAwaitingCourier(...args),
+  findJobById: (...args: unknown[]) => findJobById(...args),
 }));
 
-vi.mock('../../models/job-offer.js', () => ({
-  JobOffer: {
-    updateMany: (...args: unknown[]) => offerUpdateMany(...args),
-    exists: (...args: unknown[]) => offerExists(...args),
-  },
-  NON_TERMINAL_OFFER_STATUSES: ['offered'],
+vi.mock('../../db/transport/jobOfferRepository.js', () => ({
+  expireLapsedOffers: (...args: unknown[]) => expireLapsedOffers(...args),
+  supersedeLiveOffers: (...args: unknown[]) => supersedeLiveOffers(...args),
+  jobHasOfferInStatus: (...args: unknown[]) => jobHasOfferInStatus(...args),
 }));
 
 vi.mock('../../services/dispatch.service.js', () => ({
@@ -50,29 +53,33 @@ import { config } from '../../config/index.js';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  offerUpdateMany.mockResolvedValue({ modifiedCount: 0 });
-  offerExists.mockResolvedValue(null);
+  expireLapsedOffers.mockResolvedValue(0);
+  supersedeLiveOffers.mockResolvedValue([]);
+  jobHasOfferInStatus.mockResolvedValue(false);
   dispatchJob.mockResolvedValue({ offered: 1, wave: 2 });
   transition.mockResolvedValue(undefined);
   sendNotification.mockResolvedValue(undefined);
 });
 
 describe('handleExpireOffers — stale offer sweep', () => {
-  it('flips stale offered offers to expired (semantic flip before TTL)', async () => {
-    offerUpdateMany.mockResolvedValue({ modifiedCount: 3 });
-    jobFind.mockReturnValue({ lean: () => Promise.resolve([]) });
+  it('flips stale offers BEFORE looking at any job, with `now` as the deadline', async () => {
+    expireLapsedOffers.mockResolvedValue(3);
+    listJobsAwaitingCourier.mockResolvedValue([]);
 
     await handleExpireOffers();
 
-    const expireCall = offerUpdateMany.mock.calls.find(
-      (c) => (c[0] as { status?: string }).status === 'offered',
+    expect(expireLapsedOffers).toHaveBeenCalledTimes(1);
+    expect(expireLapsedOffers.mock.calls[0][0]).toBeInstanceOf(Date);
+    // Order is the property: the semantic flip must land before the sweep reads
+    // which jobs are still awaiting a courier, or a job whose offers all lapsed
+    // this instant is skipped for another whole cycle.
+    expect(expireLapsedOffers.mock.invocationCallOrder[0]).toBeLessThan(
+      listJobsAwaitingCourier.mock.invocationCallOrder[0],
     );
-    expect(expireCall).toBeDefined();
-    expect((expireCall?.[1] as { $set: { status: string } }).$set.status).toBe('expired');
   });
 
   it('does nothing further when no jobs are awaiting a courier', async () => {
-    jobFind.mockReturnValue({ lean: () => Promise.resolve([]) });
+    listJobsAwaitingCourier.mockResolvedValue([]);
 
     await handleExpireOffers();
 
@@ -83,11 +90,11 @@ describe('handleExpireOffers — stale offer sweep', () => {
 
 describe('handleExpireOffers — re-dispatch vs cancel', () => {
   it('re-dispatches a job under maxWaves with no live/accepted offer (next wave, excludes prior)', async () => {
-    jobFind.mockReturnValue({
-      lean: () => Promise.resolve([{ _id: 'job-1', senderOxyUserId: 's1', dispatchAttempts: 1, status: 'offered' }]),
-    });
+    listJobsAwaitingCourier.mockResolvedValue([
+      { id: 'job-1', senderOxyUserId: 's1', dispatchAttempts: 1, status: 'offered' },
+    ]);
     // No live offer, no accepted offer.
-    offerExists.mockResolvedValue(null);
+    jobHasOfferInStatus.mockResolvedValue(false);
 
     await handleExpireOffers();
 
@@ -96,11 +103,11 @@ describe('handleExpireOffers — re-dispatch vs cancel', () => {
   });
 
   it('skips a job that still has a live offer', async () => {
-    jobFind.mockReturnValue({
-      lean: () => Promise.resolve([{ _id: 'job-1', senderOxyUserId: 's1', dispatchAttempts: 1, status: 'offered' }]),
-    });
-    // First exists() (live offer) returns truthy → skip.
-    offerExists.mockResolvedValueOnce({ _id: 'live' });
+    listJobsAwaitingCourier.mockResolvedValue([
+      { id: 'job-1', senderOxyUserId: 's1', dispatchAttempts: 1, status: 'offered' },
+    ]);
+    // The first check (a live offer) answers true → skip.
+    jobHasOfferInStatus.mockResolvedValueOnce(true);
 
     await handleExpireOffers();
 
@@ -109,14 +116,17 @@ describe('handleExpireOffers — re-dispatch vs cancel', () => {
   });
 
   it('cancels (no_courier) + notifies the sender when waves are exhausted', async () => {
-    jobFind.mockReturnValue({
-      lean: () =>
-        Promise.resolve([
-          { _id: 'job-1', jobNumber: 'MOV-1', senderOxyUserId: 's1', dispatchAttempts: config.dispatch.maxWaves, status: 'offered' },
-        ]),
-    });
-    offerExists.mockResolvedValue(null);
-    jobFindById.mockResolvedValue({ _id: 'job-1', status: 'offered' });
+    listJobsAwaitingCourier.mockResolvedValue([
+      {
+        id: 'job-1',
+        jobNumber: 'MOV-1',
+        senderOxyUserId: 's1',
+        dispatchAttempts: config.dispatch.maxWaves,
+        status: 'offered',
+      },
+    ]);
+    jobHasOfferInStatus.mockResolvedValue(false);
+    findJobById.mockResolvedValue({ id: 'job-1', status: 'offered' });
 
     await handleExpireOffers();
 
