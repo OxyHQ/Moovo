@@ -1,27 +1,40 @@
 /**
  * Job service — booking + lifecycle transitions + courier actions.
  *
- * `bookShipment` turns a selected quote into exactly ONE `Job` (one shipment =
- * one job, no split), idempotent via a sparse-unique `idempotencyKey` (a Mongo
- * 11000 on replay converges on the prior job — cloned from `checkout.service`).
- * For an external-provider quote it calls the provider adapter's `book` and
- * stores the returned reference as `providerRef`.
+ * `bookShipment` turns a selected quote into exactly ONE job (one shipment =
+ * one job, no split), idempotent via a partial-unique `idempotencyKey`. For an
+ * external-provider quote it calls the provider adapter's `book` and stores the
+ * returned reference as `providerRef`.
  *
  * `transition` is the single gate for moving a job between statuses: an atomic
- * compare-and-swap (`findOneAndUpdate` guarded on the CURRENT status) cloned from
- * `order.service.transition` — side-effects (and the in-memory mirror) run ONLY
- * after the CAS wins, so a double-invoke runs them at most once. `JOB_TRANSITIONS`
- * is the allowed-transition graph; an unlisted transition is a CONFLICT.
+ * compare-and-swap guarded on the CURRENT status, so a double-invoke runs the
+ * side effects at most once. `JOB_TRANSITIONS` is the allowed-transition graph;
+ * an unlisted transition is a CONFLICT.
  *
  * Phase 3 assignment is REAL-TIME DISPATCH: `bookShipment` fans the job out to
  * nearby couriers as time-boxed offers (`dispatch.service`). A courier accepts a
  * specific OFFER (see `accept`, offer-gated) and the job moves `offered →
  * accepted` via an atomic CAS — first writer wins. The legacy direct
  * `requested → accepted` edge is retained for manual assignment.
+ *
+ * ## Two things the Postgres port changed on purpose
+ *
+ * **`transition` no longer patches an in-memory copy.** The source ran the CAS
+ * and then hand-applied the same change to the hydrated document, so callers
+ * read a mirror rather than the persisted row — two representations of one
+ * fact, kept in step by whoever remembered to. It now returns the row the CAS
+ * itself produced, and callers use the return value.
+ *
+ * **Booking is ONE transaction.** The source wrote the job, then marked the
+ * quote selected, then marked the shipment booked, as three independent
+ * operations. A failure after the first left the shipment `quoted` with no
+ * `jobId` — so the "already booked" early return never fired, and every retry
+ * converged on the prior job and returned BEFORE the two marks, permanently.
+ * One transaction removes the window; the provider's `book` call stays outside
+ * it, because an HTTP round trip does not belong inside an open transaction.
  */
 
 import { findProviderById } from '../db/transport/providerRepository.js';
-import type { HydratedDocument } from 'mongoose';
 import type {
   JobStatus,
   ProofOfDelivery,
@@ -29,13 +42,32 @@ import type {
   ScanInput,
   GeoPoint,
 } from '@moovo/shared-types';
+import { getDb } from '../db/postgres.js';
 import {
-  Job,
-  type IJob,
-  type IJobStatusEvent,
-  type IProofOfDelivery,
-} from '../models/job.js';
-import { JobOffer } from '../models/job-offer.js';
+  attachHistory,
+  casJobAccepted,
+  casJobStatus,
+  countJobs,
+  findJobById,
+  findJobByIdempotencyKey,
+  findJobWithHistory,
+  insertJobIfAbsent,
+  insertJobStatusEvent,
+  insertLocationPing,
+  listJobs,
+  type JobListFilter,
+} from '../db/transport/jobRepository.js';
+import type {
+  JobProofOfDeliveryValue,
+  JobRecord,
+  JobWithHistory,
+} from '../db/transport/jobShape.js';
+import {
+  countOfferOutcomesForCourier,
+  findLiveOfferForCourier,
+  setOfferStatus,
+  supersedeLiveOffers,
+} from '../db/transport/jobOfferRepository.js';
 import {
   findShipmentById,
   markShipmentBooked,
@@ -87,73 +119,91 @@ export interface JobTransitionOptions {
   /** Location to attach to the status event (e.g. pickup/delivery point). */
   location?: GeoPoint;
   /** Proof of delivery to attach (only on the `delivered` transition). */
-  proofOfDelivery?: IProofOfDelivery;
+  proofOfDelivery?: JobProofOfDeliveryValue;
 }
 
 /**
  * Transition a job to `next`, enforcing the allowed-transition graph via an
- * atomic compare-and-swap guarded on the CURRENT status. Only the winning caller
- * (whose CAS matched the pre-transition status) mutates the in-memory doc; a
- * loser's CAS matches nothing and throws CONFLICT. `.save()` is NOT called — the
- * CAS already persisted the change.
+ * atomic compare-and-swap guarded on the CURRENT status.
+ *
+ * The CAS and the audit entry commit TOGETHER. Mongo did both in one document
+ * update, so a transition with no trail entry was unrepresentable; two
+ * statements can drift, and a status that moved with nothing saying so is the
+ * worse of the two failures because nothing reports it.
+ *
+ * Returns the row the CAS produced. A caller that loses the race is told
+ * nothing happened rather than handed a job somebody else moved.
  */
 export async function transition(
-  job: HydratedDocument<IJob>,
+  job: JobRecord,
   next: JobStatus,
   opts: JobTransitionOptions,
-): Promise<IJob> {
+): Promise<JobRecord> {
   const current = job.status;
   if (!JOB_TRANSITIONS[current].includes(next)) {
     throw conflict(`Cannot transition job from ${current} to ${next}`);
   }
 
-  const event: IJobStatusEvent = { status: next, at: new Date() };
-  if (opts.actorOxyUserId) {
-    event.byOxyUserId = opts.actorOxyUserId;
-  }
-  if (opts.note) {
-    event.note = opts.note;
-  }
-  if (opts.location) {
-    event.location = { type: 'Point', coordinates: [...opts.location.coordinates] };
-  }
+  const updated = await getDb().transaction(async (tx) => {
+    const row = await casJobStatus(
+      {
+        jobId: job.id,
+        from: current,
+        to: next,
+        ...(next === 'delivered' && opts.proofOfDelivery
+          ? { proofOfDelivery: opts.proofOfDelivery }
+          : {}),
+      },
+      tx,
+    );
+    if (!row) {
+      return null;
+    }
+    await insertJobStatusEvent(
+      {
+        jobId: job.id,
+        status: next,
+        at: new Date(),
+        ...(opts.actorOxyUserId ? { byOxyUserId: opts.actorOxyUserId } : {}),
+        ...(opts.note ? { note: opts.note } : {}),
+        ...(opts.location
+          ? { location: { type: 'Point', coordinates: [...opts.location.coordinates] } }
+          : {}),
+      },
+      tx,
+    );
+    return row;
+  });
 
-  const setFields: Record<string, unknown> = { status: next };
-  if (next === 'delivered' && opts.proofOfDelivery) {
-    setFields.proofOfDelivery = opts.proofOfDelivery;
-  }
-
-  // Atomic CAS gate: only succeeds if the job is still at `current`.
-  const updated = await Job.findOneAndUpdate(
-    { _id: job._id, status: current },
-    { $set: setFields, $push: { statusHistory: event } },
-    { new: true },
-  );
   if (!updated) {
-    throw conflict(`Job ${String(job._id)} was concurrently transitioned`);
-  }
-
-  // Mirror the persisted state onto the in-memory doc.
-  job.status = next;
-  job.statusHistory.push(event);
-  if (next === 'delivered' && opts.proofOfDelivery) {
-    job.proofOfDelivery = opts.proofOfDelivery;
+    throw conflict(`Job ${job.id} was concurrently transitioned`);
   }
 
   log.general.info(
-    { jobId: String(job._id), status: next, actor: opts.actorOxyUserId },
+    { jobId: job.id, status: next, actor: opts.actorOxyUserId },
     'Job transitioned',
   );
+  return updated;
+}
+
+/** Load a job by id for mutation, or throw NOT_FOUND. */
+async function loadJob(jobId: string): Promise<JobRecord> {
+  const job = await findJobById(jobId);
+  if (!job) {
+    throw notFound('Job not found');
+  }
   return job;
 }
 
-/** Load a NON-lean job doc by filter (for mutation), or throw NOT_FOUND. */
-async function loadJobDoc(filter: Record<string, unknown>): Promise<HydratedDocument<IJob>> {
-  const doc = await Job.findOne(filter);
-  if (!doc) {
-    throw notFound('Job not found');
-  }
-  return doc;
+/**
+ * Attach both trails to a job an action just produced.
+ *
+ * Every action response is a detail view, so it carries the audit trail — and
+ * the trail it must carry includes the entry the action itself just wrote,
+ * which is why this re-reads rather than appending to a copy in memory.
+ */
+async function withHistory(job: JobRecord): Promise<JobWithHistory> {
+  return attachHistory(job, config.jobs.maxLocationPings);
 }
 
 /** Whether a quote is still bookable (active and not lapsed). */
@@ -164,16 +214,17 @@ function isQuoteBookable(quote: QuoteRecord): boolean {
 /**
  * Book a selected quote into exactly ONE job. Verifies shipment ownership, that
  * the quote belongs to the shipment and is still bookable, then idempotently
- * creates the job (an `idempotencyKey` 11000 converges on the prior job). An
- * external-provider quote is booked through its adapter; the booking reference is
- * stored as `providerRef`. Marks the quote `selected` and the shipment `booked`.
+ * creates the job. An external-provider quote is booked through its adapter;
+ * the booking reference is stored as `providerRef`. Marks the quote `selected`
+ * and the shipment `booked` in the SAME transaction as the job — see the module
+ * header for the failure that split writes left behind.
  */
 export async function bookShipment(
   senderOxyUserId: string,
   shipmentId: string,
   quoteId: string,
   idempotencyKey?: string,
-): Promise<IJob> {
+): Promise<JobWithHistory> {
   const shipment = await findShipmentById(shipmentId);
   if (!shipment) {
     throw notFound('Shipment not found');
@@ -182,7 +233,7 @@ export async function bookShipment(
     throw forbidden('You do not own this shipment');
   }
   if (shipment.status === 'booked' && shipment.jobId) {
-    const existing = await Job.findById(shipment.jobId).lean<IJob | null>();
+    const existing = await findJobWithHistory(shipment.jobId, config.jobs.maxLocationPings);
     if (existing) {
       return existing;
     }
@@ -199,7 +250,9 @@ export async function bookShipment(
     throw conflict('Quote is no longer active');
   }
 
-  // For an external-provider quote, book through the adapter to get a booking ref.
+  // For an external-provider quote, book through the adapter to get a booking
+  // ref. Outside the transaction below: an outbound HTTP call inside an open
+  // transaction holds a connection for as long as somebody else's server takes.
   const isExternal = quote.source === 'external_provider';
   let providerRef: string | undefined;
   if (isExternal) {
@@ -226,53 +279,73 @@ export async function bookShipment(
   const dropoffCode = isExternal ? undefined : generateCode();
 
   const jobNumber = await nextJobNumber();
-  const createDoc = {
-    jobNumber,
-    shipmentId,
-    senderOxyUserId,
-    type: shipment.type,
-    fulfillmentType: isExternal ? ('external_provider' as const) : ('moovo_courier' as const),
-    ...(providerRef ? { providerRef } : {}),
-    pickupSnapshot: shipment.pickup,
-    dropoffSnapshot: shipment.dropoff,
-    parcelSnapshot: shipment.parcel,
-    quoteSnapshot: quote.priceBreakdown,
-    totals: quote.priceBreakdown,
-    status: 'requested' as const,
-    statusHistory: [{ status: 'requested' as const, at: new Date(), byOxyUserId: senderOxyUserId }],
-    payment: { status: 'unpaid' as const, provider: 'oxy_pay' as const },
-    dispatchAttempts: 0,
-    ...(pickupCode ? { pickupCode, pickupCodeHash: hashCode(pickupCode) } : {}),
-    ...(dropoffCode ? { dropoffCode, dropoffCodeHash: hashCode(dropoffCode) } : {}),
-    ...(idempotencyKey ? { idempotencyKey } : {}),
-  };
+  const { job, converged } = await getDb().transaction(async (tx) => {
+    const created = await insertJobIfAbsent(
+      {
+        jobNumber,
+        shipmentId,
+        senderOxyUserId,
+        type: shipment.type,
+        fulfillmentType: isExternal ? 'external_provider' : 'moovo_courier',
+        providerRef,
+        pickupSnapshot: shipment.pickup,
+        dropoffSnapshot: shipment.dropoff,
+        parcelSnapshot: shipment.parcel,
+        quoteSnapshot: quote.priceBreakdown,
+        totals: quote.priceBreakdown,
+        pickupCode,
+        ...(pickupCode ? { pickupCodeHash: hashCode(pickupCode) } : {}),
+        dropoffCode,
+        ...(dropoffCode ? { dropoffCodeHash: hashCode(dropoffCode) } : {}),
+        idempotencyKey,
+      },
+      tx,
+    );
 
-  let job: IJob;
-  try {
-    const created = await Job.create(createDoc);
-    job = created.toObject<IJob>();
-  } catch (err) {
-    // A duplicate idempotencyKey means a concurrent/replayed booking already
-    // created the job — converge on the prior job instead of creating a duplicate.
-    if (err && typeof err === 'object' && (err as { code?: number }).code === 11000 && idempotencyKey) {
-      const prior = await Job.findOne({ idempotencyKey }).lean<IJob | null>();
-      if (prior) {
-        log.general.warn(
-          { senderOxyUserId, shipmentId, idempotencyKey },
-          'Concurrent/replayed booking detected; converging on prior job',
-        );
-        return prior;
+    // An empty insert IS the "this key already booked a job" answer — see
+    // `insertJobIfAbsent`. Converge on the prior job rather than creating a
+    // second one, and touch nothing: the booking that won owns the quote and
+    // the shipment, and it marked both in its own transaction.
+    if (!created) {
+      if (!idempotencyKey) {
+        throw new Error('A job insert was cancelled with no idempotency key to converge on');
       }
+      const prior = await findJobByIdempotencyKey(idempotencyKey, tx);
+      if (!prior) {
+        // The conflicting row must exist for the insert to have been cancelled.
+        // Refusing loudly rather than falling through to a second create, which
+        // would be the duplicate the whole mechanism exists to prevent.
+        throw new Error(
+          `Job insert conflicted on idempotency key ${idempotencyKey} but no prior job was found`,
+        );
+      }
+      log.general.warn(
+        { senderOxyUserId, shipmentId, idempotencyKey },
+        'Concurrent/replayed booking detected; converging on prior job',
+      );
+      return { job: prior, converged: true };
     }
-    throw err;
+
+    await insertJobStatusEvent(
+      {
+        jobId: created.id,
+        status: 'requested',
+        at: new Date(),
+        byOxyUserId: senderOxyUserId,
+      },
+      tx,
+    );
+    await markQuoteSelected(quoteId, tx);
+    await markShipmentBooked(shipmentId, { jobId: created.id, quoteRef: quoteId }, tx);
+    return { job: created, converged: false };
+  });
+
+  if (converged) {
+    return withHistory(job);
   }
 
-  // Mark the quote selected + the shipment booked with its job/quote refs.
-  await markQuoteSelected(quoteId);
-  await markShipmentBooked(shipmentId, { jobId: String(job._id), quoteRef: quoteId });
-
   log.general.info(
-    { jobId: String(job._id), shipmentId, fulfillmentType: job.fulfillmentType },
+    { jobId: job.id, shipmentId, fulfillmentType: job.fulfillmentType },
     'Booked shipment into job',
   );
 
@@ -282,16 +355,19 @@ export async function bookShipment(
   if (!isExternal) {
     try {
       const { dispatchJob } = await import('./dispatch.service.js');
-      await dispatchJob(String(job._id));
+      await dispatchJob(job.id);
     } catch (err) {
       log.general.warn(
-        { err, jobId: String(job._id) },
+        { err, jobId: job.id },
         'Initial dispatch failed (booking kept; sweep will retry)',
       );
     }
   }
 
-  return job;
+  // Re-read rather than returning the row the insert produced: dispatch may have
+  // moved the job to `offered` and appended to its trail, and the response is a
+  // detail view of the job as it now stands.
+  return (await findJobWithHistory(job.id, config.jobs.maxLocationPings)) ?? withHistory(job);
 }
 
 /** Offset-paginated list parameters for jobs. */
@@ -301,89 +377,83 @@ interface ListParams {
   status?: JobStatus;
 }
 
-/** A page of job docs plus the total matching count. */
+/**
+ * A page of jobs plus the total matching count.
+ *
+ * `JobRecord`, deliberately NOT `JobWithHistory`: the list view summarises and
+ * reads neither trail, so loading them would be a second query per page bought
+ * for nothing — and the type is what stops a caller handing these to
+ * `hydrateJobs`, which would render every job with an empty audit trail.
+ */
 export interface JobPage {
-  data: IJob[];
+  data: JobRecord[];
   total: number;
+}
+
+async function listPage(filter: JobListFilter, { page, limit }: ListParams): Promise<JobPage> {
+  const [data, total] = await Promise.all([
+    listJobs(filter, { page, limit }),
+    countJobs(filter),
+  ]);
+  return { data, total };
 }
 
 /** List jobs the caller booked (as sender), newest first. */
 export async function listForSender(
   senderOxyUserId: string,
-  { page, limit, status }: ListParams,
+  params: ListParams,
 ): Promise<JobPage> {
-  const filter = { senderOxyUserId, ...(status ? { status } : {}) };
-  const [docs, total] = await Promise.all([
-    Job.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean<IJob[]>(),
-    Job.countDocuments(filter),
-  ]);
-  return { data: docs, total };
+  return listPage({ senderOxyUserId, status: params.status }, params);
 }
 
 /** List jobs assigned to the caller (as courier), newest first. */
 export async function listForCourier(
   courierOxyUserId: string,
-  { page, limit, status }: ListParams,
+  params: ListParams,
 ): Promise<JobPage> {
-  const filter = {
-    courierOxyUserId,
-    fulfillmentType: 'moovo_courier' as const,
-    ...(status ? { status } : {}),
-  };
-  const [docs, total] = await Promise.all([
-    Job.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean<IJob[]>(),
-    Job.countDocuments(filter),
-  ]);
-  return { data: docs, total };
+  return listPage(
+    { courierOxyUserId, fulfillmentType: 'moovo_courier', status: params.status },
+    params,
+  );
 }
 
 /**
  * Get a single job visible to the caller — either as its sender OR as its
  * assigned courier. Throws NOT_FOUND when neither relationship holds.
  */
-export async function getVisible(oxyUserId: string, id: string): Promise<IJob> {
-  const doc = await Job.findById(id).lean<IJob | null>();
-  if (
-    !doc ||
-    (String(doc.senderOxyUserId) !== oxyUserId &&
-      String(doc.courierOxyUserId ?? '') !== oxyUserId)
-  ) {
+export async function getVisible(oxyUserId: string, id: string): Promise<JobWithHistory> {
+  const job = await findJobById(id);
+  if (!job || !isParty(job, oxyUserId)) {
     throw notFound('Job not found');
   }
-  return doc;
+  return withHistory(job);
+}
+
+/** Whether this account is the job's sender or its assigned courier. */
+function isParty(job: JobRecord, oxyUserId: string): boolean {
+  return job.senderOxyUserId === oxyUserId || job.courierOxyUserId === oxyUserId;
 }
 
 /**
  * Recompute a courier's denormalized acceptance rate after they accept an offer:
  * the share of offers ever addressed to them that they accepted,
  * `accepted / (accepted + declined + expired + superseded)`. Counted over the
- * `JobOffer` history so it is drift-proof. Best-effort: a recompute failure is
+ * offer history so it is drift-proof. Best-effort: a recompute failure is
  * logged and never blocks the accept.
  */
 async function recomputeAcceptanceRate(courierOxyUserId: string): Promise<void> {
   try {
-    const counts = await JobOffer.aggregate<{ _id: string; count: number }>([
-      { $match: { courierOxyUserId } },
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
+    const outcomes = await countOfferOutcomesForCourier(courierOxyUserId);
     let accepted = 0;
     let resolved = 0;
-    for (const c of counts) {
+    for (const outcome of outcomes) {
       // `offered` offers are still in-flight — exclude from the denominator.
-      if (c._id === 'offered') {
+      if (outcome.status === 'offered') {
         continue;
       }
-      resolved += c.count;
-      if (c._id === 'accepted') {
-        accepted += c.count;
+      resolved += outcome.count;
+      if (outcome.status === 'accepted') {
+        accepted += outcome.count;
       }
     }
     if (resolved === 0) {
@@ -397,59 +467,57 @@ async function recomputeAcceptanceRate(courierOxyUserId: string): Promise<void> 
 
 /**
  * A courier accepts a job they were OFFERED. Offer-gated: the caller MUST hold a
- * live (`offered`) {@link JobOffer} for this job, else FORBIDDEN. The accept is an
- * atomic CAS guarded on `status: 'offered'` — the FIRST courier to win the CAS
- * gets the job (`offered → accepted`, courier assigned in the same update); a lost
- * CAS (a sibling accepted first) throws CONFLICT (a late accept). On a win: the
+ * live (`offered`) offer for this job, else FORBIDDEN. The accept is an atomic
+ * CAS guarded on `status: 'offered'` — the FIRST courier to win the CAS gets the
+ * job (`offered → accepted`, courier assigned in the same update); a lost CAS (a
+ * sibling accepted first) throws CONFLICT (a late accept). On a win: the
  * winner's offer → `accepted`, sibling `offered` offers → `superseded` (their
  * holders get a `job:offer_taken` event), the sender gets `job:accepted`, and the
  * courier flips to `on_job` with a recomputed acceptance rate.
  */
-export async function accept(courierOxyUserId: string, jobId: string): Promise<IJob> {
-  const doc = await loadJobDoc({ _id: jobId });
-  if (doc.fulfillmentType !== 'moovo_courier') {
+export async function accept(courierOxyUserId: string, jobId: string): Promise<JobWithHistory> {
+  const job = await loadJob(jobId);
+  if (job.fulfillmentType !== 'moovo_courier') {
     throw conflict('This job is fulfilled by an external provider');
   }
 
   // Offer gate: the caller must hold a live offer for this job.
-  const myOffer = await JobOffer.findOne({ jobId, courierOxyUserId, status: 'offered' });
+  const myOffer = await findLiveOfferForCourier(jobId, courierOxyUserId);
   if (!myOffer) {
     throw forbidden('You do not have a live offer for this job');
   }
 
-  // Atomic CAS: first writer wins. Assign the courier in the same update.
-  const event: IJobStatusEvent = {
-    status: 'accepted',
-    at: new Date(),
-    byOxyUserId: courierOxyUserId,
-    note: 'accepted by courier',
-  };
-  const won = await Job.findOneAndUpdate(
-    { _id: jobId, status: 'offered' },
-    { $set: { status: 'accepted', courierOxyUserId }, $push: { statusHistory: event } },
-    { new: true },
-  ).lean<IJob | null>();
+  // Atomic CAS: first writer wins, and the assignment rides the same statement
+  // so a loser can never apply it. The audit entry commits with the CAS.
+  const won = await getDb().transaction(async (tx) => {
+    const row = await casJobAccepted(jobId, courierOxyUserId, tx);
+    if (!row) {
+      return null;
+    }
+    await insertJobStatusEvent(
+      {
+        jobId,
+        status: 'accepted',
+        at: new Date(),
+        byOxyUserId: courierOxyUserId,
+        note: 'accepted by courier',
+      },
+      tx,
+    );
+    return row;
+  });
+
   if (!won) {
     // Lost the race — another courier accepted first (or it was cancelled).
-    await JobOffer.updateOne({ _id: myOffer._id }, { $set: { status: 'superseded' } });
+    await setOfferStatus(myOffer.id, 'superseded');
     throw conflict('This job was already accepted by another courier');
   }
 
-  // Winner's offer accepted; all sibling live offers superseded.
-  await JobOffer.updateOne({ _id: myOffer._id }, { $set: { status: 'accepted' } });
-  const siblings = await JobOffer.find({
-    jobId,
-    status: 'offered',
-    _id: { $ne: myOffer._id },
-  })
-    .select({ courierOxyUserId: 1 })
-    .lean<{ courierOxyUserId: string }[]>();
-  if (siblings.length > 0) {
-    await JobOffer.updateMany(
-      { jobId, status: 'offered', _id: { $ne: myOffer._id } },
-      { $set: { status: 'superseded' } },
-    );
-  }
+  // Winner's offer accepted; all sibling live offers superseded. The supersede
+  // RETURNS whose offers it took, so the notification list is exactly the set
+  // the statement actually changed.
+  await setOfferStatus(myOffer.id, 'accepted');
+  const supersededCouriers = await supersedeLiveOffers(jobId, myOffer.id);
 
   // Courier is now busy; recompute their acceptance rate from offer history.
   await markCourierOnJob(courierOxyUserId);
@@ -458,23 +526,21 @@ export async function accept(courierOxyUserId: string, jobId: string): Promise<I
   // Notify the losing candidates + the sender.
   const io = getIO();
   if (io) {
-    for (const sibling of siblings) {
-      io.to(`user:${String(sibling.courierOxyUserId)}`).emit(EVENTS.JOB_OFFER_TAKEN, {
-        jobId,
-      });
+    for (const courierId of supersededCouriers) {
+      io.to(`user:${courierId}`).emit(EVENTS.JOB_OFFER_TAKEN, { jobId });
     }
   }
   await emitJobStatus(won, 'accepted');
 
-  return won;
+  return withHistory(won);
 }
 
 /** Assert the job is a Moovo-courier job assigned to `courierOxyUserId`. */
-function assertAssignedCourier(job: HydratedDocument<IJob>, courierOxyUserId: string): void {
+function assertAssignedCourier(job: JobRecord, courierOxyUserId: string): void {
   if (job.fulfillmentType !== 'moovo_courier') {
     throw conflict('This job is fulfilled by an external provider');
   }
-  if (String(job.courierOxyUserId ?? '') !== courierOxyUserId) {
+  if (job.courierOxyUserId !== courierOxyUserId) {
     throw forbidden('This job is not assigned to you');
   }
 }
@@ -484,16 +550,15 @@ export async function pickup(
   courierOxyUserId: string,
   jobId: string,
   location?: GeoPoint,
-): Promise<IJob> {
-  const doc = await loadJobDoc({ _id: jobId });
-  assertAssignedCourier(doc, courierOxyUserId);
-  await transition(doc, 'picked_up', {
+): Promise<JobWithHistory> {
+  const job = await loadJob(jobId);
+  assertAssignedCourier(job, courierOxyUserId);
+  const moved = await transition(job, 'picked_up', {
     actorOxyUserId: courierOxyUserId,
     ...(location ? { location } : {}),
   });
-  const job = doc.toObject<IJob>();
-  await emitJobStatus(job, 'picked_up');
-  return job;
+  await emitJobStatus(moved, 'picked_up');
+  return withHistory(moved);
 }
 
 /** A courier marks the assigned job in transit (`picked_up → in_transit`). */
@@ -501,16 +566,15 @@ export async function startTransit(
   courierOxyUserId: string,
   jobId: string,
   location?: GeoPoint,
-): Promise<IJob> {
-  const doc = await loadJobDoc({ _id: jobId });
-  assertAssignedCourier(doc, courierOxyUserId);
-  await transition(doc, 'in_transit', {
+): Promise<JobWithHistory> {
+  const job = await loadJob(jobId);
+  assertAssignedCourier(job, courierOxyUserId);
+  const moved = await transition(job, 'in_transit', {
     actorOxyUserId: courierOxyUserId,
     ...(location ? { location } : {}),
   });
-  const job = doc.toObject<IJob>();
-  await emitJobStatus(job, 'in_transit');
-  return job;
+  await emitJobStatus(moved, 'in_transit');
+  return withHistory(moved);
 }
 
 /**
@@ -522,24 +586,23 @@ export async function deliver(
   jobId: string,
   input: DeliverInput,
   location?: GeoPoint,
-): Promise<IJob> {
-  const doc = await loadJobDoc({ _id: jobId });
-  assertAssignedCourier(doc, courierOxyUserId);
+): Promise<JobWithHistory> {
+  const job = await loadJob(jobId);
+  assertAssignedCourier(job, courierOxyUserId);
 
-  const proof: IProofOfDelivery = { at: new Date() };
+  const proof: JobProofOfDeliveryValue = { at: new Date() };
   if (input.photoFileId) proof.photoFileId = input.photoFileId;
   if (input.signatureFileId) proof.signatureFileId = input.signatureFileId;
   if (input.note) proof.note = input.note;
   if (input.recipientName) proof.recipientName = input.recipientName;
 
-  await transition(doc, 'delivered', {
+  const moved = await transition(job, 'delivered', {
     actorOxyUserId: courierOxyUserId,
     proofOfDelivery: proof,
     ...(location ? { location } : {}),
   });
-  const job = doc.toObject<IJob>();
-  await emitJobStatus(job, 'delivered');
-  return job;
+  await emitJobStatus(moved, 'delivered');
+  return withHistory(moved);
 }
 
 /**
@@ -555,105 +618,78 @@ export async function scanJob(
   courierOxyUserId: string,
   jobId: string,
   input: ScanInput,
-): Promise<IJob> {
-  const doc = await loadJobDoc({ _id: jobId });
-  assertAssignedCourier(doc, courierOxyUserId);
+): Promise<JobWithHistory> {
+  const job = await loadJob(jobId);
+  assertAssignedCourier(job, courierOxyUserId);
 
   if (input.leg === 'pickup') {
-    if (doc.status !== 'accepted') {
-      throw conflict(`Cannot scan pickup while job is ${doc.status}`);
+    if (job.status !== 'accepted') {
+      throw conflict(`Cannot scan pickup while job is ${job.status}`);
     }
-    if (!verifyCode(input.code, doc.pickupCodeHash ?? '')) {
+    if (!verifyCode(input.code, job.pickupCodeHash ?? '')) {
       throw validationError('Invalid pickup code');
     }
-    await transition(doc, 'picked_up', {
+    const moved = await transition(job, 'picked_up', {
       actorOxyUserId: courierOxyUserId,
       note: 'pickup scanned',
     });
-    const job = doc.toObject<IJob>();
-    await emitJobStatus(job, 'picked_up');
-    return job;
+    await emitJobStatus(moved, 'picked_up');
+    return withHistory(moved);
   }
 
   // dropoff leg
-  if (doc.status !== 'in_transit') {
-    throw conflict(`Cannot scan dropoff while job is ${doc.status}`);
+  if (job.status !== 'in_transit') {
+    throw conflict(`Cannot scan dropoff while job is ${job.status}`);
   }
-  if (!verifyCode(input.code, doc.dropoffCodeHash ?? '')) {
+  if (!verifyCode(input.code, job.dropoffCodeHash ?? '')) {
     throw validationError('Invalid dropoff code');
   }
-  const proof: IProofOfDelivery = { at: new Date(), note: 'scanned' };
+  const proof: JobProofOfDeliveryValue = { at: new Date(), note: 'scanned' };
   if (input.photoFileId) proof.photoFileId = input.photoFileId;
-  await transition(doc, 'delivered', {
+  const moved = await transition(job, 'delivered', {
     actorOxyUserId: courierOxyUserId,
     proofOfDelivery: proof,
   });
-  const job = doc.toObject<IJob>();
-  await emitJobStatus(job, 'delivered');
-  return job;
+  await emitJobStatus(moved, 'delivered');
+  return withHistory(moved);
 }
 
 /** Job statuses during which a live courier location ping is meaningful. */
 const TRACKABLE_STATUSES: readonly JobStatus[] = ['accepted', 'picked_up', 'in_transit'];
 
 /**
- * Record a courier location ping on the assigned job, capped to the most recent
- * `config.jobs.maxLocationPings` via a `$slice` push (oldest dropped). Only valid
- * while the job is ACTIVE (accepted/picked_up/in_transit) — a ping on a not-yet-
- * accepted or terminal job is a CONFLICT. On success the sender receives a live
+ * Record a courier location ping on the assigned job. Only valid while the job
+ * is ACTIVE (accepted/picked_up/in_transit) — a ping on a not-yet-accepted or
+ * terminal job is a CONFLICT. On success the sender receives a live
  * `job:location` event so they can track the courier in real time.
+ *
+ * The source capped the STORED trail at `config.jobs.maxLocationPings` with a
+ * `$slice` push, because an unbounded array grows one Mongo document without
+ * bound. A row has no such limit, so the cap moves to the READ — the response
+ * carries the same most-recent N and nothing is destroyed to produce it.
  */
 export async function pingLocation(
   courierOxyUserId: string,
   jobId: string,
   location: GeoPoint,
-): Promise<IJob> {
-  const job = await Job.findOne({ _id: jobId });
-  if (!job) {
-    throw notFound('Job not found');
-  }
+): Promise<JobWithHistory> {
+  const job = await loadJob(jobId);
   if (job.fulfillmentType !== 'moovo_courier') {
     throw conflict('This job is fulfilled by an external provider');
   }
-  if (String(job.courierOxyUserId ?? '') !== courierOxyUserId) {
+  if (job.courierOxyUserId !== courierOxyUserId) {
     throw forbidden('This job is not assigned to you');
   }
   if (!TRACKABLE_STATUSES.includes(job.status)) {
     throw conflict(`Cannot record location while job is ${job.status}`);
   }
 
-  const [lng, lat] = location.coordinates;
-  const ping = { location: { type: 'Point' as const, coordinates: [lng, lat] }, at: new Date() };
-  const updated = await Job.findByIdAndUpdate(
-    jobId,
-    {
-      $push: {
-        locationPings: { $each: [ping], $slice: -config.jobs.maxLocationPings },
-      },
-    },
-    { new: true },
-  ).lean<IJob | null>();
-  if (!updated) {
-    throw notFound('Job not found');
-  }
+  const [longitude, latitude] = location.coordinates;
+  await insertLocationPing(jobId, { longitude, latitude, at: new Date() });
 
-  emitJobLocation(updated, lng, lat);
-  return updated;
-}
-
-/** Get a single mutable job doc visible to the caller (sender or courier) for a transition. */
-async function loadVisibleJobDoc(
-  oxyUserId: string,
-  id: string,
-): Promise<HydratedDocument<IJob>> {
-  const doc = await loadJobDoc({ _id: id });
-  if (
-    String(doc.senderOxyUserId) !== oxyUserId &&
-    String(doc.courierOxyUserId ?? '') !== oxyUserId
-  ) {
-    throw notFound('Job not found');
-  }
-  return doc;
+  emitJobLocation(job, longitude, latitude);
+  // Read the trails AFTER the ping landed, so the response carries it.
+  return withHistory(job);
 }
 
 /**
@@ -661,16 +697,18 @@ async function loadVisibleJobDoc(
  * any live offers for the job (no courier can still accept a cancelled job) and
  * emits the `job:cancelled` lifecycle event.
  */
-export async function cancel(oxyUserId: string, jobId: string): Promise<IJob> {
-  const doc = await loadVisibleJobDoc(oxyUserId, jobId);
-  await transition(doc, 'cancelled', { actorOxyUserId: oxyUserId, note: 'cancelled' });
-  await JobOffer.updateMany(
-    { jobId, status: 'offered' },
-    { $set: { status: 'superseded' } },
-  );
-  const job = doc.toObject<IJob>();
-  await emitJobStatus(job, 'cancelled');
-  return job;
+export async function cancel(oxyUserId: string, jobId: string): Promise<JobWithHistory> {
+  const job = await loadJob(jobId);
+  if (!isParty(job, oxyUserId)) {
+    throw notFound('Job not found');
+  }
+  const moved = await transition(job, 'cancelled', {
+    actorOxyUserId: oxyUserId,
+    note: 'cancelled',
+  });
+  await supersedeLiveOffers(jobId, undefined);
+  await emitJobStatus(moved, 'cancelled');
+  return withHistory(moved);
 }
 
 /** Re-export for callers that build the POD DTO (kept in one place). */

@@ -2,9 +2,9 @@
  * Real-time dispatch service (Glovo-style offer fan-out).
  *
  * `dispatchJob` selects up to `config.dispatch.waveSize` nearby ONLINE eligible
- * couriers around the job's pickup (a `$nearSphere` geo-query over
- * `courier_profiles.location`, nearest-first), creates one time-boxed
- * `JobOffer` per candidate, moves the job `requested → offered` on the FIRST wave
+ * couriers around the job's pickup (an `ST_DWithin` query ordered by distance
+ * over `courier_profiles.location`, nearest-first), creates one time-boxed
+ * offer per candidate, moves the job `requested → offered` on the FIRST wave
  * (a guarded transition so later waves — already `offered` — skip it), bumps the
  * job's `dispatchAttempts` wave counter, and pushes a `job:offer` socket event +
  * best-effort `job_offered` notification to each candidate.
@@ -22,8 +22,12 @@
  */
 
 import type { JobOfferView, FiatCurrency, JobType, SizeClass } from '@moovo/shared-types';
-import { Job, type IJob } from '../models/job.js';
-import { JobOffer, NON_TERMINAL_OFFER_STATUSES } from '../models/job-offer.js';
+import { findJobById, setDispatchAttempts } from '../db/transport/jobRepository.js';
+import type { JobRecord } from '../db/transport/jobShape.js';
+import {
+  insertJobOffer,
+  listCourierIdsWithLiveOffer,
+} from '../db/transport/jobOfferRepository.js';
 import {
   findDispatchCandidates,
   type CourierProfileRow,
@@ -61,38 +65,30 @@ async function notifySafe(options: Parameters<typeof sendNotification>[0]): Prom
   }
 }
 
-/** The pickup coordinates of a job, or null when malformed. */
-function pickupCoordinates(job: IJob): [number, number] | null {
-  const coords = job.pickupSnapshot?.location?.coordinates;
-  if (!coords || coords.length < 2) {
+/**
+ * The pickup coordinates of a job, or null when malformed.
+ *
+ * The ordinates are NOT NULL columns now, so the malformed case is
+ * unreachable through the repository — the guard stays because it is cheap and
+ * because deleting it would make a future nullable column silently dispatch
+ * every job from (0, 0).
+ */
+function pickupCoordinates(job: JobRecord): [number, number] | null {
+  const coords = job.pickupSnapshot.location.coordinates;
+  if (coords.length < 2) {
     return null;
   }
   return [coords[0], coords[1]];
 }
 
 /**
- * Courier oxy ids that must be EXCLUDED from this job's next wave: anyone who
- * already holds a non-terminal (`offered`) offer for this job. The assigned
- * courier (when set) is excluded by the caller.
- */
-async function couriersWithLiveOffer(jobId: string): Promise<string[]> {
-  const offers = await JobOffer.find({
-    jobId,
-    status: { $in: [...NON_TERMINAL_OFFER_STATUSES] },
-  })
-    .select({ courierOxyUserId: 1 })
-    .lean<{ courierOxyUserId: string }[]>();
-  return offers.map((o) => String(o.courierOxyUserId));
-}
-
-/**
  * Find up to `waveSize` nearby ONLINE eligible couriers around the pickup,
- * nearest-first, excluding `excludeIds`. The geo + capacity gate runs in Mongo;
+ * nearest-first, excluding `excludeIds`. The geo + capacity gate runs in SQL;
  * the precise `isEligible` capability check runs per-candidate on the projected
  * denormalized capability (size class is not an orderable column).
  */
 async function findCandidates(
-  job: IJob,
+  job: JobRecord,
   pickup: [number, number],
   radiusM: number,
   excludeIds: string[],
@@ -126,7 +122,7 @@ async function findCandidates(
 
 /** Build the compact `JobOfferView` pushed to a candidate over `job:offer`. */
 async function buildOfferView(
-  job: IJob,
+  job: JobRecord,
   offerId: string,
   distanceM: number,
   expiresAt: Date,
@@ -134,8 +130,8 @@ async function buildOfferView(
   const rate = await getFairRate(OFFER_DISPLAY_CURRENCY);
   return {
     offerId,
-    jobId: String(job._id),
-    shipmentId: String(job.shipmentId),
+    jobId: job.id,
+    shipmentId: job.shipmentId,
     type: job.type,
     pickupCity: job.pickupSnapshot.address.city,
     dropoffCity: job.dropoffSnapshot.address.city,
@@ -153,7 +149,7 @@ async function buildOfferView(
  * `dispatchAttempts`, and fans out the `job:offer` event + notification.
  */
 export async function dispatchJob(jobId: string): Promise<DispatchResult> {
-  const job = await Job.findById(jobId);
+  let job = await findJobById(jobId);
   if (!job) {
     log.general.warn({ jobId }, 'Dispatch skipped: job not found');
     return { offered: 0, wave: 0 };
@@ -176,16 +172,18 @@ export async function dispatchJob(jobId: string): Promise<DispatchResult> {
   const wave = job.dispatchAttempts + 1;
   const radiusM = config.dispatch.radiusM * wave;
 
-  const excludeIds = await couriersWithLiveOffer(jobId);
+  // Exclude anyone already holding a live offer for this job — a courier is
+  // never offered the same job twice across waves — plus the assigned courier.
+  const excludeIds = await listCourierIdsWithLiveOffer(jobId);
   if (job.courierOxyUserId) {
-    excludeIds.push(String(job.courierOxyUserId));
+    excludeIds.push(job.courierOxyUserId);
   }
 
   const candidates = await findCandidates(job, pickup, radiusM, excludeIds);
 
   // Always record that a wave was attempted (so the sweep can cap re-dispatch).
-  job.dispatchAttempts = wave;
-  await Job.updateOne({ _id: job._id }, { $set: { dispatchAttempts: wave } });
+  await setDispatchAttempts(job.id, wave);
+  job = { ...job, dispatchAttempts: wave };
 
   if (candidates.length === 0) {
     log.general.info({ jobId, wave, radiusM }, 'Dispatch wave found no candidates — leaving requested');
@@ -198,7 +196,7 @@ export async function dispatchJob(jobId: string): Promise<DispatchResult> {
   if (job.status === 'requested') {
     const { transition } = await import('./job.service.js');
     try {
-      await transition(job, 'offered', { note: 'dispatched to couriers' });
+      job = await transition(job, 'offered', { note: 'dispatched to couriers' });
     } catch (err) {
       // A concurrent accept/cancel won the race — abandon this wave cleanly.
       log.general.warn({ err, jobId }, 'Dispatch wave aborted: job changed status during transition');
@@ -222,13 +220,20 @@ export async function dispatchJob(jobId: string): Promise<DispatchResult> {
         ? distanceMetersBetween([candidate.longitude, candidate.latitude], pickup)
         : radiusM;
 
+    /**
+     * Each offer is its own autocommit statement, deliberately NOT one
+     * transaction around the wave: the source created them one at a time and
+     * skipped a candidate whose creation failed. Inside a transaction, one
+     * failed insert aborts it and every LATER candidate fails too — the catch
+     * below would run and log a per-candidate warning while silently offering
+     * the job to nobody.
+     */
     try {
-      const created = await JobOffer.create({
-        jobId: String(job._id),
-        shipmentId: String(job.shipmentId),
+      const created = await insertJobOffer({
+        jobId: job.id,
+        shipmentId: job.shipmentId,
         courierOxyUserId,
-        ...(job.companyId ? { companyId: String(job.companyId) } : {}),
-        status: 'offered' as const,
+        companyId: job.companyId,
         offeredAt,
         expiresAt,
         rank,
@@ -236,14 +241,14 @@ export async function dispatchJob(jobId: string): Promise<DispatchResult> {
       });
       offered += 1;
 
-      const view = await buildOfferView(job, String(created._id), distanceM, expiresAt);
+      const view = await buildOfferView(job, created.id, distanceM, expiresAt);
       getIO()?.to(`user:${courierOxyUserId}`).emit(EVENTS.JOB_OFFER, view);
       await notifySafe({
         userId: courierOxyUserId,
         type: 'job_offered',
         title: 'New job offer',
         body: `A ${job.type} job near ${job.pickupSnapshot.address.city} is available.`,
-        data: { jobId: String(job._id), offerId: String(created._id), expiresAt: expiresAt.toISOString() },
+        data: { jobId: job.id, offerId: created.id, expiresAt: expiresAt.toISOString() },
       });
     } catch (err) {
       log.general.warn({ err, jobId, courierOxyUserId }, 'Failed to create/emit a job offer (skipping candidate)');

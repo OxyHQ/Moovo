@@ -1,12 +1,19 @@
 /**
  * Job hydration service.
  *
- * Turns raw `IJob` documents into client-ready `JobView` / `JobSummary` DTOs,
+ * Turns persisted job records into client-ready `JobView` / `JobSummary` DTOs,
  * doing all lookups in BATCHES (no N+1): ONE `getFairRate` for the display
  * conversion, ONE `getProfiles` for sender + courier identities. Snapshots
  * (pickup/dropoff/parcel) are mapped VERBATIM (frozen at booking); FAIR money is
  * projected to {@link DisplayMoney} at a rate fetched ONCE per request; proof-of-
  * delivery media is resolved through the SINGLE chokepoint (`resolveMedia`).
+ *
+ * The two entry points take DIFFERENT types, and that is the whole guarantee:
+ * `hydrateJobs` renders the audit and breadcrumb trails, so it takes a
+ * `JobWithHistory`; `summarizeJobs` reads neither, so it takes a bare
+ * `JobRecord`. Handing a list result — which does not load the trails, because
+ * a page of jobs would be a second query for nothing — to `hydrateJobs` is a
+ * `tsc` error rather than a job rendering as though nothing ever happened to it.
  *
  * The plaintext QR pickup/dropoff codes are surfaced ONLY when the caller passes
  * `includeCodes` (the viewer is the OWNER/sender). The courier and every other
@@ -14,7 +21,6 @@
  * scanning, which validates against the stored hash, never the plaintext.
  */
 
-import mongoose from 'mongoose';
 import type {
   JobView,
   JobSummary,
@@ -27,12 +33,13 @@ import type {
   FiatCurrency,
 } from '@moovo/shared-types';
 import type {
-  IJob,
-  IJobStatusEvent,
-  ILocationPing,
-  IProofOfDelivery,
-  IJobPaymentInfo,
-} from '../models/job.js';
+  JobLocationPingValue,
+  JobPaymentValue,
+  JobProofOfDeliveryValue,
+  JobRecord,
+  JobStatusEventValue,
+  JobWithHistory,
+} from '../db/transport/jobShape.js';
 import type {
   ShipmentEndpointValue,
   ParcelDetailsValue,
@@ -76,7 +83,7 @@ function toParcelSnapshot(parcel: ParcelDetailsValue): JobParcelSnapshot {
 }
 
 /** Map a persisted status event to the DTO. */
-function toStatusEvent(event: IJobStatusEvent): JobStatusEvent {
+function toStatusEvent(event: JobStatusEventValue): JobStatusEvent {
   const dto: JobStatusEvent = { status: event.status, at: event.at.toISOString() };
   if (event.byOxyUserId) dto.byOxyUserId = event.byOxyUserId;
   if (event.note) dto.note = event.note;
@@ -90,7 +97,7 @@ function toStatusEvent(event: IJobStatusEvent): JobStatusEvent {
 }
 
 /** Map a persisted location ping to the DTO. */
-function toLocationPing(ping: ILocationPing): LocationPing {
+function toLocationPing(ping: JobLocationPingValue): LocationPing {
   return {
     location: {
       type: 'Point',
@@ -101,7 +108,7 @@ function toLocationPing(ping: ILocationPing): LocationPing {
 }
 
 /** Map a persisted proof-of-delivery to the DTO (media through the chokepoint). */
-function toProofOfDelivery(proof: IProofOfDelivery): ProofOfDelivery {
+function toProofOfDelivery(proof: JobProofOfDeliveryValue): ProofOfDelivery {
   const dto: ProofOfDelivery = { at: proof.at.toISOString() };
   if (proof.photoFileId) dto.photoFileId = resolveMedia(proof.photoFileId);
   if (proof.signatureFileId) dto.signatureFileId = resolveMedia(proof.signatureFileId);
@@ -111,7 +118,7 @@ function toProofOfDelivery(proof: IProofOfDelivery): ProofOfDelivery {
 }
 
 /** Map a persisted payment sub-doc to the DTO. */
-function toPaymentInfo(payment: IJobPaymentInfo): JobPaymentInfo {
+function toPaymentInfo(payment: JobPaymentValue): JobPaymentInfo {
   const dto: JobPaymentInfo = { status: payment.status, provider: payment.provider };
   if (payment.reference) dto.reference = payment.reference;
   if (payment.paidAt) dto.paidAt = payment.paidAt.toISOString();
@@ -133,7 +140,7 @@ export interface HydrateJobOptions {
  * Plaintext QR codes are surfaced only when `opts.includeCodes` (owner-scoped).
  */
 export async function hydrateJobs(
-  jobs: IJob[],
+  jobs: JobWithHistory[],
   displayCurrency: FiatCurrency,
   opts: HydrateJobOptions = {},
 ): Promise<JobView[]> {
@@ -144,10 +151,10 @@ export async function hydrateJobs(
 
   return jobs.map((job) => {
     const view: JobView = {
-      id: String((job as { _id: mongoose.Types.ObjectId })._id),
+      id: job.id,
       jobNumber: job.jobNumber,
-      shipmentId: String(job.shipmentId),
-      senderOxyUserId: String(job.senderOxyUserId),
+      shipmentId: job.shipmentId,
+      senderOxyUserId: job.senderOxyUserId,
       type: job.type,
       fulfillmentType: job.fulfillmentType,
       pickupSnapshot: toEndpointSnapshot(job.pickupSnapshot),
@@ -159,12 +166,12 @@ export async function hydrateJobs(
       locationPings: job.locationPings.map(toLocationPing),
       payment: toPaymentInfo(job.payment),
       totals: toDisplayPriceBreakdown(job.totals, rate),
-      dispatchAttempts: job.dispatchAttempts ?? 0,
+      dispatchAttempts: job.dispatchAttempts,
       createdAt: job.createdAt.toISOString(),
       updatedAt: job.updatedAt.toISOString(),
     };
-    if (job.courierOxyUserId) view.courierOxyUserId = String(job.courierOxyUserId);
-    if (job.companyId) view.companyId = String(job.companyId);
+    if (job.courierOxyUserId) view.courierOxyUserId = job.courierOxyUserId;
+    if (job.companyId) view.companyId = job.companyId;
     if (job.providerRef) view.providerRef = job.providerRef;
     if (job.proofOfDelivery) view.proofOfDelivery = toProofOfDelivery(job.proofOfDelivery);
     // Owner-only: surface the plaintext QR codes for the sender to show/relay.
@@ -181,7 +188,7 @@ export async function hydrateJobs(
  * for an owner-scoped (sender) response so the plaintext QR codes are surfaced.
  */
 export async function hydrateJob(
-  job: IJob,
+  job: JobWithHistory,
   displayCurrency: FiatCurrency,
   opts: HydrateJobOptions = {},
 ): Promise<JobView> {
@@ -198,7 +205,7 @@ export async function hydrateJob(
  * fetched once for the batch. Preserves input order.
  */
 export async function summarizeJobs(
-  jobs: IJob[],
+  jobs: JobRecord[],
   displayCurrency: FiatCurrency,
 ): Promise<JobSummary[]> {
   if (jobs.length === 0) {
@@ -207,9 +214,9 @@ export async function summarizeJobs(
   const rate = await getFairRate(displayCurrency);
 
   return jobs.map((job) => ({
-    id: String((job as { _id: mongoose.Types.ObjectId })._id),
+    id: job.id,
     jobNumber: job.jobNumber,
-    shipmentId: String(job.shipmentId),
+    shipmentId: job.shipmentId,
     type: job.type,
     fulfillmentType: job.fulfillmentType,
     status: job.status,

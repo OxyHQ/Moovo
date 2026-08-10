@@ -67,7 +67,7 @@ export function createDeliverySubjectProvider(input: {
        */
       return {
         subject: {
-          externalId: String(job._id),
+          externalId: job.id,
           type: 'custom.moovo.delivery',
           /**
            * The sender's own view of the delivery — `app/(app)/jobs/[id].tsx`,
@@ -75,7 +75,7 @@ export function createDeliverySubjectProvider(input: {
            * is where the application's own users see the object, and this one
            * renders nothing at all without their session.
            */
-          permalink: `${config.web.origin}/jobs/${String(job._id)}`,
+          permalink: `${config.web.origin}/jobs/${job.id}`,
           author: { oxyUserId: job.senderOxyUserId },
         },
         content: await buildDeliveryResource(job),

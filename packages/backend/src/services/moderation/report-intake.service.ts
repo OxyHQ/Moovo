@@ -33,7 +33,7 @@ import {
   type ReportedType,
 } from '@moovo/shared-types';
 import { Report, type IReport } from '../../models/report.js';
-import { Job } from '../../models/job.js';
+import { isJobParty } from '../../db/transport/jobRepository.js';
 import {
   enqueueModerationOutboxEvent,
   reportSubmitEventId,
@@ -147,14 +147,7 @@ async function resolveContextJobId(
   if (contextJobId === undefined) return undefined;
   if (!isLiveEntityId(contextJobId)) return undefined;
 
-  const job = await Job.findOne({
-    _id: contextJobId,
-    $or: [{ senderOxyUserId: reporter }, { courierOxyUserId: reporter }],
-  })
-    .select('_id')
-    .lean<{ _id: mongoose.Types.ObjectId } | null>();
-
-  return job ? contextJobId : undefined;
+  return (await isJobParty(contextJobId, reporter)) ? contextJobId : undefined;
 }
 
 async function inTransaction<T>(
