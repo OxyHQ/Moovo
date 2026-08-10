@@ -34,6 +34,7 @@ import { Router } from 'express';
 import mongoose from 'mongoose';
 import { getRedisClient } from '../lib/redis.js';
 import { getClient } from '../db/postgres.js';
+import { mongoIsConfigured } from '../lib/db.js';
 import { log } from '../lib/logger.js';
 
 const router = Router();
@@ -45,14 +46,6 @@ const router = Router();
  * gives the load balancer nothing to act on and ties up a connection per check.
  */
 const PROBE_TIMEOUT_MS = 2_000;
-
-/** Whether Mongo is still part of this deployment's configuration. */
-function mongoIsConfigured(): boolean {
-  // `lib/db.ts` DEFAULTS the URI to localhost when the variable is absent, so
-  // the connection string cannot answer this — only whether the environment
-  // actually supplies one.
-  return Boolean(process.env.MONGODB_URI);
-}
 
 /** The outcome of one dependency probe. */
 interface ProbeResult {

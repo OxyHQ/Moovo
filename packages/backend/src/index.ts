@@ -4,7 +4,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { connectDB } from './lib/db.js';
+import { bootstrapMongo } from './lib/mongo-bootstrap.js';
 import { log } from './lib/logger.js';
 import { isAbortError, isFatalError, isTransientNetworkError } from './lib/error-classification.js';
 
@@ -227,8 +227,11 @@ process.on('uncaughtException', (error) => {
   setTimeout(() => process.exit(1), 5000).unref();
 });
 
-// Connect to MongoDB before starting the server
-connectDB()
+// Mongo is optional and must NEVER gate boot — `lib/mongo-bootstrap.ts` carries
+// the reasoning and the measurement. `bootstrapMongo` does not reject, so the
+// block below always runs; everything in it (the provider adapters and
+// `seedProviders`, the socket server, the dispatchers) is Postgres-backed.
+bootstrapMongo()
   .then(() => {
     // Register the built-in external-provider adapters, then idempotently seed an
     // enabled Provider doc per mock carrier so quotes surface external options.
@@ -375,6 +378,9 @@ connectDB()
     process.on('SIGINT', () => shutdown('SIGINT'));
   })
   .catch((error) => {
-    log.general.error({ err: error }, 'Failed to connect to MongoDB');
+    // `bootstrapMongo` never rejects, so reaching here means the startup block
+    // itself failed — binding the port, wiring the socket server. Those are
+    // genuinely fatal.
+    log.general.error({ err: error }, 'Failed to start the API server');
     process.exit(1);
   });
