@@ -54,8 +54,85 @@ Moovo's own couriers and external providers like DHL/FedEx).
 domain is on PostgreSQL as of #57; `lib/db.ts` and `MONGODB_URI` survive only
 because 26 files (22 of them non-test) still import one of 8 inherited
 marketplace models — cart, category, listing, order, product-variant, review,
-seller-profile, store. Whether that code is PORTED or DELETED is a product
-decision, not an engineering one, and it is the only open question left.
+seller-profile, store.
+
+**DECIDED 2026-08-10: the marketplace is PORTED to PostgreSQL, not deleted.**
+The product owner chose it knowing the measurement below; it is not an
+engineering judgement and it should not be relitigated from the code.
+
+### What the port starts from, measured rather than assumed
+
+- **No schema work.** All 13 marketplace tables already ship in migration
+  `0000` — `carts`, `cart_items`, `categories`, `listings`, `product_variants`,
+  `inventory_levels`, `orders`, `order_items`, `order_status_events`,
+  `reviews`, `seller_profiles`, `stores`, `store_members`. This is
+  repositories and rewiring only.
+- **8 registered Mongoose models, not 10.** `models/schemas/{money,fair-money}-schema.ts`
+  register nothing; they are embedded sub-schemas. All 8 are marketplace, so
+  zero courier models remain.
+- **The blast radius is 45 files / 5,795 lines, not 26 files.** A model-importer
+  census structurally cannot see this, because controllers import SERVICES, not
+  models. The number comes from reachability out of `src/index.ts` with the
+  marketplace routers blocked (172 reachable → 127).
+- **No frontend calls any of it.** The only marketplace endpoint referenced in
+  the three Expo apps is `/listings`, in a `lib/api/listings.ts` that has zero
+  importers. Two separate findings follow and are NOT part of the port: 36 dead
+  frontend files / 3,159 lines, and 9 shared-types DTO files whose only
+  consumers are those dead trees. The port may give the DTOs real consumers,
+  which is why it is a live question rather than a deletion.
+
+### The transaction prediction in this file was WRONG — do not inherit it
+
+An earlier revision predicted that `checkout`/`cart`/`order` share transactions
+the way the moderation outbox coupled its models. **Measured: there is not one
+`startSession`, `withTransaction`, `.session(` or `ClientSession` anywhere in
+`packages/backend/src`.** The single grep hit is the word "session" in a
+comment. The service graph is also a clean DAG. So the work genuinely slices by
+domain, and the constraint that forced moderation's three models to move as a
+unit has no analogue here. That prediction was reasonable when written; it is
+recorded as wrong because a handover prediction exists to be checked.
+
+Slices, ordered so each is useful rather than by table count: `resolveMedia`
+(landed, #60) → stores + seller profiles → catalogue (the first point at which
+Moovo can serve a listing) → cart → orders + checkout → reviews. Note
+`queue/handlers.ts` does not belong to one slice: `handleLowInventoryAlert` is
+the catalogue's, `handleOrderEventNotification` and `handleExpireReservations`
+are orders', `handleRecomputeAggregates` and `handleAggregateSweep` are
+reviews'.
+
+Because the target is empty, a repository returning nothing and a repository
+correctly returning nothing are the same observation. Every slice therefore
+lands with a fixture seeding **two owners** and asserting the wrong owner's rows
+are absent — that is what distinguishes a working filter from an absent one.
+
+### Verify against the entrypoint production actually runs, not the convenient one
+
+Measured 2026-08-10 while proving the boot gate (#59). Booting the API with
+`bun src/index.ts` dies in `bson` with `ERR_NOT_IMPLEMENTED` — a Bun/mongoose
+incompatibility — so the process **exits 1 with nothing listening**, which is
+indistinguishable from the Mongo-connection failure being investigated while
+measuring something else entirely. The right conclusion was one step from being
+reported on evidence that did not support it.
+
+`package.json`'s `start` is `node dist/index.js`, and that is the only runtime
+worth booting for a start-up question: `bun run build`, then run the built
+artefact. The same applies to any future claim about what happens at boot — the
+convenient entrypoint and the real one fail differently.
+
+### A Postgres write can hide inside a block you are gating on Mongo
+
+The same fix had to gate `connectDB()` without gating the block that followed
+it. That block contains `seedProviders()`, which writes through
+`db/transport/providerRepository` to **PostgreSQL**. Gating the whole thing
+behind a Mongo connection would have silently stopped external carrier quotes
+surfacing — a **courier regression hiding inside a Mongo fix**, in the half of
+the product that was already migrated and working.
+
+Nobody reading a diff titled "boot without Mongo" is looking for a Postgres
+write inside the block being gated, which is exactly why it survives review.
+Before gating any start-up block, enumerate what it actually does; the
+dispatchers, the socket server and the provider seed all live in that one
+`.then()` and none of them needs Mongo.
 
 ### Two things whoever does that work needs, which are cheap to lose
 
