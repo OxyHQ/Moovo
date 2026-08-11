@@ -144,11 +144,36 @@ export const listings = pgTable(
      * Mongo's `$text` index stemmed tag values too, so that was a functional
      * LOSS in the port rather than a faithful translation.
      *
-     * The third term stems the tags as well. The verbatim term is KEPT rather
-     * than replaced, which is what makes this strictly additive: every lexeme
-     * the column produced before is still produced, so no query that matched
-     * yesterday stops matching. A tag now answers to both its literal form and
-     * its stem.
+     * The third term stems the tags as well, and is what actually makes tag
+     * search work — including for a CAPITALISED tag, since `array_to_tsvector`
+     * does not fold case while `plainto_tsquery` lowercases the query.
+     *
+     * WHAT THE VERBATIM TERM ACTUALLY CONTRIBUTES, corrected here because the
+     * first version of this comment overstated it: nothing reachable. It was
+     * kept to make the change strictly additive, on the reasoning that "a tag
+     * answers to both its literal form and its stem". Measured on the server
+     * afterwards, across 18 tag shapes (`garden`, `Garden`, `GARDEN`,
+     * `watering`, `c++`, `50%`, `foo_bar`, `O'Brien`, `garden hose`, `the`,
+     * `café`, `e-bike`, …), removing this term changes the outcome for NONE of
+     * them — 0 disagreements, while the two vectors genuinely differ for 13, so
+     * the comparison was not vacuous.
+     *
+     * The reason is structural: this term stores each tag EXACTLY as written,
+     * and `plainto_tsquery` — the only way anything queries this column
+     * (`catalogRepository.buildConditions`) — can never produce those forms. It
+     * emits `garden` for `Garden`, `c` for `c++`, `water` for `watering`. A
+     * literal-form lexeme is therefore matchable only when it coincides with
+     * the stemmed form, in which case the third term already supplies it.
+     *
+     * So it is dead weight in the GIN index rather than a second matching
+     * strategy. Left in place deliberately: removing it means changing a
+     * generated column's expression, which `drizzle-kit generate` renders as
+     * `DROP COLUMN` + `ADD COLUMN` and which destroys the index over it (see
+     * the migration `0001` note below) — not worth that risk for an index-size
+     * win nobody has measured as a problem. Anyone who does remove it needs the
+     * `SET EXPRESSION` form and should keep the degenerate-input cases in
+     * `catalog-reads.realdb.test.ts` green, which is where the 18-shape result
+     * above is pinned from the outside.
      *
      * `array_to_string` is the obvious way to feed the tags to `to_tsvector`
      * and is STABLE, not IMMUTABLE (`provolatile = 's'`), so the server

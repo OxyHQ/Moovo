@@ -271,6 +271,104 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
     });
 
     /**
+     * THE DEGENERATE INPUTS.
+     *
+     * Everything below passes today. They are written because each one is a
+     * place where the two engines could have diverged SILENTLY at the port —
+     * the failure is a plausible page, not an error — and because nothing
+     * currently pins them, so a later simplification of the three-term vector
+     * would change them with every existing case still green.
+     *
+     * The general method: evaluate the operator on the input nobody writes a
+     * test for — empty array, empty string, a word that is only punctuation —
+     * on both sides, and assert the WRONG answer is not returned.
+     */
+    it('a listing with NO tags is not matched by another listing\'s tag', async () => {
+      // The `$all: []` / `@> '{}'` hazard, asserted from the outside.
+      //
+      // Mongo's `$all: []` matched NOTHING; Postgres' `col @> '{}'` matches
+      // EVERYTHING, so a containment-shaped tag filter would flip "no candidate
+      // qualifies" into "every row qualifies" — silently, and in the permissive
+      // direction. This repository has no tag filter at all (tags are reachable
+      // only through `search_vector`), and `buildConditions` uses
+      // `= any(category_slugs)` for categories, which is FALSE on an empty
+      // array rather than vacuously true. Measured on the server:
+      //
+      //     'x' = any('{}'::text[])      ->  false
+      //     '{}'::text[] @> '{}'::text[] ->  true
+      //
+      // This case is what would go red if a tag filter were ever added in the
+      // containment shape.
+      await seedListing({ title: 'Tagged thing', owner: 'u1', publishedAt: new Date('2026-01-01'), tags: ['watering'] });
+      await seedListing({ title: 'Untagged thing', owner: 'u1', publishedAt: new Date('2026-01-02'), tags: [] });
+
+      const hits = await searchListingsOffset({ q: 'watering' }, 1, 10);
+      expect(hits.listings.map((l) => l.title)).toEqual(['Tagged thing']);
+
+      // And the untagged row is still browsable — an empty tag array must not
+      // break the generated column for the row that has one.
+      expect((await searchListingsOffset(ALL, 1, 10)).listings).toHaveLength(2);
+    });
+
+    it('a blank query browses rather than matching nothing, and a stopword query matches nothing rather than everything', async () => {
+      await seedListing({ title: 'Alpha', owner: 'u1', publishedAt: new Date('2026-01-01'), tags: ['watering'] });
+      await seedListing({ title: 'Beta', owner: 'u1', publishedAt: new Date('2026-01-02') });
+
+      // `buildConditions` adds the text predicate only for a non-blank `q`, so
+      // an empty or whitespace query is a BROWSE. The alternative reading —
+      // an empty `tsquery` matching nothing — would empty the catalogue for
+      // anyone who submits a blank search box.
+      expect((await searchListingsOffset({ q: '' }, 1, 10)).listings).toHaveLength(2);
+      expect((await searchListingsOffset({ q: '   ' }, 1, 10)).listings).toHaveLength(2);
+
+      // A query of only stopwords DOES reach the server, where
+      // `plainto_tsquery('english','the and of')` is the empty tsquery. The
+      // dangerous outcome would be the empty query matching every row; measured
+      // on the server, `@@` against it is false, so it matches none.
+      expect((await searchListingsOffset({ q: 'the and of' }, 1, 10)).listings).toHaveLength(0);
+    });
+
+    it('matches a tag that differs from the query only in case', async () => {
+      // `array_to_tsvector` does NOT fold case — it stores each tag exactly as
+      // written, so the tag `Garden` becomes the lexeme `Garden` while
+      // `plainto_tsquery` lowercases the query to `garden`, and the verbatim
+      // half alone would never match. The stemming term added by migration
+      // `0001` is what makes tag search case-insensitive; before it, a
+      // capitalised tag was unfindable.
+      await seedListing({ title: 'Hose', owner: 'u1', publishedAt: new Date('2026-01-01'), tags: ['Garden'] });
+      await seedListing({ title: 'Unrelated', owner: 'u1', publishedAt: new Date('2026-01-02'), tags: ['ladder'] });
+
+      expect((await searchListingsOffset({ q: 'garden' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Hose']);
+      expect((await searchListingsOffset({ q: 'GARDEN' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Hose']);
+      expect((await searchListingsOffset({ q: 'Garden' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Hose']);
+    });
+
+    it('handles tags containing punctuation and query metacharacters', async () => {
+      // The query reaches the server as a BIND PARAMETER to `plainto_tsquery`,
+      // which strips operator syntax rather than parsing it — unlike
+      // `to_tsquery`, which THROWS on malformed input. Measured on the server:
+      //
+      //     plainto_tsquery('english','fish & !chips | (rat:*)')
+      //       ->  'fish' & 'chip' & 'rat'
+      //
+      // So a user typing `c++` gets a search, not a 500 and not an injection.
+      await seedListing({ title: 'Compiler', owner: 'u1', publishedAt: new Date('2026-01-01'), tags: ['c++'] });
+      await seedListing({ title: 'Discount', owner: 'u1', publishedAt: new Date('2026-01-02'), tags: ['50%'] });
+      await seedListing({ title: 'Snake', owner: 'u1', publishedAt: new Date('2026-01-03'), tags: ['foo_bar'] });
+      await seedListing({ title: 'Irish', owner: 'u1', publishedAt: new Date('2026-01-04'), tags: ["O'Brien"] });
+
+      // Each finds its own listing and only its own.
+      expect((await searchListingsOffset({ q: 'c++' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Compiler']);
+      expect((await searchListingsOffset({ q: '50%' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Discount']);
+      expect((await searchListingsOffset({ q: 'foo_bar' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Snake']);
+      expect((await searchListingsOffset({ q: "O'Brien" }, 1, 10)).listings.map((l) => l.title)).toEqual(['Irish']);
+
+      // Operator syntax is text to be searched for, not a query to be parsed:
+      // it neither throws nor returns the whole catalogue.
+      expect((await searchListingsOffset({ q: 'fish & !chips | (rat:*)' }, 1, 10)).listings).toHaveLength(0);
+    });
+
+    /**
      * The GIN index must survive the migration.
      *
      * `drizzle-kit generate` emits `DROP COLUMN` + `ADD COLUMN` for a change to
