@@ -26,7 +26,13 @@ import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { POST_PHASE_GREP_PATTERN } from '@oxyhq/db/migrate';
 import { describe, expect, it } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 import { MIGRATIONS_FOLDER } from '../migrate';
+import {
+  POSTGRES_TESTS_REQUIRED_ENV,
+  POSTGRES_TESTS_REQUIRED_VALUE,
+  TEST_ADMIN_URL_ENV,
+} from '../testDatabase';
 
 /** `packages/backend/src/db/__tests__` → the repository root. */
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..');
@@ -37,6 +43,25 @@ const WORKFLOW_PATH = '.github/workflows/deploy-aws.yml';
 const SCRIPT_PATH = '.github/scripts/run-migration-task.sh';
 const DOCKERFILE_PATH = 'Dockerfile';
 const BUILD_PATH = 'packages/backend/build.ts';
+const COMPOSE_FILE = 'docker-compose.postgres.yml';
+
+/**
+ * Only the parts of the workflow the assertions below reason about.
+ *
+ * Parsed with a real YAML parser rather than sliced out of the text: the one
+ * assertion that must be JOB-SCOPED is the runner, because `deploy` is
+ * legitimately on ARM while `test` must not be, and a whole-file string check
+ * cannot tell those two apart.
+ */
+interface DeployWorkflowJob {
+  'runs-on'?: string;
+  needs?: string | string[];
+  steps?: { name?: string; run?: string; env?: Record<string, string> }[];
+}
+
+interface DeployWorkflow {
+  jobs?: Record<string, DeployWorkflowJob>;
+}
 
 /**
  * The command the migration task runs, and the one thing every other assertion
@@ -137,6 +162,90 @@ describe('the deploy can apply migrations', () => {
     // its start. `true` reads like an optimisation and is the opposite here.
     expect(workflow).toMatch(/^\s+cancel-in-progress: false$/m);
     expect(workflow).not.toMatch(/^\s+cancel-in-progress: true$/m);
+  });
+
+  it('gates the rollout on a test job that actually runs the real-database suites', () => {
+    // WHY THIS EXISTS, measured on 6f0dae4 before it did: this job ran
+    // `bun run --filter @moovo/backend test` with no Postgres server and no
+    // TEST_DATABASE_URL, so every `*.realdb.test.ts` suite took the
+    // `describe.skip` branch. The exact command reported
+    // `Tests 341 passed | 354 skipped (695)` and exited 0 in three seconds —
+    // all 354 skipped tests were real-database tests, and the deploy was green.
+    //
+    // That is the expensive shape: the suites that exercise CHECKs, partial
+    // uniques, triggers, `FOR UPDATE SKIP LOCKED` and `ON CONFLICT` no-op
+    // semantics have no mocked counterpart, so skipping them removes the only
+    // thing that can catch a statement the server rejects. `ci.yml` runs them,
+    // but `ci.yml` is a different workflow: it going red stops nothing here.
+    //
+    // The assertions below are ordered by how SILENTLY each failure arrives.
+    const workflow = parseYaml(read(WORKFLOW_PATH)) as DeployWorkflow;
+    const jobs = workflow.jobs ?? {};
+
+    // Vacuity floor. A parse that yielded an empty document, or a renamed job,
+    // would otherwise make every lookup below undefined — and `undefined`
+    // satisfies a surprising number of assertions written the obvious way.
+    expect(Object.keys(jobs).sort()).toEqual(['deploy', 'test']);
+    const testJob = jobs.test;
+    const steps = testJob.steps ?? [];
+    expect(steps.length).toBeGreaterThan(0);
+
+    // SILENT FAILURE 1: `deploy` stops needing `test`. Every other assertion
+    // here would still pass, about a job that no longer blocks the rollout.
+    const needs = jobs.deploy.needs;
+    expect(Array.isArray(needs) ? needs : [needs]).toContain('test');
+
+    // SILENT FAILURE 2: the env lands on the wrong STEP. `env:` is per-step, so
+    // setting it on the lint step or at job level-but-misindented leaves the
+    // suite skipping while the workflow still mentions both variables — which
+    // is why this is found by the step that RUNS the suite rather than by a
+    // grep over the file.
+    const TEST_COMMAND = 'bun run --filter @moovo/backend test';
+    const testStepIndex = steps.findIndex((step) => (step.run ?? '').includes(TEST_COMMAND));
+    expect(testStepIndex).toBeGreaterThan(-1);
+    const testStepEnv = steps[testStepIndex].env ?? {};
+
+    // SILENT FAILURE 3, the finding itself. Without this variable the suites
+    // SKIP rather than fail, so every way the server can be unavailable — a
+    // renamed variable, a moved port, an image that will not pull — produces a
+    // green deploy over an untested database. Names imported from
+    // `testDatabase.ts`, never respelled, so renaming the variable there fails
+    // here instead of quietly disarming the requirement.
+    expect(testStepEnv[TEST_ADMIN_URL_ENV]).toBeTruthy();
+    // Compared to the arming VALUE, not merely present: the near-miss
+    // `MOOVO_REQUIRE_POSTGRES_TESTS: 'true'` reads to a human as "required",
+    // is accepted by YAML, and disarms the check completely.
+    expect(testStepEnv[POSTGRES_TESTS_REQUIRED_ENV]).toBe(POSTGRES_TESTS_REQUIRED_VALUE);
+
+    // A server has to be started, and started BEFORE the suite runs. Not a
+    // silent failure while the variable above survives — it goes red — but the
+    // two are removed together often enough to be worth pinning.
+    const composeStepIndex = steps.findIndex((step) =>
+      (step.run ?? '').includes(`docker compose -f ${COMPOSE_FILE} up`),
+    );
+    expect(composeStepIndex).toBeGreaterThan(-1);
+    expect(composeStepIndex).toBeLessThan(testStepIndex);
+
+    // The compose file is the single authority for the image pin — shared with
+    // `ci.yml` and with a developer's laptop rather than restated in a
+    // `services:` block. Read here so a rename fails this test rather than the
+    // deploy.
+    expect(read(COMPOSE_FILE)).toContain('postgis/postgis:');
+
+    // The runner. `postgis/postgis:17-3.5` publishes exactly one platform,
+    // linux/amd64 (measured 2026-08-11 with `docker manifest inspect`), so on
+    // the `ubuntu-24.04-arm` runner this job used to use there is no way to
+    // start the server at all. The mismatch with the arm64 `deploy` job is
+    // therefore deliberate, and this is the assertion that says so to whoever
+    // next tries to unify them.
+    expect(testJob['runs-on']).toBeTruthy();
+    expect(testJob['runs-on']).not.toMatch(/arm/);
+
+    // Floor for the negative check above: "no arm runner here" is also what a
+    // lookup against a mistyped key reports. The deploy job builds linux/arm64
+    // natively and must stay on one, so the string is findable in this file —
+    // if it is not, the check above is measuring nothing.
+    expect(jobs.deploy['runs-on']).toMatch(/arm/);
   });
 
   it('runs the pre phase before the rollout and the post phase after it', () => {
