@@ -97,8 +97,30 @@ env:
   PG_DATABASE: moovo
 
 jobs:
+  # The gate on the rollout below, and the ONLY one: `deploy` needs THIS job.
+  # `ci.yml` runs the same suite on a push to main, but it is a separate
+  # workflow — it going red stops nothing here, so whatever this job declines to
+  # run is not gating the deploy at all.
+  #
+  # x86, NOT the `ubuntu-24.04-arm` runner the deploy job uses, and the
+  # difference is the whole point of this job's existence.
+  #
+  # Measured 2026-08-11, not assumed: `docker manifest inspect
+  # postgis/postgis:17-3.5` publishes exactly one platform, linux/amd64. An ARM
+  # runner cannot pull it, so on `ubuntu-24.04-arm` there is no way to start the
+  # server the real-database suites need — and without a server those suites do
+  # not fail, they SKIP.
+  #
+  # That was the state this job was in until now, and it is why the mismatch
+  # with the arm64 deploy job is deliberate rather than something to tidy up.
+  # What the ARM runner bought was tests on the production architecture; what it
+  # cost was 354 of 695 tests, silently. Measured on 6f0dae4 with the exact
+  # command this job ran: `Tests 341 passed | 354 skipped (695)`, exit 0, in
+  # three seconds — every one of the 354 a real-database test, and the build
+  # green. The arm64 image is still built and its migrator entry point still
+  # asserted by the Dockerfile, so the architecture is not unexercised.
   test:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -110,7 +132,31 @@ jobs:
 
       - run: bun run --filter @moovo/backend lint
 
-      - run: bun run --filter @moovo/backend test
+      # Started from the SAME compose file a developer uses, and the same one
+      # `ci.yml` starts, rather than from a `services:` block — a `services:`
+      # block would restate the image pin, giving three places to disagree about
+      # the version under test. `--wait` because that file carries a
+      # `pg_isready` healthcheck, and a suite that starts before the server
+      # accepts connections fails as a connection error, which reads like a
+      # broken harness rather than a container that was not up yet.
+      - name: Start PostgreSQL
+        run: docker compose -f docker-compose.postgres.yml up -d --wait postgres
+
+      - name: Run API tests
+        # TEST_DATABASE_URL names the ADMIN database: each test file creates its
+        # own throwaway database on that server and drops it afterwards.
+        #
+        # MOOVO_REQUIRE_POSTGRES_TESTS is the load-bearing half and the reason
+        # this is not merely "start a container and hope". It turns "skip when
+        # unavailable" into a hard failure, so if the compose step above ever
+        # stops producing a reachable server — a renamed variable, a moved port,
+        # an image that will not pull — this job goes RED rather than green over
+        # 354 tests that did not run. Without it, every failure mode of the
+        # container is indistinguishable from success.
+        env:
+          TEST_DATABASE_URL: postgres://moovo:moovo@127.0.0.1:5437/postgres
+          MOOVO_REQUIRE_POSTGRES_TESTS: '1'
+        run: bun run --filter @moovo/backend test
 
       - run: bun run build:backend
 

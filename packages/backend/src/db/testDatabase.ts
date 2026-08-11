@@ -27,7 +27,9 @@ import * as schema from './schema';
  * somewhere nobody intended, and on this machine every Oxy app keeps its own
  * server, so a guess would likely land on another product's.
  */
-export const TEST_ADMIN_URL = process.env.TEST_DATABASE_URL;
+export const TEST_ADMIN_URL_ENV = 'TEST_DATABASE_URL';
+
+export const TEST_ADMIN_URL = process.env[TEST_ADMIN_URL_ENV];
 
 /** Whether the real-database suites can run at all in this environment. */
 export const POSTGRES_TESTS_ENABLED = Boolean(TEST_ADMIN_URL);
@@ -48,7 +50,21 @@ export const POSTGRES_TESTS_ENABLED = Boolean(TEST_ADMIN_URL);
  * formatting is the wrong shape; the suite asserting its own prerequisite is
  * not.
  */
-export const POSTGRES_TESTS_REQUIRED = process.env.MOOVO_REQUIRE_POSTGRES_TESTS === '1';
+export const POSTGRES_TESTS_REQUIRED_ENV = 'MOOVO_REQUIRE_POSTGRES_TESTS';
+
+/**
+ * The ONE value that arms the requirement.
+ *
+ * Exported beside the name because the gate in `db/__tests__/deployWorkflow.test.ts`
+ * has to assert the workflow sets it to a value this comparison accepts. A
+ * plausible near-miss — `MOOVO_REQUIRE_POSTGRES_TESTS: 'true'` — reads to a
+ * human as "required", disarms the check completely, and fails nothing: the
+ * suites go back to skipping and the deploy goes back to green over them.
+ */
+export const POSTGRES_TESTS_REQUIRED_VALUE = '1';
+
+export const POSTGRES_TESTS_REQUIRED =
+  process.env[POSTGRES_TESTS_REQUIRED_ENV] === POSTGRES_TESTS_REQUIRED_VALUE;
 
 export interface SuiteDatabase {
   readonly db: Database;
