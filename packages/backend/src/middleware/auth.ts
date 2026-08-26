@@ -107,6 +107,7 @@ export function authenticateTokenOrApiKey(
       appId: 'internal',
       appName: 'internal',
       credentialId: 'service-secret',
+      ownerAccountId: 'internal',
       scopes: ['internal'],
       environment: SERVICE_ENVIRONMENT,
     };
