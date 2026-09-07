@@ -1,13 +1,18 @@
 /**
  * The FedEx mapping.
  *
- * **What these fixtures can and cannot prove.** They are written to FedEx's
- * published Track API v1 shape, so they pin THIS FILE'S READING of that shape —
- * that a delivered result becomes `delivered`, that scan events come out
- * ascending, that an unknown number becomes `notFound` rather than an error.
- * They cannot prove FedEx sends these field names. Only one live call with real
- * credentials can, and until that has happened `tracking_carriers.poll_supported`
- * stays false on the `fedex` row. See the header of `adapters/fedex.ts`.
+ * **What these fixtures can and cannot prove.** The field names below are
+ * corroborated against a real recorded FedEx response published by PackageMate
+ * (MIT), so they are no longer only this file's reading of a specification:
+ * the envelope, `latestStatusDetail.derivedCode`, offsets on `scanEvents[].date`,
+ * the `scanLocation` fields, `ESTIMATED_DELIVERY`, `serviceDetail.description`
+ * and `shipperInformation.address.countryCode` all match a live payload, as does
+ * scan events arriving NEWEST FIRST.
+ *
+ * The ERROR shape is still unconfirmed — a recorded success cannot show one —
+ * so not-found is matched on a pattern and everything else throws.
+ * `tracking_carriers.poll_supported` stays false on the `fedex` row until one
+ * live call has been made. See the header of `adapters/fedex.ts`.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -96,6 +101,22 @@ describe('toSnapshot', () => {
     expect(snapshot.notFound).toBe(true);
     expect(snapshot.status).toBe('pending');
     expect(snapshot.checkpoints).toEqual([]);
+  });
+
+  it('matches not-found on a PATTERN, because the exact code is unverified', () => {
+    // The literal `TRACKING.TRACKINGNUMBER.NOTFOUND` is documented but cannot be
+    // confirmed without a live call, and an exact comparison that misses would
+    // send a genuinely unknown number into permanent backoff.
+    for (const code of ['TRACKING.TRACKINGNUMBER.NOTFOUND', 'NOTFOUND', 'TRACKING.NOT_FOUND']) {
+      expect(toSnapshot({ error: { code } }).notFound).toBe(true);
+    }
+  });
+
+  it('THROWS on any other error rather than expiring a parcel that exists', () => {
+    // The safe direction. A retry costs a call; a wrong `notFound` expires
+    // somebody's real parcel and there is no error anywhere to explain it.
+    expect(() => toSnapshot({ error: { code: 'SYSTEM.UNAVAILABLE' } })).toThrow(/FedEx returned an error/);
+    expect(() => toSnapshot({ error: {} })).toThrow(/FedEx returned an error/);
   });
 
   it('falls back to in_transit for a code it does not know, keeping the raw one', () => {

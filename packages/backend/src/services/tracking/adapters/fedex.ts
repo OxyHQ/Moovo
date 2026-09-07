@@ -4,12 +4,25 @@
  * ## Read this before enabling it
  *
  * The seam was always ready; what was missing is a client, and a client is an
- * HTTP CONTRACT. This one is written to FedEx's published Track API v1 and its
- * mapping is unit-tested against fixtures, but **fixtures written from a
- * specification test this file's reading of the specification, not FedEx.**
- * Until one live call has been made with real credentials and a real response
- * recorded, treat the mapping as unconfirmed. That is why enabling it takes
- * three independent things rather than a deploy:
+ * HTTP CONTRACT. This one is written to FedEx's published Track API v1, and the
+ * request flow and the response FIELD NAMES were then checked against a real
+ * recorded response published by PackageMate (MIT, github.com/jat255/PackageMate)
+ * — an independent implementation that runs against the live API. That
+ * corroborates `output.completeTrackResults[0].trackResults[0]`,
+ * `latestStatusDetail.derivedCode`, `scanEvents[].date` carrying a real UTC
+ * OFFSET, `scanLocation.city`/`stateOrProvinceCode`/`countryCode`,
+ * `dateAndTimes[].type` of `ESTIMATED_DELIVERY`, `serviceDetail.description`,
+ * `shipperInformation.address.countryCode`, and that scan events arrive NEWEST
+ * FIRST — which is why this file sorts rather than trusts the order.
+ *
+ * **What is still unconfirmed is the ERROR shape**, because a recorded success
+ * cannot show it. That is why not-found is matched on a pattern and every other
+ * error is thrown; see `isNotFoundError`.
+ *
+ * No code was taken from that project: an HTTP contract is a fact, and the
+ * corroboration is of field names, not of expression.
+ *
+ * Enabling it still takes three independent things rather than a deploy:
  *
  * 1. `FEDEX_CLIENT_ID` and `FEDEX_CLIENT_SECRET`. Without both, this module
  *    hands back a deep-link-only adapter and nothing here ever runs.
@@ -147,16 +160,41 @@ function pickDate(result: FedexTrackResult, type: string): Date | undefined {
 }
 
 /**
+ * Does this error mean "no such number", or "something went wrong"?
+ *
+ * The distinction decides the CADENCE: `notFound` expires the parcel, anything
+ * else backs off and retries. Getting it wrong in the notFound direction
+ * silently expires a real parcel somebody is waiting on, so the match is on a
+ * PATTERN and everything unrecognised falls to the safe side — a retry costs a
+ * call, a wrong expiry costs the parcel.
+ *
+ * FedEx's documented code is `TRACKING.TRACKINGNUMBER.NOTFOUND`, but the exact
+ * string is the part that cannot be confirmed without a live call, which is why
+ * this does not compare against one literal.
+ */
+function isNotFoundError(code: string | undefined): boolean {
+  return typeof code === 'string' && /NOT[_.]?FOUND/i.test(code);
+}
+
+/**
  * One FedEx track result into one snapshot. PURE — this is the part the tests
- * pin, and the part a recorded live response will confirm or correct.
+ * pin, and the part a recorded live response confirms or corrects.
  */
 export function toSnapshot(result: FedexTrackResult): TrackingSnapshot {
-  // FedEx reports an unknown number as an error INSIDE a 200, not as a 404.
-  // `notFound` rather than a throw: a label created and never scanned is the
-  // single most common thing anyone pastes, and treated as a failure it enters
-  // error backoff and stays there instead of expiring.
-  if (result.error?.code === 'TRACKING.TRACKINGNUMBER.NOTFOUND') {
-    return { status: 'pending', checkpoints: [], notFound: true };
+  // FedEx reports failures INSIDE a 200, in `trackResults.error`, not as an
+  // HTTP status.
+  //
+  // A number the carrier has never seen is `notFound` rather than a throw: a
+  // label created and never scanned is the single most common thing anyone
+  // pastes, and treated as a failure it enters error backoff and stays there
+  // instead of expiring. Any OTHER error is thrown, so the poller's backoff
+  // owns it — reporting a transient fault as `notFound` would expire a parcel
+  // that exists.
+  if (result.error) {
+    if (isNotFoundError(result.error.code)) {
+      return { status: 'pending', checkpoints: [], notFound: true };
+    }
+    throw new Error(`FedEx returned an error for this number: ${result.error.code ?? 'unknown'}`);
   }
 
   const checkpoints = (result.scanEvents ?? [])
