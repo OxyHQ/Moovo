@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>%WEB_TITLE%</title>
+
+    <!--
+      The web shell for Moovo Tracker.
+
+      This file is the CUSTOM TEMPLATE Expo uses for `web.output: "single"`:
+      `@expo/cli` reads `public/index.html` in preference to its own default,
+      substitutes `%LANG_ISO_CODE%` and `%WEB_TITLE%` from `app.json`, and then
+      appends the bundle's <script> and <link rel="stylesheet"> tags before
+      </head>. `app/+html.tsx` does NOT apply here — that file is only used when
+      static rendering is enabled — so head content the crawler must see in the
+      served HTML belongs in THIS file.
+
+      The copy is SPANISH on purpose. Moovo Tracker is the only Moovo surface a
+      stranger reaches without knowing Moovo exists, by searching *rastrear
+      paquete* or *seguimiento de paquete*. The word "Tracker" does no SEO in
+      Spanish, so the title, the description and the structured data carry the
+      terms people actually type — from the first deploy, not as later polish.
+
+      `<meta name="description">` is NOT written here: Expo appends it from
+      `expo.web.description`, so `app.json` stays its single source.
+
+      KEEP THIS COMMENT BELOW THE <title>. Expo substitutes the placeholders
+      with `String.prototype.replace` and a STRING pattern, which replaces only
+      the FIRST occurrence — so a comment mentioning a placeholder above the tag
+      that uses it silently eats the substitution, and the served page ships the
+      raw placeholder as its title.
+    -->
+
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+    <meta name="referrer" content="origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+
+    <meta
+      name="keywords"
+      content="rastrear paquete, seguimiento de paquete, seguimiento de envío, localizar paquete, número de seguimiento, tracking, Correos, SEUR, DHL, GLS, UPS, FedEx, Moovo"
+    />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:site_name" content="Moovo Tracker" />
+    <meta property="og:url" content="https://tracker.moovo.now" />
+    <meta property="og:title" content="Rastrear paquete — seguimiento de envíos de todos los transportistas" />
+    <meta
+      property="og:description"
+      content="Pega tu número de seguimiento y Moovo identifica el transportista y te lleva directo al estado de tu paquete. Gratis y sin cuenta."
+    />
+
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://tracker.moovo.now" />
+    <meta property="twitter:title" content="Rastrear paquete — seguimiento de envíos de todos los transportistas" />
+    <meta
+      property="twitter:description"
+      content="Pega tu número de seguimiento y Moovo identifica el transportista y te lleva directo al estado de tu paquete. Gratis y sin cuenta."
+    />
+
+    <link rel="canonical" href="https://tracker.moovo.now/" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-title" content="Moovo Tracker" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Moovo Tracker",
+        "alternateName": "Rastrear paquete — Moovo",
+        "url": "https://tracker.moovo.now",
+        "inLanguage": "es-ES",
+        "description": "Rastrea cualquier paquete con un solo número de seguimiento. Moovo Tracker identifica el transportista y te lleva directo al estado de tu envío.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Web, iOS, Android",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      }
+    </script>
+
+    <!-- The `react-native-web` recommended style reset, kept from Expo's own
+         template. `global.css` overrides the `overflow: hidden` on body with
+         unlayered rules so the DOCUMENT scrolls. -->
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        overflow: hidden;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>
+      Necesitas activar JavaScript para usar Moovo Tracker. Mientras tanto, puedes consultar tu
+      envío en la web de tu transportista.
+    </noscript>
+    <div id="root"></div>
+  </body>
+</html>

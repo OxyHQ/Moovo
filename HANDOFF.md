@@ -18,7 +18,8 @@ rebranded to **Moovo**. The following work is intentionally deferred.
 | iOS bundle id / Android package | `now.moovo.app` |
 | MongoDB db name | `moovo-{NODE_ENV}` |
 | AWS ECR repo | `oxy/moovo` (cluster stays `oxy-cluster`) |
-| Cloudflare Pages project | `moovo` |
+| Cloudflare Pages projects | `moovo`, `moovo-go`, `moovo-hub`, `moovo-tracker` |
+| Tracker web | `tracker.moovo.now` (scheme `moovotracker`, bundle `now.moovo.tracker`) |
 
 ## 2. Oxy RP client registration (BLOCKING for SSO)
 
@@ -30,15 +31,31 @@ Cloudflare Pages project variable) before the SSO RP flow works for Moovo.
 
 ## 3. Infrastructure (oxy-infra `terraform-uswest2/`)
 
-The deploy workflows build + push images but the AWS resources do not exist yet:
-
-- ECS service `moovo`, its task definition, ALB listener rule, ECR repo
-  (`oxy/moovo`), and SSM parameter wiring (`/oxy/moovo/*`) must be provisioned in
-  `oxy-infra`. Until then `.github/workflows/deploy-aws.yml` pushes the image to
-  ECR and skips the ECS step (service-existence guard).
-- The Cloudflare Pages project `moovo` and its DNS (`moovo.now`, `api.moovo.now`,
-  `staging-api.moovo.now`) must be created before
-  `.github/workflows/deploy-cloudflare.yml` can deploy the web app.
+- **DONE — ECS.** The service `moovo` on `oxy-cluster`, its task definition, ALB
+  listener rule, ECR repo (`oxy/moovo`) and SSM wiring are provisioned and
+  serving; `deploy-aws.yml` deploys onto them and its service-existence guard is
+  a guard, not the normal path. A run reporting "not created yet" means the
+  infrastructure moved.
+- **DONE — Pages `moovo`, `moovo-go`, `moovo-hub`.** Created, with DNS. All three
+  deployed successfully on 2026-08-26.
+- **TODO — Pages `moovo-tracker` and the DNS for `tracker.moovo.now`.** The app
+  (`packages/tracker-app`) and its workflow
+  (`.github/workflows/deploy-cloudflare-tracker.yml`) are in the repo and the web
+  export builds. The project does not exist, so the workflow's deploy step is the
+  only thing standing between the tracker and production. Nothing else is
+  pending: the `/tracking` API it talks to is already live on `api.moovo.now`.
+- **BLOCKING — `CLOUDFLARE_API_TOKEN` no longer authenticates.** Set 2026-07-15,
+  last worked 2026-08-26. On 2026-09-07 every Pages deploy fails with
+  `Authentication error [code: 10000]` from the Cloudflare API — the token has
+  expired or been revoked, or lost its Pages:Edit permission. This blocks all
+  FOUR Pages workflows, the tracker's included, and cannot be fixed from the
+  repo: rotate the token in Cloudflare and update the repo secret.
+- **KNOWN — the Pages workflows rate-limit each other.** A push touching
+  `package.json` or `bun.lock` matches every Pages workflow's path filter, so
+  they all fire at once and hit the same account. On 2026-09-06 that returned
+  `Rate limited [code: 10429]` on all three. A fourth workflow makes it likelier.
+  Not yet addressed; serialising them (a shared `concurrency` group, or a retry
+  with backoff on the wrangler step) is the fix when it next bites.
 
 ## 4. Courier/transport domain (replaces the inherited marketplace domain)
 

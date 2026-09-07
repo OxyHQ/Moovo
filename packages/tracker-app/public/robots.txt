@@ -1,0 +1,27 @@
+# Moovo Tracker — seguimiento y rastreo de paquetes
+
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: Slurp
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 0
+
+# The signed-in surfaces hold one person's own parcels. Nothing there is
+# useful in an index, and a crawler following a link into them only ever
+# reaches a sign-in wall.
+Disallow: /parcels
+
+# Block aggressive scraping bots
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: MJ12bot
+User-agent: DotBot
+User-agent: BLEXBot
+Disallow: /
+
+User-agent: *
+Allow: /
+Disallow: /parcels
+
+Sitemap: https://tracker.moovo.now/sitemap.xml

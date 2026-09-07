@@ -21,7 +21,7 @@
  */
 
 import type { GeoPoint } from './courier';
-import type { Job } from './job';
+import type { JobView } from './job';
 
 /**
  * Where a parcel is, in the only words both a carrier and a Moovo courier can
@@ -160,14 +160,21 @@ export interface TrackedParcel {
 /**
  * A parcel's detail view, discriminated by where its timeline comes from.
  *
- * The `moovo_job` variant carries the existing {@link Job} DTO IMPORTED rather
- * than restated, so the live map, the courier card and proof of delivery all
- * keep working with no second shape of a job on the wire — and so a Moovo
+ * The `moovo_job` variant carries the existing {@link JobView} DTO IMPORTED
+ * rather than restated, so the live map, the courier card and proof of delivery
+ * all keep working with no second shape of a job on the wire — and so a Moovo
  * delivery never has its history copied into the tracker's tables.
+ *
+ * `JobView` and not `Job`: the endpoint hydrates through
+ * `job-hydration.service.ts`, which converts prices, so what actually arrives
+ * carries `DisplayPriceBreakdown`. `checkpoints` is present and empty on that
+ * arm rather than absent, so a client can read `detail.checkpoints` without
+ * narrowing first — a Moovo delivery has zero checkpoints for its whole life
+ * BY DESIGN, and that is a fact worth stating rather than a field to omit.
  */
 export type TrackedParcelDetail =
   | { source: 'carrier'; parcel: TrackedParcel; checkpoints: TrackingCheckpoint[] }
-  | { source: 'moovo_job'; parcel: TrackedParcel; job: Job };
+  | { source: 'moovo_job'; parcel: TrackedParcel; job: JobView; checkpoints: [] };
 
 /**
  * What an ANONYMOUS lookup returns.
