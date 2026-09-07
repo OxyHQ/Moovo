@@ -31,12 +31,11 @@ export function CarrierPicker({
   });
 
   const candidateKeys = new Set(candidates.map((candidate) => candidate.carrierKey));
-  const rest = (carriers.data ?? []).filter(
-    // `moovo` is the INTERNAL pointer carrier, not something a person can pick:
-    // a Moovo parcel is created by booking a job, and a row on that key without
-    // a `moovoJobId` is a parcel the detail endpoint can never hydrate.
-    (carrier) => carrier.key !== 'moovo' && !candidateKeys.has(carrier.key),
-  );
+  // `moovo` needs no filtering here: it is the INTERNAL pointer key, and the
+  // server both leaves it out of `/tracking/carriers` and REFUSES it as a
+  // `carrierKey` on lookup, subscribe and re-point. Re-filtering it client-side
+  // would put the rule in two places and leave the weaker one looking sufficient.
+  const rest = (carriers.data ?? []).filter((carrier) => !candidateKeys.has(carrier.key));
 
   return (
     <View className="mt-6">

@@ -171,9 +171,19 @@ beats one claimant and a wrong answer.
 `carrierKey`, so without `components/CarrierPicker.tsx` those carriers are
 unreachable however prominently they are listed. The choice is written into the
 URL (`?carrier=<key>`), not component state, so it survives a reload and a shared
-link — and `moovo` is filtered out of the picker, because a row on the internal
-pointer key without a `moovoJobId` is a parcel the detail endpoint can never
-hydrate.
+link.
+
+**`moovo` is refused as a carrier key on every public input path**, by
+`requireSelectableCarrier` in `tracking.service.ts` and by leaving it out of
+`listCarriers()`. It is the internal POINTER key: those rows carry a
+`moovoJobId` and zero checkpoints for life, and `getParcelDetail` hydrates the
+job instead — so a row created on that key with no job behind it can never be
+hydrated and falls through to an empty carrier timeline forever. A Moovo parcel
+is created by BOOKING, never by pasting. The guard is deliberately SEPARATE from
+`requireCarrier`: reading an existing pointer must keep working, and a blanket
+ban inside `requireCarrier` would break every Moovo delivery in every customer's
+list. `POST /tracking/lookup` is public and unauthenticated, so the app's picker
+filtering the key was never the rule — the service is.
 
 **FedEx is the only adapter that CAN fetch, and three independent things gate
 it.** Every other built-in adapter is deep-link-only. `adapters/fedex.ts` gains
