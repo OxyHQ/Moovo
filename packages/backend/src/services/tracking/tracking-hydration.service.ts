@@ -116,12 +116,24 @@ export function toPublicLookup(input: {
       : {}),
     trackingUrl: buildTrackingUrl(carrier, parcel.trackingNumber),
     checkpoints: checkpoints.map((row) => {
+      // Built by NAMING the permitted fields rather than by spreading the
+      // internal checkpoint and deleting what should not be there. Deletion is
+      // the shape that silently passes through whatever somebody adds next; in
+      // particular a public checkpoint carries NO coordinates, because a depot's
+      // name is where the parcel was while a coordinate pair plus a timestamp
+      // narrows a household — and the last fix on a delivered parcel is a
+      // doorstep.
       const checkpoint = toCheckpoint(row);
-      // A public checkpoint carries NO coordinates. A depot's name is where the
-      // parcel was; a coordinate pair plus a timestamp narrows a household, and
-      // the last checkpoint of a delivered parcel is somebody's doorstep.
-      const { location: _dropped, ...rest } = checkpoint;
-      return rest;
+      return {
+        id: checkpoint.id,
+        status: checkpoint.status,
+        ...(checkpoint.rawStatus ? { rawStatus: checkpoint.rawStatus } : {}),
+        ...(checkpoint.description ? { description: checkpoint.description } : {}),
+        ...(checkpoint.locationText ? { locationText: checkpoint.locationText } : {}),
+        ...(checkpoint.countryCode ? { countryCode: checkpoint.countryCode } : {}),
+        occurredAt: checkpoint.occurredAt,
+        occurredAtIsLocal: checkpoint.occurredAtIsLocal,
+      };
     }),
   };
 }

@@ -134,7 +134,20 @@ export interface TrackingAdapter {
   /** Absent exactly when `capabilities.deepLinkOnly`. */
   fetch?(input: TrackingFetchInput): Promise<TrackingSnapshot>;
   parseWebhook?(payload: unknown): TrackingSnapshot | null;
-  verifyWebhook?(raw: Buffer, headers: Record<string, string | undefined>): WebhookVerdict;
+  /**
+   * Verify a carrier's push.
+   *
+   * `secrets` carries the live secret AND the previous one during a rotation,
+   * so a rollover is not an outage for deliveries already in flight. Passed in
+   * rather than read from the environment by the adapter: an adapter that read
+   * `process.env` itself would be untestable without mutating the process, and
+   * the route is where "which secrets are configured" is already known.
+   */
+  verifyWebhook?(
+    raw: Buffer,
+    headers: Record<string, string | undefined>,
+    secrets: readonly string[],
+  ): WebhookVerdict;
   /**
    * The carrier's own tracking page. REQUIRED on every adapter, including ones
    * that poll: it is the "view on the carrier's site" link the app always

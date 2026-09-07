@@ -9,7 +9,7 @@
  * of the codebase never special-cases them.
  */
 
-import type { ProviderQuote, FairMoney, JobStatus, GeoPoint } from '@moovo/shared-types';
+import type { ProviderQuote, FairMoney } from '@moovo/shared-types';
 import type { ShipmentRecord } from '../../../db/transport/shipmentShape.js';
 import type { QuoteRecord } from '../../../db/transport/quoteRepository.js';
 import type {

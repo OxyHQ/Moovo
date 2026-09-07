@@ -97,7 +97,15 @@ async function handle(req: Request, res: Response): Promise<void> {
     ]),
   );
 
-  const verdict = adapter.verifyWebhook(raw, headers);
+  const secrets = secretsFor(carrierKey);
+  if (secrets.length === 0) {
+    // Configured away since boot. Refusing beats accepting unverified.
+    log.general.warn({ carrierKey }, '[TrackingWebhook] no secret configured for carrier');
+    res.status(404).json({ error: 'Unknown webhook carrier' });
+    return;
+  }
+
+  const verdict = adapter.verifyWebhook(raw, headers, secrets);
   if (!verdict.ok) {
     // A bounded label only. Never a header, never a body, never a signature —
     // an attacker must learn nothing from the log they can provoke.
