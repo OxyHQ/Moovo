@@ -4,6 +4,7 @@ import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { openAccountDialog, useOxy } from '@oxyhq/services';
 import { toast } from '@oxyhq/bloom/toast';
 
 import { StatusBadge } from '@/components/StatusBadge';
@@ -34,10 +35,15 @@ export default function ParcelDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [refreshRequested, setRefreshRequested] = useState(false);
+  const { isAuthenticated, isAuthResolved } = useOxy();
 
   const detail = useQuery({
     queryKey: ['tracker', 'parcels', id],
-    enabled: typeof id === 'string' && id.length > 0,
+    // Gated on auth being RESOLVED, exactly as the list is. The Oxy SDK restores
+    // a returning session asynchronously, and this screen is the one people open
+    // from a cold start via a link — firing before the session settles spends a
+    // guaranteed 401 and caches it as the answer.
+    enabled: typeof id === 'string' && id.length > 0 && isAuthResolved && isAuthenticated,
     queryFn: () => fetchParcel(id),
   });
 
@@ -104,7 +110,29 @@ export default function ParcelDetailScreen() {
             </Pressable>
           </Link>
 
-          {detail.isPending ? (
+          {!isAuthResolved ? (
+            <View className="mt-16 items-center">
+              <ActivityIndicator />
+            </View>
+          ) : !isAuthenticated ? (
+            <View className="mt-8 rounded-2xl border border-border bg-card p-5">
+              <Text className="text-base font-semibold text-foreground">
+                Inicia sesión para ver este paquete
+              </Text>
+              <Text className="mt-1 text-sm text-muted-foreground">
+                Los paquetes guardados pertenecen a una cuenta.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => openAccountDialog()}
+                className="mt-4 h-11 items-center justify-center rounded-xl bg-primary px-5"
+              >
+                <Text className="text-sm font-semibold text-primary-foreground">
+                  Iniciar sesión
+                </Text>
+              </Pressable>
+            </View>
+          ) : detail.isPending ? (
             <View className="mt-16 items-center">
               <ActivityIndicator />
             </View>
@@ -129,10 +157,19 @@ export default function ParcelDetailScreen() {
                   </Text>
                 ) : null}
 
-                <StatusBadge status={parcel.status} className="mt-3" />
-                <Text className="mt-3 text-sm text-muted-foreground">
-                  {STATUS_HINTS[parcel.status]}
-                </Text>
+                {/* A deep-link-only carrier leaves `status` at `pending` for
+                    the parcel's whole life, and "todavía no hemos podido
+                    consultar este envío" reads as a transient failure rather
+                    than a capability Moovo has not built. A Moovo job is always
+                    shown: its status is projected from the job and is real. */}
+                {detail.data.source === 'moovo_job' || parcel.carrier.pollSupported ? (
+                  <>
+                    <StatusBadge status={parcel.status} className="mt-3" />
+                    <Text className="mt-3 text-sm text-muted-foreground">
+                      {STATUS_HINTS[parcel.status]}
+                    </Text>
+                  </>
+                ) : null}
 
                 {delivered ? (
                   <Text className="mt-3 text-sm text-foreground">Entregado el {delivered}</Text>
@@ -167,19 +204,35 @@ export default function ParcelDetailScreen() {
                 </View>
               ) : (
                 <View className="mt-6">
-                  <Text className="mb-3 text-sm font-semibold text-foreground">Movimientos</Text>
-                  <Timeline checkpoints={detail.data.checkpoints} />
-                  {refreshRequested ? (
-                    <Text className="mt-2 px-1 text-xs text-muted-foreground">
-                      Hemos pedido una consulta al transportista. Vuelve a abrir esta pantalla en
-                      unos minutos para ver los movimientos nuevos.
-                    </Text>
-                  ) : null}
+                  {parcel.carrier.pollSupported ? (
+                    <>
+                      <Text className="mb-3 text-sm font-semibold text-foreground">
+                        Movimientos
+                      </Text>
+                      <Timeline checkpoints={detail.data.checkpoints} />
+                      {refreshRequested ? (
+                        <Text className="mt-2 px-1 text-xs text-muted-foreground">
+                          Hemos pedido una consulta al transportista. Vuelve a abrir esta
+                          pantalla en unos minutos para ver los movimientos nuevos.
+                        </Text>
+                      ) : null}
+                    </>
+                  ) : (
+                    // Same argument as on the public track screen: an empty
+                    // timeline for a deep-link-only carrier is Moovo's gap, not
+                    // the carrier's silence, and must not be dressed as one.
+                    <View className="rounded-2xl border border-border bg-card p-5">
+                      <Text className="text-sm text-muted-foreground">
+                        Moovo todavía no recibe el estado de {parcel.carrier.name}. El recorrido
+                        de este envío está en su web.
+                      </Text>
+                    </View>
+                  )}
                 </View>
               )}
 
               <View className="mt-6 gap-3">
-                {detail.data.source === 'carrier' ? (
+                {detail.data.source === 'carrier' && parcel.carrier.pollSupported ? (
                   <Pressable
                     accessibilityRole="button"
                     disabled={refresh.isPending}
@@ -209,12 +262,16 @@ export default function ParcelDetailScreen() {
                     Avisarme de los cambios
                   </Text>
                   <Text className="mt-0.5 text-xs text-muted-foreground">
-                    Te escribimos cuando el paquete cambia de estado.
+                    {parcel.carrier.pollSupported
+                      ? 'Te escribimos cuando el paquete cambia de estado.'
+                      : `Moovo todavía no recibe el estado de ${parcel.carrier.name}, así que no hay cambios que avisar.`}
                   </Text>
                 </View>
                 <Switch
                   value={parcel.notifyOnStateChange}
-                  disabled={setNotify.isPending}
+                  // A carrier with no feed produces no state change, so leaving
+                  // this switchable would store a preference nothing can honour.
+                  disabled={setNotify.isPending || !parcel.carrier.pollSupported}
                   onValueChange={(value) => setNotify.mutate(value)}
                   accessibilityLabel="Avisarme de los cambios de estado"
                 />

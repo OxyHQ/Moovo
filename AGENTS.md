@@ -143,6 +143,28 @@ Identifiers, matching the existing three: app name `Moovo Tracker`, slug and
 Cloudflare Pages project `moovo-tracker`, scheme `moovotracker`, bundle and
 package `now.moovo.tracker`.
 
+**Every built-in carrier adapter is DEEP-LINK-ONLY today, and the app must not
+claim otherwise.** `built-in-carriers.ts` says so in its header, `TRACKING_ENABLED`
+defaults to `false`, and `lookupParcel` therefore creates or reads the shared row
+and returns the checkpoints it has — none, for a new number. The tracker app
+branches on `carrier.pollSupported` (which is `capabilities.fetch` off the
+adapter, stored on the row) rather than hardcoding a "coming soon": `false` says
+Moovo does not yet receive that carrier's status and makes the carrier's own page
+the primary action, `true` renders the status and the timeline. An empty timeline
+labelled "the carrier has not registered any movement" blames the carrier for
+Moovo's gap. A carrier gaining a feed flips the row and the app starts rendering
+timelines with no change in the app.
+
+**SEUR, GLS and Amazon have NO detection rule, so the carrier picker is the
+ordinary path.** Their references collide with too much else, and a rule that
+fired on everything would make every number ambiguous. `resolveCarrierOrThrow`
+refuses such a number and asks for a `carrierKey`, so without
+`components/CarrierPicker.tsx` those carriers are unreachable however prominently
+they are listed. The choice is written into the URL (`?carrier=<key>`), not
+component state, so it survives a reload and a shared link — and `moovo` is
+filtered out of the picker, because a row on the internal pointer key without a
+`moovoJobId` is a parcel the detail endpoint can never hydrate.
+
 **The Spanish SEO head lives in `packages/tracker-app/public/index.html`, and
 `app/+html.tsx` would be INERT here.** That file is only used when static
 rendering is enabled; with `web.output: "single"` — what all four apps ship —

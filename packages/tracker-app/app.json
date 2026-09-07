@@ -34,7 +34,7 @@
       "themeColor": "#040711",
       "name": "Rastrear paquete — seguimiento de envíos de todos los transportistas | Moovo Tracker",
       "shortName": "Moovo Tracker",
-      "description": "Rastrea cualquier paquete con un solo número de seguimiento. Moovo Tracker detecta el transportista (Correos, SEUR, DHL, GLS, UPS, FedEx y cientos más) y te muestra el estado en una sola línea de tiempo. Gratis y sin cuenta."
+      "description": "Rastrea cualquier paquete con un solo número de seguimiento. Moovo Tracker identifica el transportista (Correos, SEUR, DHL, GLS, UPS, FedEx y más) y te lleva directo al estado de tu envío. Gratis y sin cuenta."
     },
     "plugins": [
       "expo-router",

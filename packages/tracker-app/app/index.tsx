@@ -35,7 +35,7 @@ export default function HomeScreen() {
         <title>Rastrear paquete — seguimiento de envíos | Moovo Tracker</title>
         <meta
           name="description"
-          content="Pega tu número de seguimiento y Moovo detecta el transportista y te muestra dónde está tu paquete. Correos, SEUR, DHL, GLS, UPS, FedEx y cientos más."
+          content="Pega tu número de seguimiento y Moovo identifica el transportista y te lleva directo al estado de tu paquete. Correos, SEUR, DHL, GLS, UPS, FedEx y más."
         />
       </Head>
 
@@ -68,8 +68,8 @@ export default function HomeScreen() {
             Rastrea tu paquete
           </Text>
           <Text className="mt-2 text-base text-muted-foreground">
-            Pega el número de seguimiento. Detectamos el transportista y te mostramos dónde
-            está tu envío, en una sola línea de tiempo.
+            Pega el número de seguimiento. Identificamos el transportista y te llevamos
+            directo al estado de tu envío, sin buscar en cada web.
           </Text>
 
           <View className="mt-6">
@@ -85,7 +85,7 @@ export default function HomeScreen() {
                     key={recent.trackingNumber}
                     accessibilityRole="button"
                     accessibilityLabel={`Ver ${recent.trackingNumber} de ${recent.carrierName}`}
-                    onPress={() => router.push(`/t/${encodeURIComponent(recent.trackingNumber)}`)}
+                    onPress={() => router.push(`/track/${encodeURIComponent(recent.trackingNumber)}`)}
                     className="rounded-2xl border border-border bg-card p-4 active:opacity-70"
                   >
                     <Text className="text-sm font-semibold text-foreground">
@@ -109,8 +109,8 @@ export default function HomeScreen() {
                 ¿Sigues varios paquetes?
               </Text>
               <Text className="mt-1 text-sm text-muted-foreground">
-                Con una cuenta de Oxy guardas tus envíos y te avisamos cuando cambian de
-                estado. Rastrear sigue siendo gratis y sin cuenta.
+                Con una cuenta de Oxy los tienes todos en una sola lista. Rastrear sigue
+                siendo gratis y sin cuenta.
               </Text>
               <Pressable
                 accessibilityRole="button"

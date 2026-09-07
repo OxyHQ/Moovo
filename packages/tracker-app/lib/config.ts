@@ -14,8 +14,13 @@ export const PROD_API_BASE_URL = 'https://api.moovo.now';
 // Oxy SSO client id for Moovo Tracker. The committed fallback is Moovo's
 // registered public RP client id (oxy_dk_ publicKey) — a public client
 // identifier, safe to commit. EXPO_PUBLIC_OXY_CLIENT_ID overrides it at build.
+//
+// `||` and NOT `??`: the deploy workflow passes `${{ vars.EXPO_PUBLIC_OXY_CLIENT_ID }}`,
+// which is the EMPTY STRING when the repo variable is unset — not undefined. `??`
+// would accept that empty string, and an empty client id does not fail loudly:
+// the app builds, deploys and renders, and only sign-in is dead.
 export const OXY_CLIENT_ID =
-  process.env.EXPO_PUBLIC_OXY_CLIENT_ID ??
+  process.env.EXPO_PUBLIC_OXY_CLIENT_ID ||
   'oxy_dk_f0348545dad800903773ddd598183e021cc81e01116ba60b';
 
 const ENV = {

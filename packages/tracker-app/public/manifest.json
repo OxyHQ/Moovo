@@ -1,7 +1,7 @@
 {
   "name": "Moovo Tracker",
   "short_name": "Moovo Tracker",
-  "description": "Rastrea cualquier paquete: pega el número de seguimiento y Moovo detecta el transportista y te muestra el estado.",
+  "description": "Rastrea cualquier paquete: pega el número de seguimiento y Moovo identifica el transportista y te lleva directo al estado.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#040711",

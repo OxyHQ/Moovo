@@ -21,7 +21,7 @@ export function TrackingSearch({ autoFocus = false }: { autoFocus?: boolean }) {
 
   const submit = () => {
     if (!canSubmit) return;
-    router.push(`/t/${encodeURIComponent(trimmed)}`);
+    router.push(`/track/${encodeURIComponent(trimmed)}`);
   };
 
   return (
@@ -62,7 +62,7 @@ export function TrackingSearch({ autoFocus = false }: { autoFocus?: boolean }) {
       </View>
 
       <Text className="mt-2 px-1 text-xs text-muted-foreground">
-        Correos, SEUR, DHL, GLS, UPS, FedEx, Amazon y cientos más. No hace falta cuenta.
+        Correos, SEUR, DHL, GLS, UPS, FedEx, Amazon y más. No hace falta cuenta.
       </Text>
     </View>
   );

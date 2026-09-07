@@ -11,7 +11,12 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: true,
     },
     mutations: {
-      retry: 1,
+      // NOT retried. Every mutation here is non-idempotent from the client's
+      // side: a DELETE whose response is lost has already removed the
+      // subscription, so the retry answers 404 and the user is told their
+      // successful deletion failed. Same shape for the 202 refresh, which the
+      // server rate-limits on a cooldown.
+      retry: 0,
     },
   },
 });
