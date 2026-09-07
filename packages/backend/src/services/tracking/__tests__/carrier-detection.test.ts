@@ -126,6 +126,63 @@ describe('detectCarriers', () => {
     expect(everything).not.toContain('amazon');
   });
 
+  it('claims a USPS IMpb label, and stops FedEx from being the silent answer', () => {
+    // A 22-digit `9405…` number is USPS. FedEx's `\d{22}` shape rule claims it
+    // too, and before `usps` existed FedEx was the ONLY claimant, so it was
+    // picked with no question asked and the parcel would have shown "no
+    // information" forever while Moovo polled a carrier that never had it.
+    const keys = detectCarriers('9405511899223197428490').map((c) => c.carrierKey);
+    expect(keys).toContain('usps');
+    expect(keys).toContain('fedex');
+  });
+
+  it('ASKS for a 22-digit number rather than guessing between USPS and FedEx', () => {
+    // The consequence of the entry above, stated as the behaviour a user sees.
+    // Neither carrier has a check digit implemented, so nothing breaks the tie
+    // and the picker is the honest answer.
+    const resolved = resolveDetection(detectCarriers('9405511899223197428490'));
+    expect(resolved.carrierKey).toBeNull();
+    expect(resolved.candidates.length).toBeGreaterThan(1);
+  });
+
+  it('routes an S10 number with a US suffix to USPS', () => {
+    expect(resolveDetection(detectCarriers('RR123456785US')).carrierKey).toBe('usps');
+  });
+
+  it('identifies OnTrac and Veho by prefixes nothing else claims', () => {
+    expect(resolveDetection(detectCarriers('C12345678901234')).carrierKey).toBe('ontrac');
+    expect(resolveDetection(detectCarriers('D12345678901234')).carrierKey).toBe('ontrac');
+    expect(resolveDetection(detectCarriers('1LS7238391823')).carrierKey).toBe('veho');
+  });
+
+  it('never claims a number for the Spanish carriers that are picked by hand', () => {
+    // Correos Express, MRW, Nacex, CTT, DHL Parcel, Paack, Envialia, Tipsa and
+    // Zeleris all use bare digit runs that collide with each other and with
+    // Correos' own domestic format. A rule per carrier would make every numeric
+    // Spanish parcel ambiguous — a worse product than the picker.
+    const byHand = [
+      'correos-express',
+      'mrw',
+      'nacex',
+      'ctt-express',
+      'dhl-parcel',
+      'paack',
+      'envialia',
+      'tipsa',
+      'zeleris',
+      'dhl-ecommerce',
+    ];
+    const everything = [
+      ...detectCarriers('1Z999AA10123456784'),
+      ...detectCarriers('RR123456785ES'),
+      ...detectCarriers('123456789012'),
+      ...detectCarriers('1234567890'),
+      ...detectCarriers('9405511899223197428490'),
+      ...detectCarriers('PQ123456789'),
+    ].map((candidate) => candidate.carrierKey);
+    for (const key of byHand) expect(everything).not.toContain(key);
+  });
+
   it('never claims a number for the internal moovo carrier', () => {
     // A Moovo parcel is created by BOOKING, never by pasting: its row is a
     // pointer at a job. Detecting one from a number would let anyone conjure a

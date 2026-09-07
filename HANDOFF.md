@@ -56,6 +56,23 @@ Cloudflare Pages project variable) before the SSO RP flow works for Moovo.
   local token still verifies (`GET /user/tokens/verify`) before assuming the
   secret drifted: if the token itself was revoked, rotating the secret from that
   file copies the dead credential back in.
+- **TODO — FedEx Track API credentials, and the one live call that confirms the
+  mapping.** `services/tracking/adapters/fedex.ts` is written and unit-tested,
+  but its fixtures are built from FedEx's published shape, so they pin THIS
+  CODE'S READING of that shape and cannot prove FedEx sends those field names.
+  To finish it: register at developer.fedex.com, set `FEDEX_CLIENT_ID` and
+  `FEDEX_CLIENT_SECRET` (both, or the carrier stays deep-link-only), point
+  `FEDEX_BASE_URL` at the sandbox first, track one real number, and compare the
+  response against the fixtures in `__tests__/fedex.test.ts`. Only then set
+  `TRACKING_ENABLED=true` and `UPDATE tracking_carriers SET poll_supported = true
+  WHERE key = 'fedex'` — seeding is `ON CONFLICT DO NOTHING` and will never do it
+  for you, which is the point: nothing starts polling because a deploy happened.
+
+  Every other carrier in the catalogue is deep-link-only and needs no
+  credentials. `source_kind = 'public_page'` remains a LEGAL decision per
+  carrier, owned by legal, and no carrier is enabled in that mode without
+  approval.
+
 - **KNOWN — the Pages workflows can rate-limit each other.** A push touching
   `package.json` or `bun.lock` matches every Pages workflow's path filter, so
   they all fire at once against one account. On 2026-09-06 that returned
