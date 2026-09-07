@@ -60,10 +60,20 @@ Cloudflare Pages project variable) before the SSO RP flow works for Moovo.
   mapping.** `services/tracking/adapters/fedex.ts` is written and unit-tested,
   but its fixtures are built from FedEx's published shape, so they pin THIS
   CODE'S READING of that shape and cannot prove FedEx sends those field names.
+  The request flow and the response FIELD NAMES have since been corroborated
+  against a real recorded FedEx response published by PackageMate (MIT), so the
+  envelope, `derivedCode`, the offsets on scan dates, `ESTIMATED_DELIVERY`,
+  `serviceDetail.description` and `shipperInformation.address.countryCode` match
+  a live payload — and scan events really do arrive newest-first, which is why
+  the adapter sorts. **The ERROR shape remains unconfirmed**, because a recorded
+  success cannot show one; not-found is therefore matched on a pattern and every
+  other error is thrown into backoff, which is the safe direction.
+
   To finish it: register at developer.fedex.com, set `FEDEX_CLIENT_ID` and
   `FEDEX_CLIENT_SECRET` (both, or the carrier stays deep-link-only), point
-  `FEDEX_BASE_URL` at the sandbox first, track one real number, and compare the
-  response against the fixtures in `__tests__/fedex.test.ts`. Only then set
+  `FEDEX_BASE_URL` at the sandbox first, track one real number AND one
+  deliberately invalid one — the invalid one is the whole point, since it is the
+  only way to see the error code. Only then set
   `TRACKING_ENABLED=true` and `UPDATE tracking_carriers SET poll_supported = true
   WHERE key = 'fedex'` — seeding is `ON CONFLICT DO NOTHING` and will never do it
   for you, which is the point: nothing starts polling because a deploy happened.
