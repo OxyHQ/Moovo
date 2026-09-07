@@ -1,0 +1,22 @@
+{
+  "name": "Moovo Tracker",
+  "short_name": "Moovo Tracker",
+  "description": "Rastrea cualquier paquete: pega el número de seguimiento y Moovo detecta el transportista y te muestra el estado.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#040711",
+  "theme_color": "#040711",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

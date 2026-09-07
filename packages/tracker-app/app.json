@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "owner": "oxyhq",
+    "name": "Moovo Tracker",
+    "slug": "moovo-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon-512.png",
+    "scheme": "moovotracker",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#040711"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "now.moovo.tracker"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon-512-maskable.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "now.moovo.tracker",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/icon-192.png",
+      "lang": "es",
+      "themeColor": "#040711",
+      "name": "Rastrear paquete — seguimiento de envíos de todos los transportistas | Moovo Tracker",
+      "shortName": "Moovo Tracker",
+      "description": "Rastrea cualquier paquete con un solo número de seguimiento. Moovo Tracker detecta el transportista (Correos, SEUR, DHL, GLS, UPS, FedEx y cientos más) y te muestra el estado en una sola línea de tiempo. Gratis y sin cuenta."
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization",
+      "expo-font",
+      "expo-image",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-asset",
+      "@oxyhq/app-preset/plugin/withSharedUserId",
+      "@oxyhq/services/plugins/withSharedIdentityReader"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {}
+    }
+  }
+}

@@ -23,17 +23,19 @@ not as the domain.** The live courier domain is `courier-company`,
 | `@moovo/frontend` | `packages/frontend/` | Expo customer app |
 | `@moovo/courier-app` | `packages/courier-app/` | Expo app for couriers, shipped as **Moovo Go** |
 | `@moovo/fleet-dashboard` | `packages/fleet-dashboard/` | Fleet and ops dashboard, shipped as **Moovo Hub** |
+| `@moovo/tracker-app` | `packages/tracker-app/` | Public parcel-tracking app, shipped as **Moovo Tracker** |
 | `@moovo/backend` | `packages/backend/` | Express API (TypeScript, PostgreSQL, Socket.IO) |
 | `@moovo/shared-types` | `packages/shared-types/` | Domain DTOs, still largely inherited marketplace shapes awaiting courier replacements |
 
 **The root script names do not match the package names**, which is not guessable
 from the tree: `bun run dev:courier` / `build:courier` drive `@moovo/courier-app`
-(Go), and `bun run dev:hub` / `build:hub` drive `@moovo/fleet-dashboard` (Hub).
+(Go), `bun run dev:hub` / `build:hub` drive `@moovo/fleet-dashboard` (Hub), and
+`bun run dev:tracker` / `build:tracker` drive `@moovo/tracker-app` (Tracker).
 `dev:frontend` adds `--clear --tunnel`. Shared types build with
 `bun run build:shared-types`.
 
 Stack: Expo, NativeWind (Tailwind + postcss), Reanimated, Zustand, TanStack Query
-and expo-router on all three apps; Express, PostgreSQL (drizzle-orm +
+and expo-router on all four apps; Express, PostgreSQL (drizzle-orm +
 postgres.js via `@oxyhq/db`), optional Redis and Socket.IO on the backend;
 `@oxyhq/bloom` for UI; `@oxyhq/core` (including `@oxyhq/core/server`) and
 `@oxyhq/services` for device-first auth. Client id is
@@ -116,14 +118,12 @@ from any carrier, Moovo works out whose it is, fetches the checkpoints and shows
 one timeline. It ships as its own Expo app but on **this** backend — one Express,
 one Postgres, one `@moovo/shared-types`.
 
-**IN FLIGHT.** What has landed is the SCHEMA and its retention:
-`packages/backend/src/db/schema/tracking.ts` (5 tables),
-`db/tracking/retention.ts`, and the two `db/expiry.ts` registrations. The
-adapters, the detector, the poller, the routes and the app are not written yet,
-so anything below naming `services/tracking/` or an endpoint is describing a
-decision already taken, not a file already present. The invariants are recorded
-now because they are properties of the schema, and they are the ones that fail
-SILENTLY once code starts arriving.
+**The backend is LIVE; the app is NOT DEPLOYED YET.** The schema, its retention,
+the adapters, the detector, the poller, the routes and the webhook all landed and
+are serving on the deployed API. `packages/tracker-app` exists and builds, and
+`deploy-cloudflare-tracker.yml` is wired — but the Pages project `moovo-tracker`
+and the DNS for `tracker.moovo.now` are still handoff, so nothing answers on that
+hostname. Everything below names files that are present.
 
 **It is `Moovo Tracker` at `tracker.moovo.now`, and it breaks the `Go`/`Hub`
 naming pattern ON PURPOSE.** `Go` and `Hub` are one-syllable ROLE nouns that do
@@ -142,6 +142,20 @@ for the one surface whose natural use is sharing a link.
 Identifiers, matching the existing three: app name `Moovo Tracker`, slug and
 Cloudflare Pages project `moovo-tracker`, scheme `moovotracker`, bundle and
 package `now.moovo.tracker`.
+
+**The Spanish SEO head lives in `packages/tracker-app/public/index.html`, and
+`app/+html.tsx` would be INERT here.** That file is only used when static
+rendering is enabled; with `web.output: "single"` — what all four apps ship —
+`@expo/cli` builds the shell from `public/index.html` if one exists and its own
+default otherwise, substituting `%LANG_ISO_CODE%` and `%WEB_TITLE%` from
+`app.json` and appending `expo.web.description`. Writing the head in a
+`+html.tsx` compiles, deploys and shows nothing: the crawler gets Expo's default
+shell with the bare app name as its title. **Both substitutions are
+`String.replace` with a STRING pattern, so only the FIRST occurrence in the file
+is replaced** — a comment mentioning `%WEB_TITLE%` above the `<title>` that uses
+it silently eats the substitution and ships the raw placeholder as the page
+title. Verify by grepping `dist/index.html` after a build, never by reading the
+source.
 
 **The cost unit is `(carrier, tracking number)`, not `(user, parcel)`**, and that
 is a UNIQUE INDEX rather than a convention. `tracked_parcels` is one shared
@@ -375,7 +389,7 @@ model exists to prevent.
 - **API** to AWS ECS Fargate via `.github/workflows/deploy-aws.yml`
   (`linux/arm64`, ECR `oxy/moovo`). The ECS service, task definition, ALB rule,
   ECR repo and SSM params must be provisioned in `oxy-infra` first (handoff).
-- **Three separate Cloudflare Pages projects**, one workflow each, all using
+- **Four separate Cloudflare Pages projects**, one workflow each, all using
   `wrangler pages deploy`:
 
   | Workflow | Package | Pages project |
@@ -383,9 +397,10 @@ model exists to prevent.
   | `deploy-cloudflare.yml` | `packages/frontend` | `moovo` |
   | `deploy-cloudflare-go.yml` | `packages/courier-app` | `moovo-go` |
   | `deploy-cloudflare-hub.yml` | `packages/fleet-dashboard` | `moovo-hub` |
+  | `deploy-cloudflare-tracker.yml` | `packages/tracker-app` | `moovo-tracker` |
 
   Each project and its DNS must be created before the workflow can succeed
-  (handoff). A change to the shared frontend stack usually needs all three
+  (handoff). A change to the shared frontend stack usually needs all four
   redeployed, not just `deploy-cloudflare.yml`.
 - CI (`.github/workflows/ci.yml`) runs lint, tests, the API build and the app
   build on every push and PR.

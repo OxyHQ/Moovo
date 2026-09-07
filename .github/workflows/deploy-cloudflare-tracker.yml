@@ -1,0 +1,51 @@
+# Cloudflare Pages deploy for Moovo Tracker (tracker.moovo.now).
+#
+# The Pages project `moovo-tracker` and its DNS must exist before this can
+# succeed — same handoff as `moovo`, `moovo-go` and `moovo-hub`. A run failing
+# with "project not found" means the project has not been created yet, not that
+# the build is broken.
+name: Deploy Moovo Tracker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-cloudflare-tracker.yml'
+      - 'packages/tracker-app/**'
+      - 'package.json'
+      - 'bun.lock'
+
+jobs:
+  deploy-app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+      - run: bun install --frozen-lockfile
+      - name: Build app (Expo web export)
+        run: bun run build:tracker
+        timeout-minutes: 60
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+          NODE_ENV: production
+          # Public, compile-time Expo env. EXPO_PUBLIC_OXY_CLIENT_ID is the
+          # registered Oxy RP client id (handoff: register it and set this repo
+          # variable before the SSO RP flow works); the API URL points at the
+          # Moovo backend, which is the SAME backend the other three apps use —
+          # `/tracking` is mounted on that one Express.
+          EXPO_PUBLIC_OXY_CLIENT_ID: ${{ vars.EXPO_PUBLIC_OXY_CLIENT_ID }}
+          EXPO_PUBLIC_OXY_API_URL: ${{ vars.EXPO_PUBLIC_OXY_API_URL || 'https://api.oxy.so' }}
+          EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://api.moovo.now' }}
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: '3.114.0'
+          command: pages deploy packages/tracker-app/dist --project-name=moovo-tracker --branch=main

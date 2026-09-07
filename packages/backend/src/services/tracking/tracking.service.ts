@@ -52,13 +52,13 @@ import {
   toPublicLookup,
   toTrackedParcel,
 } from './tracking-hydration.service.js';
-import type { FiatCurrency, JobView } from '@moovo/shared-types';
 import type {
   CarrierGuess,
+  FiatCurrency,
   PublicParcelLookup,
   TrackedParcel,
+  TrackedParcelDetail,
   TrackingCarrierSummary,
-  TrackingCheckpoint,
   TrackingStatus,
 } from '@moovo/shared-types';
 
@@ -264,17 +264,6 @@ export async function listParcels(
 }
 
 /**
- * A parcel's detail, discriminated by where its timeline comes from.
- *
- * The `moovo_job` variant carries the existing `JobView` IMPORTED rather than
- * restated, so there is no second shape of a job on the wire and the app's
- * existing map and timeline components work unchanged.
- */
-export type TrackedParcelDetailView =
-  | { source: 'carrier'; parcel: TrackedParcel; checkpoints: TrackingCheckpoint[] }
-  | { source: 'moovo_job'; parcel: TrackedParcel; job: JobView; checkpoints: [] };
-
-/**
  * One parcel, scoped to its owner. A miss is a 404, never a 403.
  *
  * Branches on `moovoJobId`, which is what makes the pointer design pay: one of
@@ -286,7 +275,7 @@ export async function getParcelDetail(
   subscriptionId: string,
   oxyUserId: string,
   displayCurrency: FiatCurrency = 'EUR',
-): Promise<TrackedParcelDetailView> {
+): Promise<TrackedParcelDetail> {
   const subscription = await findSubscriptionForUser(subscriptionId, oxyUserId);
   if (!subscription) throw notFound('Parcel not found');
 

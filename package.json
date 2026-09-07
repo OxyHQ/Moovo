@@ -19,6 +19,8 @@
     "build:courier": "bun run --filter @moovo/courier-app build",
     "dev:hub": "bun run --filter @moovo/fleet-dashboard dev",
     "build:hub": "bun run --filter @moovo/fleet-dashboard build",
+    "dev:tracker": "bun run --filter @moovo/tracker-app dev",
+    "build:tracker": "bun run --filter @moovo/tracker-app build",
     "build:backend": "bun run build:shared-types && bun run --filter @moovo/backend build",
     "start:frontend": "bun run --filter @moovo/frontend start",
     "start:backend": "bun run --filter @moovo/backend start",
