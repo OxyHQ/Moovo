@@ -177,12 +177,22 @@ rendering is enabled; with `web.output: "single"` — what all four apps ship �
 default otherwise, substituting `%LANG_ISO_CODE%` and `%WEB_TITLE%` from
 `app.json` and appending `expo.web.description`. Writing the head in a
 `+html.tsx` compiles, deploys and shows nothing: the crawler gets Expo's default
-shell with the bare app name as its title. **Both substitutions are
-`String.replace` with a STRING pattern, so only the FIRST occurrence in the file
-is replaced** — a comment mentioning `%WEB_TITLE%` above the `<title>` that uses
-it silently eats the substitution and ships the raw placeholder as the page
-title. Verify by grepping `dist/index.html` after a build, never by reading the
-source.
+shell with the bare app name as its title.
+
+**Every injection is `String.replace` with a STRING pattern, so only the FIRST
+occurrence in the file is replaced, and there are FOUR targets:**
+`%LANG_ISO_CODE%`, `%WEB_TITLE%`, `</head>` (description, theme colour, the CSS
+links, the favicon) and `</body>` (the bundle scripts). The template therefore
+carries NO PROSE — a comment mentioning one of them consumes that injection.
+Both halves of that have already happened: a comment naming `%WEB_TITLE%` shipped
+the raw placeholder as the title, and a comment naming `</head>` swallowed the
+Tailwind stylesheet, which boots fine (scripts go before `</body>`) and renders
+every screen unstyled — `bg-background` transparent, `text-foreground` black on
+Bloom's dark ground, indistinguishable from "the UI does not load".
+
+`deploy-cloudflare-tracker.yml` asserts the title and the stylesheet in the
+exported `dist/index.html`, so this fails the build rather than the page. Verify
+by grepping the BUILD OUTPUT, never by reading the template.
 
 **The cost unit is `(carrier, tracking number)`, not `(user, parcel)`**, and that
 is a UNIQUE INDEX rather than a convention. `tracked_parcels` is one shared

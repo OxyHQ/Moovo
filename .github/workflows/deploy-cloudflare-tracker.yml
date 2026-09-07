@@ -42,6 +42,8 @@ jobs:
           EXPO_PUBLIC_OXY_CLIENT_ID: ${{ vars.EXPO_PUBLIC_OXY_CLIENT_ID }}
           EXPO_PUBLIC_OXY_API_URL: ${{ vars.EXPO_PUBLIC_OXY_API_URL || 'https://api.oxy.so' }}
           EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL || 'https://api.moovo.now' }}
+      - name: Verify the exported web shell
+        run: node packages/tracker-app/scripts/verify-web-shell.mjs packages/tracker-app/dist
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:

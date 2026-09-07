@@ -74,6 +74,32 @@ Cloudflare Pages project `moovo-tracker`, via
 `.github/workflows/deploy-cloudflare-tracker.yml`. The project and its DNS must
 exist before the workflow can succeed (handoff) — see `HANDOFF.md`.
 
+## `public/index.html` is a SUBSTITUTION TARGET, so it carries no prose
+
+With `web.output: "single"` — what all four apps ship — `app/+html.tsx` is never
+rendered. A head written there compiles, deploys and shows nothing. `@expo/cli`
+reads `public/index.html` as its template instead, and fills it in with plain
+`String.replace` and STRING patterns, which replace only the FIRST occurrence:
+
+| Target | What Expo puts there |
+|---|---|
+| `%LANG_ISO_CODE%` | `expo.web.lang` |
+| `%WEB_TITLE%` | `expo.web.name` |
+| `</head>` | `expo.web.description`, `themeColor`, the CSS `<link>`s, the favicon |
+| `</body>` | the bundle `<script>`s |
+
+**So the file must not contain those four strings anywhere except where they
+belong.** This has bitten twice. A comment mentioning `%WEB_TITLE%` above the
+`<title>` shipped the raw placeholder as the page title. A comment mentioning
+`</head>` swallowed the Tailwind stylesheet into itself — the app still booted,
+because scripts go before `</body>`, and rendered every screen unstyled:
+`bg-background` transparent and `text-foreground` defaulting to black on Bloom's
+dark ground, which looks exactly like "the UI does not load".
+
+The deploy workflow asserts both after the export, so a template that eats an
+injection fails the build instead of shipping. **Explanations belong in this
+file, not in the template.**
+
 ## `carrier.pollSupported` decides what the UI may claim
 
 **Every built-in adapter is deep-link-only today.** `built-in-carriers.ts` says

@@ -6,32 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>%WEB_TITLE%</title>
 
-    <!--
-      The web shell for Moovo Tracker.
-
-      This file is the CUSTOM TEMPLATE Expo uses for `web.output: "single"`:
-      `@expo/cli` reads `public/index.html` in preference to its own default,
-      substitutes `%LANG_ISO_CODE%` and `%WEB_TITLE%` from `app.json`, and then
-      appends the bundle's <script> and <link rel="stylesheet"> tags before
-      </head>. `app/+html.tsx` does NOT apply here — that file is only used when
-      static rendering is enabled — so head content the crawler must see in the
-      served HTML belongs in THIS file.
-
-      The copy is SPANISH on purpose. Moovo Tracker is the only Moovo surface a
-      stranger reaches without knowing Moovo exists, by searching *rastrear
-      paquete* or *seguimiento de paquete*. The word "Tracker" does no SEO in
-      Spanish, so the title, the description and the structured data carry the
-      terms people actually type — from the first deploy, not as later polish.
-
-      `<meta name="description">` is NOT written here: Expo appends it from
-      `expo.web.description`, so `app.json` stays its single source.
-
-      KEEP THIS COMMENT BELOW THE <title>. Expo substitutes the placeholders
-      with `String.prototype.replace` and a STRING pattern, which replaces only
-      the FIRST occurrence — so a comment mentioning a placeholder above the tag
-      that uses it silently eats the substitution, and the served page ships the
-      raw placeholder as its title.
-    -->
+    <!-- Expo's web shell template. Substitution targets only: no prose here. See README. -->
 
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
     <meta name="referrer" content="origin-when-cross-origin" />
