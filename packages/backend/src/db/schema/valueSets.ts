@@ -168,6 +168,18 @@ export const NOTIFICATION_TYPES = [
   'job_delivered',
   'job_cancelled',
   'dispatch_no_courier',
+  /**
+   * Moovo Tracker. FIVE types rather than one, because the app needs per-type
+   * mute switches and the copy differs — but deliberately NOT one per status:
+   * `pending`, `info_received` and `in_transit` are silent. Notifying on every
+   * checkpoint is the fastest way to have a tracker's push permission revoked,
+   * and that is a product decision worth writing down rather than a gap.
+   */
+  'tracking_update',
+  'tracking_out_for_delivery',
+  'tracking_delivered',
+  'tracking_exception',
+  'tracking_available_for_pickup',
 ] as const;
 export const NOTIFICATION_CHANNELS = [
   'push',

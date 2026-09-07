@@ -29,6 +29,18 @@ export const EVENTS = {
   JOB_DELIVERED: 'job:delivered',
   /** A job was cancelled. */
   JOB_CANCELLED: 'job:cancelled',
+
+  /**
+   * A tracked parcel gained checkpoints without changing status.
+   *
+   * Delivered ONLY to authenticated subscribers, because `socket.ts` joins the
+   * server-verified `user:<oxyUserId>` room and nothing else. An anonymous
+   * lookup holds no room and receives nothing — which is the tracker's design,
+   * not a gap: without an account there is no identity to address.
+   */
+  TRACKING_UPDATED: 'tracking:updated',
+  /** A tracked parcel changed status. */
+  TRACKING_STATUS: 'tracking:status',
 } as const;
 
 /** Union of every Moovo transport socket event name. */

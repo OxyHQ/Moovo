@@ -28,6 +28,7 @@ import reportsRouter from './routes/reports.js';
 import adminRouter from './routes/admin/index.js';
 import { createCrowdSourceWebhookRoutes } from './routes/crowdsource-webhook.js';
 import { startModerationOutboxDispatcher } from './services/moderation/moderation-outbox.dispatcher.js';
+import { startTrackingPollDispatcher } from './services/tracking/tracking-poll.dispatcher.js';
 import { startExpirySweeper, stopExpirySweeper } from './db/expiry.js';
 
 // Socket.io
@@ -289,6 +290,22 @@ try {
     startModerationOutboxDispatcher();
 
     /**
+     * Keeps tracked parcels current, on every task rather than on a leader —
+     * the same lease argument as the outbox above.
+     *
+     * Deliberately NOT a BullMQ repeatable job: those only run when REDIS_URL
+     * is set, and a tracker that silently stops polling on a deployment without
+     * Redis is the worst available failure shape. Every table keeps filling, no
+     * checkpoint ever arrives, and the symptom reads as every carrier being
+     * down at once.
+     *
+     * Announces itself when it does NOT start, because the gate has two halves
+     * (the flag AND a registered adapter that can fetch) and "off on purpose"
+     * has to be distinguishable from "never wired up".
+     */
+    startTrackingPollDispatcher();
+
+    /**
      * Reaps the rows the five Mongo TTL indexes used to reap before the port.
      *
      * This call is the half of the expiry work that `@oxyhq/db` cannot
@@ -357,6 +374,14 @@ try {
       );
       await stopModerationOutboxDispatcher();
       log.general.info('Moderation outbox dispatcher stopped');
+
+      // Same reasoning for the tracker: an abandoned lease is reclaimed once it
+      // lapses, but finishing cleanly avoids a lease-length delay per deploy.
+      const { stopTrackingPollDispatcher } = await import(
+        './services/tracking/tracking-poll.dispatcher.js'
+      );
+      await stopTrackingPollDispatcher();
+      log.general.info('Tracking poll dispatcher stopped');
 
       // Let a sweep in flight finish. Its DELETEs are bounded batches, so
       // this is short; abandoning one mid-batch is safe (the next run picks
