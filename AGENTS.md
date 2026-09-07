@@ -118,12 +118,17 @@ from any carrier, Moovo works out whose it is, fetches the checkpoints and shows
 one timeline. It ships as its own Expo app but on **this** backend — one Express,
 one Postgres, one `@moovo/shared-types`.
 
-**The backend is LIVE; the app is NOT DEPLOYED YET.** The schema, its retention,
-the adapters, the detector, the poller, the routes and the webhook all landed and
-are serving on the deployed API. `packages/tracker-app` exists and builds, and
-`deploy-cloudflare-tracker.yml` is wired — but the Pages project `moovo-tracker`
-and the DNS for `tracker.moovo.now` are still handoff, so nothing answers on that
-hostname. Everything below names files that are present.
+**LIVE at `tracker.moovo.now` since 2026-09-07**, backend and app both. The
+schema, retention, adapters, detector, poller, routes and webhook serve from
+`api.moovo.now`; `packages/tracker-app` deploys to the Pages project
+`moovo-tracker` via `deploy-cloudflare-tracker.yml`. Everything below names
+files that are present.
+
+**What is live is DETECTION AND DEEP LINKING, not status.** `/tracking/carriers`
+answers with ten carriers and `pollSupported: false` on every one of them, so a
+lookup identifies the carrier, stores the shared row and returns that carrier's
+own tracking URL — never a checkpoint. The invariants below describe the whole
+design; the paragraph after next describes what the app may therefore SAY.
 
 **It is `Moovo Tracker` at `tracker.moovo.now`, and it breaks the `Go`/`Hub`
 naming pattern ON PURPOSE.** `Go` and `Hub` are one-syllable ROLE nouns that do
