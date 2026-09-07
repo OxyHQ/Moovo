@@ -240,6 +240,19 @@ try {
     })
     .catch((err) => log.general.error({ err }, 'Provider adapter registration/seed failed'));
 
+  // The same two steps for the tracker's carrier catalogue. A separate registry
+  // and a separate table on purpose: a row in `providers` becomes an option in
+  // a customer's checkout, and most carriers Moovo can TRACK are ones it cannot
+  // book with. See AGENTS.md §"Moovo Tracker".
+  import('./services/tracking/register-tracking-adapters.js')
+    .then(({ registerBuiltInTrackingAdapters }) => {
+      registerBuiltInTrackingAdapters();
+      return import('./services/tracking/seed-tracking-carriers.js').then(
+        ({ seedTrackingCarriers }) => seedTrackingCarriers(),
+      );
+    })
+    .catch((err) => log.general.error({ err }, 'Tracking carrier registration/seed failed'));
+
   server.listen(PORT, '0.0.0.0', () => {
     log.general.info({ port: PORT }, `API Server running on http://0.0.0.0:${PORT}`);
     // Verify Redis connectivity (non-blocking)
