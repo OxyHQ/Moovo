@@ -38,24 +38,33 @@ Cloudflare Pages project variable) before the SSO RP flow works for Moovo.
   infrastructure moved.
 - **DONE — Pages `moovo`, `moovo-go`, `moovo-hub`.** Created, with DNS. All three
   deployed successfully on 2026-08-26.
-- **TODO — Pages `moovo-tracker` and the DNS for `tracker.moovo.now`.** The app
-  (`packages/tracker-app`) and its workflow
-  (`.github/workflows/deploy-cloudflare-tracker.yml`) are in the repo and the web
-  export builds. The project does not exist, so the workflow's deploy step is the
-  only thing standing between the tracker and production. Nothing else is
-  pending: the `/tracking` API it talks to is already live on `api.moovo.now`.
-- **BLOCKING — `CLOUDFLARE_API_TOKEN` no longer authenticates.** Set 2026-07-15,
-  last worked 2026-08-26. On 2026-09-07 every Pages deploy fails with
-  `Authentication error [code: 10000]` from the Cloudflare API — the token has
-  expired or been revoked, or lost its Pages:Edit permission. This blocks all
-  FOUR Pages workflows, the tracker's included, and cannot be fixed from the
-  repo: rotate the token in Cloudflare and update the repo secret.
-- **KNOWN — the Pages workflows rate-limit each other.** A push touching
+- **DONE — Pages `moovo-tracker` and `tracker.moovo.now`.** Created 2026-09-07 on
+  account `fa4392797e57d4e63ceaaf7b1dc687ed`, production branch `main`,
+  compatibility date `2026-06-22` (matching `moovo-go`). DNS is
+  `CNAME tracker -> moovo-tracker.pages.dev`, proxied, in zone `moovo.now`
+  (`501d6f875f73e0bcf72a34adaa5951b4`) — the same shape as `go` and `hub`. The
+  custom domain is active and the site serves.
+- **DONE — `CLOUDFLARE_API_TOKEN` rotated 2026-09-07.** The previous secret (set
+  2026-07-15, last successful deploy 2026-08-26) had stopped authenticating:
+  every Pages deploy failed with `Authentication error [code: 10000]`. Replaced
+  with the account token in `~/.config/oxy/tokens/cloudflare.token`, and
+  `CLOUDFLARE_ACCOUNT_ID` re-set to the value above. All four Pages workflows
+  deploy again — verified by re-running the three that had failed.
+
+  **The repo secret and that file are now the same credential, so they expire
+  together.** When Pages deploys start failing with `10000`, check whether the
+  local token still verifies (`GET /user/tokens/verify`) before assuming the
+  secret drifted: if the token itself was revoked, rotating the secret from that
+  file copies the dead credential back in.
+- **KNOWN — the Pages workflows can rate-limit each other.** A push touching
   `package.json` or `bun.lock` matches every Pages workflow's path filter, so
-  they all fire at once and hit the same account. On 2026-09-06 that returned
-  `Rate limited [code: 10429]` on all three. A fourth workflow makes it likelier.
-  Not yet addressed; serialising them (a shared `concurrency` group, or a retry
-  with backoff on the wrangler step) is the fix when it next bites.
+  they all fire at once against one account. On 2026-09-06 that returned
+  `Rate limited [code: 10429]` on all three. The tracker merge on 2026-09-07
+  fired all FOUR simultaneously and every one succeeded, so the limit is not hit
+  every time — which is exactly why this is still open rather than fixed: it
+  fails intermittently, and a green run is not evidence it went away.
+  Serialising them (a shared `concurrency` group, or a retry with backoff on the
+  wrangler step) is the fix when it next bites.
 
 ## 4. Courier/transport domain (replaces the inherited marketplace domain)
 
