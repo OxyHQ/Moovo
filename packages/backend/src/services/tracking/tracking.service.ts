@@ -20,6 +20,10 @@
  */
 
 import { getDb } from '../../db/postgres.js';
+import { config } from '../../config/index.js';
+import { log } from '../../lib/logger.js';
+import { findJobWithHistory } from '../../db/transport/jobRepository.js';
+import { hydrateJobs } from '../job-hydration.service.js';
 import { conflict, notFound, validationError } from '../../lib/errors/error-codes.js';
 import {
   findOrCreateParcel,
@@ -48,6 +52,7 @@ import {
   toPublicLookup,
   toTrackedParcel,
 } from './tracking-hydration.service.js';
+import type { FiatCurrency, JobView } from '@moovo/shared-types';
 import type {
   CarrierGuess,
   PublicParcelLookup,
@@ -258,15 +263,29 @@ export async function listParcels(
   return views;
 }
 
-export interface TrackedParcelDetailView {
-  parcel: TrackedParcel;
-  checkpoints: TrackingCheckpoint[];
-}
+/**
+ * A parcel's detail, discriminated by where its timeline comes from.
+ *
+ * The `moovo_job` variant carries the existing `JobView` IMPORTED rather than
+ * restated, so there is no second shape of a job on the wire and the app's
+ * existing map and timeline components work unchanged.
+ */
+export type TrackedParcelDetailView =
+  | { source: 'carrier'; parcel: TrackedParcel; checkpoints: TrackingCheckpoint[] }
+  | { source: 'moovo_job'; parcel: TrackedParcel; job: JobView; checkpoints: [] };
 
-/** One parcel, scoped to its owner. A miss is a 404, never a 403. */
+/**
+ * One parcel, scoped to its owner. A miss is a 404, never a 403.
+ *
+ * Branches on `moovoJobId`, which is what makes the pointer design pay: one of
+ * our own deliveries is hydrated from the JOB — live map, courier, proof of
+ * delivery, its real timeline — rather than from `tracking_checkpoints`, which
+ * for such a parcel is empty by design and stays that way.
+ */
 export async function getParcelDetail(
   subscriptionId: string,
   oxyUserId: string,
+  displayCurrency: FiatCurrency = 'EUR',
 ): Promise<TrackedParcelDetailView> {
   const subscription = await findSubscriptionForUser(subscriptionId, oxyUserId);
   if (!subscription) throw notFound('Parcel not found');
@@ -274,10 +293,34 @@ export async function getParcelDetail(
   const parcel = await findParcelById(subscription.parcelId);
   if (!parcel) throw notFound('Parcel not found');
   const carrier = await requireCarrier(parcel.carrierKey);
+  const view = toTrackedParcel({ subscription, parcel, carrier });
+
+  if (parcel.moovoJobId) {
+    const job = await findJobWithHistory(parcel.moovoJobId, config.jobs.maxLocationPings);
+    if (job) {
+      // `includeCodes` stays FALSE. The pickup and dropoff codes are a
+      // CREDENTIAL — the dropoff code is what proves a recipient is the
+      // intended one — and the tracker is a read surface, not the sender's
+      // handover screen.
+      const [hydrated] = await hydrateJobs([job], displayCurrency, { includeCodes: false });
+      if (hydrated) {
+        return { source: 'moovo_job', parcel: view, job: hydrated, checkpoints: [] };
+      }
+    }
+    // The job vanished under its own pointer. Falling through to the empty
+    // carrier timeline is honest — the parcel is still listed and still
+    // readable — and the inconsistency is left for reconciliation rather than
+    // turned into a 500 on somebody's delivery.
+    log.general.warn(
+      { parcelId: parcel.id, jobId: parcel.moovoJobId },
+      '[Tracking] job pointer resolves to no job',
+    );
+  }
 
   const checkpoints = await listCheckpoints(parcel.id);
   return {
-    parcel: toTrackedParcel({ subscription, parcel, carrier }),
+    source: 'carrier',
+    parcel: view,
     checkpoints: checkpoints.map(toCheckpoint),
   };
 }

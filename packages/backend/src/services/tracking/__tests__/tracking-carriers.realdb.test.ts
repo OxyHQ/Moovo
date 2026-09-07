@@ -61,11 +61,15 @@ describeIfPostgres('seeding the tracking carriers', () => {
   });
 
   it('creates one row per built-in carrier on a cold boot', async () => {
+    // All but `moovo`, which migration 0004 already created: it is structural
+    // rather than catalogue, because booking a job writes a pointer row against
+    // it and a missing row would fail the booking, not merely the tracker.
     const created = await seedTrackingCarriers();
-    expect(created).toBe(BUILT_IN_TRACKING_CARRIERS.length);
+    expect(created).toBe(BUILT_IN_TRACKING_CARRIERS.length - 1);
 
     const carriers = await listEnabledTrackingCarriers();
     expect(carriers).toHaveLength(BUILT_IN_TRACKING_CARRIERS.length);
+    expect(carriers.map((carrier) => carrier.key)).toContain('moovo');
     // Every carrier ships deep-link-only until its client exists AND somebody
     // has approved how we read it. `public_page` in particular is a legal
     // decision per carrier and must never be a side effect of a deploy.

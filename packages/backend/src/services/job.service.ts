@@ -43,6 +43,7 @@ import type {
   GeoPoint,
 } from '@moovo/shared-types';
 import { getDb } from '../db/postgres.js';
+import { createJobPointer } from './tracking/job-pointer.service.js';
 import {
   attachHistory,
   casJobAccepted,
@@ -337,6 +338,21 @@ export async function bookShipment(
     );
     await markQuoteSelected(quoteId, tx);
     await markShipmentBooked(shipmentId, { jobId: created.id, quoteRef: quoteId }, tx);
+
+    // The tracker's pointer at this job, written HERE so it commits with the
+    // job or not at all. A pointer to a job that rolled back would show a
+    // sender a delivery that does not exist; one written after the fact could
+    // simply be missing. `createJobPointer` refuses the root connection for
+    // exactly that reason.
+    await createJobPointer(
+      {
+        jobId: created.id,
+        jobNumber: created.jobNumber,
+        senderOxyUserId,
+        status: created.status as JobStatus,
+      },
+      tx,
+    );
     return { job: created, converged: false };
   });
 

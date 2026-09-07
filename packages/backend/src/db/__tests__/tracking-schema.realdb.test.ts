@@ -79,7 +79,9 @@ describeIfPostgres('the tracking schema', () => {
     await insertCarrier('ups', { source_kind: 'official_api', poll_supported: true });
     await insertCarrier('fedex', { source_kind: 'official_api', poll_supported: true });
     await insertCarrier('mrw', { source_kind: 'deep_link_only' });
-    await insertCarrier('moovo', { source_kind: 'deep_link_only' });
+    // NOT inserted here: `moovo` arrives with migration 0004, because booking a
+    // job writes a pointer row against it inside the job's own transaction and
+    // a missing carrier would fail the foreign key — and therefore the booking.
     await insertParcel('p-base');
   });
 

@@ -29,6 +29,13 @@
       "when": 1788742912251,
       "tag": "0003_careless_logan",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788742913251,
+      "tag": "0004_moovo_tracking_carrier",
+      "breakpoints": true
     }
   ]
 }
