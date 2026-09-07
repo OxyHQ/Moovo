@@ -125,6 +125,24 @@ decision already taken, not a file already present. The invariants are recorded
 now because they are properties of the schema, and they are the ones that fail
 SILENTLY once code starts arriving.
 
+**It is `Moovo Tracker` at `tracker.moovo.now`, and it breaks the `Go`/`Hub`
+naming pattern ON PURPOSE.** `Go` and `Hub` are one-syllable ROLE nouns that do
+not describe a function, so consistency would name this one `Moovo Track`. The
+difference is who each app serves: a courier or a fleet operator is TOLD to
+install Go or Hub and never searches for it, while the tracker is the top of the
+funnel — the only Moovo surface a stranger reaches without knowing Moovo exists,
+by searching "seguimiento de paquete". There the generic noun IS the acquisition
+channel, which is why AfterShip, which has a real name, still lists its consumer
+app as "AfterShip Package Tracker". Two consequences to carry rather than fix
+with the name: "Tracker" does no SEO in Spanish (people search *rastrear
+paquete*, so the `<title>`, the store subtitle and the copy do that work, from
+the first deploy rather than as later polish), and `.now` is an unfamiliar TLD
+for the one surface whose natural use is sharing a link.
+
+Identifiers, matching the existing three: app name `Moovo Tracker`, slug and
+Cloudflare Pages project `moovo-tracker`, scheme `moovotracker`, bundle and
+package `now.moovo.tracker`.
+
 **The cost unit is `(carrier, tracking number)`, not `(user, parcel)`**, and that
 is a UNIQUE INDEX rather than a convention. `tracked_parcels` is one shared
 identity per number; `tracked_parcel_subscriptions` is what multiplies per
