@@ -298,6 +298,18 @@ export interface TrackingConfig {
    * That second half is checked at boot, where the registry is populated.
    */
   readonly enabled: boolean;
+  /**
+   * FedEx Track API credentials, or `undefined` for both.
+   *
+   * BOTH halves or neither: `buildFedexAdapter` hands back the deep-link-only
+   * carrier unless it has a complete pair, so a half-configured deploy is the
+   * carrier this build has always shipped rather than an adapter that fails
+   * every fetch into backoff — which from outside is indistinguishable from
+   * FedEx being down.
+   */
+  readonly fedex:
+    | { readonly clientId: string; readonly clientSecret: string; readonly baseUrl: string }
+    | undefined;
   /** How often the poll dispatcher wakes to claim due parcels. */
   readonly pollIntervalMs: number;
   /** Parcels claimed per tick, per carrier with budget left. */
@@ -356,6 +368,26 @@ export interface AppConfig {
  * fail the enabled check below rather than build a client that 401s every
  * delivery.
  */
+/**
+ * The FedEx pair, or nothing.
+ *
+ * `apis-sandbox.fedex.com` is a different HOST rather than a flag, which is why
+ * the base URL is configuration: pointing a sandbox key at production auth
+ * fails with a 401 that reads exactly like a revoked credential.
+ */
+function fedexCredentials():
+  | { clientId: string; clientSecret: string; baseUrl: string }
+  | undefined {
+  const clientId = optionalSecretEnv('FEDEX_CLIENT_ID');
+  const clientSecret = optionalSecretEnv('FEDEX_CLIENT_SECRET');
+  if (!clientId || !clientSecret) return undefined;
+  return {
+    clientId,
+    clientSecret,
+    baseUrl: optionalSecretEnv('FEDEX_BASE_URL') ?? 'https://apis.fedex.com',
+  };
+}
+
 function optionalSecretEnv(name: string): string | undefined {
   const raw = process.env[name];
   if (raw === undefined || raw.trim() === '') {
@@ -478,6 +510,7 @@ export const config: AppConfig = Object.freeze({
   }),
   tracking: Object.freeze({
     enabled: boolEnv('TRACKING_ENABLED', false),
+    fedex: fedexCredentials(),
     pollIntervalMs: intEnv('TRACKING_POLL_INTERVAL_MS', 30 * SECOND_MS),
     batchSize: intEnv('TRACKING_POLL_BATCH_SIZE', 25),
     leaseMs: intEnv('TRACKING_POLL_LEASE_MS', 60 * SECOND_MS),

@@ -125,10 +125,11 @@ schema, retention, adapters, detector, poller, routes and webhook serve from
 files that are present.
 
 **What is live is DETECTION AND DEEP LINKING, not status.** `/tracking/carriers`
-answers with ten carriers and `pollSupported: false` on every one of them, so a
+answers with 22 carriers and `pollSupported: false` on every one of them, so a
 lookup identifies the carrier, stores the shared row and returns that carrier's
-own tracking URL — never a checkpoint. The invariants below describe the whole
-design; the paragraph after next describes what the app may therefore SAY.
+own tracking URL — never a checkpoint. FedEx is the one that can change that,
+and only with credentials plus an operator flipping its column; see the carrier
+section below. The invariants that follow describe the whole design.
 
 **It is `Moovo Tracker` at `tracker.moovo.now`, and it breaks the `Go`/`Hub`
 naming pattern ON PURPOSE.** `Go` and `Hub` are one-syllable ROLE nouns that do
@@ -148,27 +149,51 @@ Identifiers, matching the existing three: app name `Moovo Tracker`, slug and
 Cloudflare Pages project `moovo-tracker`, scheme `moovotracker`, bundle and
 package `now.moovo.tracker`.
 
-**Every built-in carrier adapter is DEEP-LINK-ONLY today, and the app must not
-claim otherwise.** `built-in-carriers.ts` says so in its header, `TRACKING_ENABLED`
-defaults to `false`, and `lookupParcel` therefore creates or reads the shared row
-and returns the checkpoints it has — none, for a new number. The tracker app
-branches on `carrier.pollSupported` (which is `capabilities.fetch` off the
-adapter, stored on the row) rather than hardcoding a "coming soon": `false` says
-Moovo does not yet receive that carrier's status and makes the carrier's own page
-the primary action, `true` renders the status and the timeline. An empty timeline
-labelled "the carrier has not registered any movement" blames the carrier for
-Moovo's gap. A carrier gaining a feed flips the row and the app starts rendering
-timelines with no change in the app.
+**COVERAGE is cheap; DETECTION is not, and they are separate decisions.** The
+catalogue carries 22 public carriers — the Spanish and US ones people actually
+paste — because naming and linking a carrier costs one entry in
+`built-in-carriers.ts`. A `detect` rule costs correctness: `resolveDetection` is
+decisive only when ONE carrier claims a number, or when exactly one claimant
+passes a check digit, so every overlapping shape-only rule turns a number that
+used to resolve into a question. Most Spanish carriers (Correos Express, MRW,
+Nacex, CTT, DHL Parcel, Paack, Envialia, Tipsa, Zeleris) therefore carry NO
+detect: their references are bare digit runs that collide with each other and
+with Correos' own domestic format.
 
-**SEUR, GLS and Amazon have NO detection rule, so the carrier picker is the
-ordinary path.** Their references collide with too much else, and a rule that
-fired on everything would make every number ambiguous. `resolveCarrierOrThrow`
-refuses such a number and asks for a `carrierKey`, so without
-`components/CarrierPicker.tsx` those carriers are unreachable however prominently
-they are listed. The choice is written into the URL (`?carrier=<key>`), not
-component state, so it survives a reload and a shared link — and `moovo` is
-filtered out of the picker, because a row on the internal pointer key without a
-`moovoJobId` is a parcel the detail endpoint can never hydrate.
+One overlap is deliberate and is an IMPROVEMENT: USPS claims `9[2345]`-prefixed
+IMpb labels, which FedEx's `\d{20}`/`\d{22}` rule also claims. Before `usps`
+existed FedEx was the only claimant and was picked SILENTLY — a USPS parcel
+polling FedEx forever and showing "no information". Two claimants and a question
+beats one claimant and a wrong answer.
+
+**A carrier without a detection rule is reached ONLY through the picker.**
+`resolveCarrierOrThrow` refuses an undetectable number and asks for a
+`carrierKey`, so without `components/CarrierPicker.tsx` those carriers are
+unreachable however prominently they are listed. The choice is written into the
+URL (`?carrier=<key>`), not component state, so it survives a reload and a shared
+link — and `moovo` is filtered out of the picker, because a row on the internal
+pointer key without a `moovoJobId` is a parcel the detail endpoint can never
+hydrate.
+
+**FedEx is the only adapter that CAN fetch, and three independent things gate
+it.** Every other built-in adapter is deep-link-only. `adapters/fedex.ts` gains
+`fetch` only when `FEDEX_CLIENT_ID` and `FEDEX_CLIENT_SECRET` are BOTH set;
+without them it is byte-for-byte the deep-link carrier this build has always
+shipped, which is a working product rather than a degraded one. Beyond
+credentials it needs `TRACKING_ENABLED=true`, and — the one that actually decides
+— `tracking_carriers.poll_supported` on the `fedex` row, which seeding never
+updates (`ON CONFLICT DO NOTHING`). **Its response mapping is pinned by fixtures
+written from FedEx's published shape, which test THIS CODE'S READING of that
+shape and not FedEx.** One live call with real credentials confirms or corrects
+it; until then the column stays `false`.
+
+**The app must not claim status it does not have.** The tracker app branches on
+`carrier.pollSupported` (which is `capabilities.fetch`, stored on the row) rather
+than hardcoding a "coming soon": `false` says Moovo does not yet receive that
+carrier's status and makes the carrier's own page the primary action, `true`
+renders the status and the timeline. An empty timeline labelled "the carrier has
+not registered any movement" blames the carrier for Moovo's gap. A carrier
+gaining a feed flips the row and the app starts rendering timelines unchanged.
 
 **The Spanish SEO head lives in `packages/tracker-app/public/index.html`, and
 `app/+html.tsx` would be INERT here.** That file is only used when static
@@ -246,6 +271,14 @@ map and proof of delivery keep working and `job_status_events` keeps exactly one
 writer. The row exists so the tracker's list is ONE index scan over subscriptions
 rather than a union of two sources with two cursors and every filter written
 twice.
+
+**Env:** `TRACKING_ENABLED` (default `false`; requires BOTH the flag and a
+registered adapter that can fetch), `TRACKING_POLL_INTERVAL_MS`,
+`TRACKING_POLL_BATCH_SIZE`, `TRACKING_POLL_LEASE_MS`, `TRACKING_FETCH_TIMEOUT_MS`,
+`TRACKING_MAX_CONSECUTIVE_FAILURES`, `TRACKING_MAX_NOT_FOUND_STREAK`,
+`TRACKING_NOT_FOUND_MIN_AGE_MS`, `TRACKING_STALE_AFTER_MS`, and the FedEx pair
+`FEDEX_CLIENT_ID` / `FEDEX_CLIENT_SECRET` with optional `FEDEX_BASE_URL`
+(`https://apis.fedex.com`; the sandbox is a different HOST, not a flag).
 
 ### Open decisions, with owners
 

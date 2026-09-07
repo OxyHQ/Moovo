@@ -102,10 +102,12 @@ file, not in the template.**
 
 ## `carrier.pollSupported` decides what the UI may claim
 
-**Every built-in adapter is deep-link-only today.** `built-in-carriers.ts` says
-so in its header, `TRACKING_ENABLED` defaults to `false`, and `lookupParcel`
-consequently creates or reads the shared row and returns the checkpoints it has
-— which for a new number is none. Nothing fetches from a carrier yet.
+**Every carrier is deep-link-only in a deploy with no credentials**, which is
+every deploy today. `TRACKING_ENABLED` defaults to `false`, and `lookupParcel`
+creates or reads the shared row and returns the checkpoints it has — which for a
+new number is none. FedEx is the one adapter that CAN fetch, and only when
+`FEDEX_CLIENT_ID` and `FEDEX_CLIENT_SECRET` are both set, the poller is enabled,
+and an operator has flipped `tracking_carriers.poll_supported` on its row.
 
 So the app branches on `carrier.pollSupported`, which is `capabilities.fetch` off
 the adapter, stored on the row and hydrated onto every carrier summary:
@@ -124,11 +126,13 @@ carries the answer.
 
 ## Carrier selection is the ordinary path, not an edge case
 
-SEUR, GLS and Amazon carry **no detection rule at all** — their references
-collide with too much else, and a rule that fires on everything would make every
-number ambiguous. `resolveCarrierOrThrow` therefore refuses those numbers and
-asks for a `carrierKey`. Without `components/CarrierPicker.tsx` they are
-unreachable however prominently the landing page lists them.
+Most of the 22 carriers carry **no detection rule at all** — SEUR, GLS, Amazon
+and the Spanish set (Correos Express, MRW, Nacex, CTT, DHL Parcel, Paack,
+Envialia, Tipsa, Zeleris) all use bare digit runs that collide with each other,
+and a rule that fires on everything would make every number ambiguous.
+`resolveCarrierOrThrow` therefore refuses those numbers and asks for a
+`carrierKey`. Without `components/CarrierPicker.tsx` they are unreachable however
+prominently the landing page lists them.
 
 The selection is written into the URL (`?carrier=<key>`) rather than component
 state, so the choice survives a reload and a shared link. `moovo` is filtered out
