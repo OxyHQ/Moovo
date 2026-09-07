@@ -43,14 +43,16 @@ const TABLES: PgTable[] = Object.values(schema as Record<string, unknown>).filte
  *
  * 26 Mongoose models become 25 tables (`counters` becomes two SEQUENCEs, which
  * is what Postgres has and what that collection was emulating), plus 9 child
- * tables for embedded arrays that are queried, updated per element, or both.
+ * tables for embedded arrays that are queried, updated per element, or both,
+ * plus the 5 Moovo Tracker tables, which are native to Postgres and were never
+ * a Mongo anything.
  *
  * Pinned rather than derived because the barrel is the thing that decides
  * whether a table is migrated at all: a table defined but never exported
  * produces no migration, and the omission looks exactly like "no schema change
  * to generate".
  */
-const EXPECTED_TABLE_COUNT = 34;
+const EXPECTED_TABLE_COUNT = 39;
 
 /**
  * Traversal floors. Deliberately well below the real figures — they exist to
@@ -87,6 +89,10 @@ const ID_COLUMNS_WITHOUT_FOREIGN_KEY: readonly { column: string; reason: string 
   { column: 'store_members.oxy_user_id', reason: 'Oxy user id — Oxy owns identity.' },
   { column: 'company_members.oxy_user_id', reason: 'Oxy user id — Oxy owns identity.' },
   { column: 'shipments.sender_oxy_user_id', reason: 'Oxy user id — Oxy owns identity.' },
+  {
+    column: 'tracked_parcel_subscriptions.oxy_user_id',
+    reason: 'Oxy user id — Oxy owns identity.',
+  },
   { column: 'jobs.sender_oxy_user_id', reason: 'Oxy user id — Oxy owns identity.' },
   { column: 'jobs.courier_oxy_user_id', reason: 'Oxy user id — Oxy owns identity.' },
   { column: 'job_offers.courier_oxy_user_id', reason: 'Oxy user id — Oxy owns identity.' },
@@ -103,6 +109,7 @@ const ID_COLUMNS_WITHOUT_FOREIGN_KEY: readonly { column: string; reason: string 
   { column: 'courier_companies.logo_file_id', reason: 'Oxy media file id.' },
   { column: 'courier_companies.cover_file_id', reason: 'Oxy media file id.' },
   { column: 'providers.logo_file_id', reason: 'Oxy media file id.' },
+  { column: 'tracking_carriers.logo_file_id', reason: 'Oxy media file id.' },
   { column: 'jobs.pod_photo_file_id', reason: 'Oxy media file id.' },
   { column: 'jobs.pod_signature_file_id', reason: 'Oxy media file id.' },
 

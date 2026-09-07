@@ -24,8 +24,11 @@ import { getDb } from '../postgres';
 
 const describeIfPostgres = POSTGRES_TESTS_ENABLED ? describe : describe.skip;
 
-/** Every TTL index the Mongo models declare. If this grows, so must the registry. */
-const EXPECTED_TARGET_COUNT = 5;
+/**
+ * Every TTL index the Mongo models declared, plus the two Moovo Tracker tables
+ * that were never a Mongo anything. If this grows, so must the registry.
+ */
+const EXPECTED_TARGET_COUNT = 7;
 
 describeIfPostgres('the expiry sweep', () => {
   let suite: SuiteDatabase | null = null;
@@ -39,7 +42,7 @@ describeIfPostgres('the expiry sweep', () => {
     suite = null;
   });
 
-  it('registers one target per TTL index the source declared', () => {
+  it('registers one target per table that needs reaping', () => {
     // A registry is the half of this that LOOKS complete while doing nothing,
     // so the count is pinned rather than left to inspection.
     expect(EXPIRY_TARGETS).toHaveLength(EXPECTED_TARGET_COUNT);

@@ -64,6 +64,11 @@ export * from './job';
 // External-provider DTOs (Provider, ProviderSummary, ProviderQuote).
 export * from './provider';
 
+// Moovo Tracker DTOs (TrackingStatus, TrackedParcel, TrackingCheckpoint, …) —
+// universal parcel tracking. Its status vocabulary is deliberately NOT
+// `JobStatus`; see the header of './tracking'.
+export * from './tracking';
+
 // Moderation DTOs (ReportedType, ReportCategory, ModerationLocalStatus, …) — the
 // report surface Moovo exposes and the status axes a report carries.
 export * from './moderation';

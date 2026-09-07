@@ -95,6 +95,7 @@ export interface JobRecord {
   courierOxyUserId?: string;
   companyId?: string;
   providerRef?: string;
+  trackingUrl?: string;
   pickupSnapshot: ShipmentEndpointValue;
   dropoffSnapshot: ShipmentEndpointValue;
   parcelSnapshot: ParcelDetailsValue;
@@ -133,6 +134,7 @@ export interface NewJob {
   type: ShipmentType;
   fulfillmentType: FulfillmentType;
   providerRef?: string | undefined;
+  trackingUrl?: string | undefined;
   pickupSnapshot: ShipmentEndpointValue;
   dropoffSnapshot: ShipmentEndpointValue;
   parcelSnapshot: ParcelDetailsValue;
@@ -236,6 +238,7 @@ export function toJobColumns(input: NewJob): Omit<JobInsert, 'id'> {
     type: input.type,
     fulfillmentType: input.fulfillmentType,
     providerRef: input.providerRef ?? null,
+    trackingUrl: input.trackingUrl ?? null,
 
     pickupLatitude: pickup.latitude,
     pickupLongitude: pickup.longitude,
@@ -300,6 +303,7 @@ export function toJobRecord(row: JobRow): JobRecord {
     ...(row.courierOxyUserId === null ? {} : { courierOxyUserId: row.courierOxyUserId }),
     ...(row.companyId === null ? {} : { companyId: row.companyId }),
     ...(row.providerRef === null ? {} : { providerRef: row.providerRef }),
+    ...(row.trackingUrl === null ? {} : { trackingUrl: row.trackingUrl }),
     pickupSnapshot: toEndpoint({
       latitude: row.pickupLatitude,
       longitude: row.pickupLongitude,

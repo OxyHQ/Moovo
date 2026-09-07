@@ -14,6 +14,9 @@ export {
   REPORTED_TYPES,
   REPORT_CATEGORIES,
   REPORT_STATUSES,
+  TRACKING_POLL_MODES,
+  TRACKING_SOURCE_KINDS,
+  TRACKING_STATUSES,
 } from '@moovo/shared-types';
 
 /**
@@ -165,6 +168,18 @@ export const NOTIFICATION_TYPES = [
   'job_delivered',
   'job_cancelled',
   'dispatch_no_courier',
+  /**
+   * Moovo Tracker. FIVE types rather than one, because the app needs per-type
+   * mute switches and the copy differs — but deliberately NOT one per status:
+   * `pending`, `info_received` and `in_transit` are silent. Notifying on every
+   * checkpoint is the fastest way to have a tracker's push permission revoked,
+   * and that is a product decision worth writing down rather than a gap.
+   */
+  'tracking_update',
+  'tracking_out_for_delivery',
+  'tracking_delivered',
+  'tracking_exception',
+  'tracking_available_for_pickup',
 ] as const;
 export const NOTIFICATION_CHANNELS = [
   'push',
@@ -190,3 +205,12 @@ export const MODERATION_OUTBOX_STATUSES = [
 ] as const;
 export const MODERATION_EVENT_STATES = ['claimed', 'queued', 'ignored'] as const;
 export const MODERATION_ENFORCEMENT_TARGET_TYPES = ['courier', 'customer', 'delivery'] as const;
+
+/**
+ * What became of one inbound carrier webhook delivery.
+ *
+ * Internal to the ingest pipeline and deliberately NOT in `@moovo/shared-types`:
+ * no client is ever told whether a carrier's push was claimed by this task or
+ * by another one.
+ */
+export const TRACKING_WEBHOOK_STATES = ['claimed', 'queued', 'ignored'] as const;

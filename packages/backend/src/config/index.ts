@@ -67,6 +67,8 @@ function floatEnv(name: string, fallback: number): number {
 
 const SECOND_MS = 1_000;
 const MINUTE_MS = 60 * SECOND_MS;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
 
 export interface PaginationConfig {
   /** Default page size when the client does not specify a `limit`. */
@@ -284,6 +286,40 @@ export interface CrowdSourceConfig {
   readonly enforcementMode: ModerationEnforcementMode;
 }
 
+export interface TrackingConfig {
+  /**
+   * Whether the tracker polls at all.
+   *
+   * Requires BOTH halves, like {@link CrowdSourceConfig.enabled} and for the
+   * same reason: the flag AND at least one registered adapter that can actually
+   * fetch. A poller enabled with no fetching adapter is a timer that claims
+   * every due row and fails it into backoff — which from outside looks exactly
+   * like every carrier being down at once, and logs nothing that says otherwise.
+   * That second half is checked at boot, where the registry is populated.
+   */
+  readonly enabled: boolean;
+  /** How often the poll dispatcher wakes to claim due parcels. */
+  readonly pollIntervalMs: number;
+  /** Parcels claimed per tick, per carrier with budget left. */
+  readonly batchSize: number;
+  /** Lease held while one parcel is being fetched; renewed at a third of it. */
+  readonly leaseMs: number;
+  /** Deadline for one carrier call, owned by the poller rather than the adapter. */
+  readonly fetchTimeoutMs: number;
+  /** Consecutive failures after which a parcel drops to `manual` poll mode. */
+  readonly maxConsecutiveFailures: number;
+  /**
+   * Consecutive not-founds after which a parcel is marked `expired`, provided
+   * they also span {@link notFoundMinAgeMs}. Both conditions, because ten fast
+   * retries inside an hour say nothing about a label that simply has not been
+   * scanned yet.
+   */
+  readonly maxNotFoundStreak: number;
+  readonly notFoundMinAgeMs: number;
+  /** No checkpoint in this long and a parcel is `expired`, whatever its status. */
+  readonly staleAfterMs: number;
+}
+
 export interface WebConfig {
   /**
    * Where Moovo's own users see things — the customer app's origin.
@@ -308,6 +344,7 @@ export interface AppConfig {
   readonly jobs: JobsConfig;
   readonly dispatch: DispatchConfig;
   readonly crowdSource: CrowdSourceConfig;
+  readonly tracking: TrackingConfig;
 }
 
 /**
@@ -438,5 +475,16 @@ export const config: AppConfig = Object.freeze({
     outboxBatchSize: intEnv('CROWDSOURCE_OUTBOX_BATCH_SIZE', 50),
     outboxPollIntervalMs: intEnv('CROWDSOURCE_OUTBOX_POLL_INTERVAL_MS', 5 * SECOND_MS),
     enforcementMode: enforcementModeEnv(),
+  }),
+  tracking: Object.freeze({
+    enabled: boolEnv('TRACKING_ENABLED', false),
+    pollIntervalMs: intEnv('TRACKING_POLL_INTERVAL_MS', 30 * SECOND_MS),
+    batchSize: intEnv('TRACKING_POLL_BATCH_SIZE', 25),
+    leaseMs: intEnv('TRACKING_POLL_LEASE_MS', 60 * SECOND_MS),
+    fetchTimeoutMs: intEnv('TRACKING_FETCH_TIMEOUT_MS', 10 * SECOND_MS),
+    maxConsecutiveFailures: intEnv('TRACKING_MAX_CONSECUTIVE_FAILURES', 25),
+    maxNotFoundStreak: intEnv('TRACKING_MAX_NOT_FOUND_STREAK', 10),
+    notFoundMinAgeMs: intEnv('TRACKING_NOT_FOUND_MIN_AGE_MS', 7 * DAY_MS),
+    staleAfterMs: intEnv('TRACKING_STALE_AFTER_MS', 60 * DAY_MS),
   }),
 });

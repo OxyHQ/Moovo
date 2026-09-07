@@ -15,6 +15,34 @@
       "when": 1786362516784,
       "tag": "0001_bent_valkyrie",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788740211484,
+      "tag": "0002_nice_jack_murdock",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788742912251,
+      "tag": "0003_careless_logan",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788742913251,
+      "tag": "0004_moovo_tracking_carrier",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788743755230,
+      "tag": "0005_kind_lila_cheney",
+      "breakpoints": true
     }
   ]
 }

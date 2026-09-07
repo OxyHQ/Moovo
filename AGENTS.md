@@ -109,6 +109,129 @@ loud, and at the worst possible moment. If the census finds rows, the sequences
 must be set past the highest existing number in the same window, before any
 traffic.
 
+## Moovo Tracker
+
+Universal parcel tracking, AfterShip-shaped: somebody pastes a tracking number
+from any carrier, Moovo works out whose it is, fetches the checkpoints and shows
+one timeline. It ships as its own Expo app but on **this** backend — one Express,
+one Postgres, one `@moovo/shared-types`.
+
+**IN FLIGHT.** What has landed is the SCHEMA and its retention:
+`packages/backend/src/db/schema/tracking.ts` (5 tables),
+`db/tracking/retention.ts`, and the two `db/expiry.ts` registrations. The
+adapters, the detector, the poller, the routes and the app are not written yet,
+so anything below naming `services/tracking/` or an endpoint is describing a
+decision already taken, not a file already present. The invariants are recorded
+now because they are properties of the schema, and they are the ones that fail
+SILENTLY once code starts arriving.
+
+**It is `Moovo Tracker` at `tracker.moovo.now`, and it breaks the `Go`/`Hub`
+naming pattern ON PURPOSE.** `Go` and `Hub` are one-syllable ROLE nouns that do
+not describe a function, so consistency would name this one `Moovo Track`. The
+difference is who each app serves: a courier or a fleet operator is TOLD to
+install Go or Hub and never searches for it, while the tracker is the top of the
+funnel — the only Moovo surface a stranger reaches without knowing Moovo exists,
+by searching "seguimiento de paquete". There the generic noun IS the acquisition
+channel, which is why AfterShip, which has a real name, still lists its consumer
+app as "AfterShip Package Tracker". Two consequences to carry rather than fix
+with the name: "Tracker" does no SEO in Spanish (people search *rastrear
+paquete*, so the `<title>`, the store subtitle and the copy do that work, from
+the first deploy rather than as later polish), and `.now` is an unfamiliar TLD
+for the one surface whose natural use is sharing a link.
+
+Identifiers, matching the existing three: app name `Moovo Tracker`, slug and
+Cloudflare Pages project `moovo-tracker`, scheme `moovotracker`, bundle and
+package `now.moovo.tracker`.
+
+**The cost unit is `(carrier, tracking number)`, not `(user, parcel)`**, and that
+is a UNIQUE INDEX rather than a convention. `tracked_parcels` is one shared
+identity per number; `tracked_parcel_subscriptions` is what multiplies per
+person; the poller claims the identity. A thousand watchers of one parcel are one
+carrier call. Making the parcel per-user, or dropping the index because "the
+service checks first", removes that silently — everything keeps working and the
+bill multiplies. Two concurrent adds both miss a `findOne` and both insert.
+
+**`tracked_parcels` is ALSO the work queue, and there is deliberately no poll
+outbox.** The row already has a natural key, a natural due time (`nextPollAt`)
+and natural dedupe; a second queue can only drift from the schedule it mirrors.
+The lease columns are on the row and the claim is the same
+`UPDATE … WHERE id = (SELECT … FOR UPDATE SKIP LOCKED)` statement
+`moderationOutboxRepository` uses. The consequence somebody will try to
+"simplify": **`status` is the PARCEL's status and NEVER the worker's** — unlike
+`moderation_outboxes` there is no `pending`/`processing` on this row, the lease
+alone is the claim, and folding the two axes together makes "delivered" and
+"currently being fetched" the same fact.
+
+**`tracked_parcels_number_normalised_check` is the constraint that keeps the
+dedupe true, and it is worth more than it looks.** The unique index is defeated
+by exactly ONE un-normalised write: `1Z999AA1-0123456784` and
+`1Z999AA10123456784` become two identities, two schedules and two bills, and a
+test that asserts "the row exists" cannot see it. Every write path goes through
+the single exported `normalizeTrackingNumber()`, and the CHECK is what makes
+forgetting it loud (`23514`) instead of expensive. There is one spelling of that
+normalisation, and the CHECK encodes the same expression.
+
+**Anonymous tracking is a one-off LOOKUP and persists nothing per person.** No
+subscription row, no notification, no socket room, no device identity to hash and
+no bearer credential to store. A signed-out user's recent numbers live on their
+phone. The lookup still creates or refreshes the shared parcel row — that is the
+cache, and where the deduplication pays — but it is born with
+`subscriberCount = 0` and therefore `nextPollAt = NULL`, so it is never fetched
+again on its own. **Anonymous costs exactly one call.** Subscribing is the only
+thing that arms the poller.
+
+**A carrier that is also a `Provider` is TWO rows, and the catalogues must not be
+merged.** `providers` is the registry of carriers Moovo can hand a shipment to:
+`quote.service.ts` fans out across every enabled row and `supported_types` is
+CHECKed against `SHIPMENT_TYPES`. Seeding Correos there would put a carrier
+Moovo has no contract with into a customer's checkout. `tracking_carriers.provider_id`
+links the two where they are the same carrier (DHL).
+
+**Moovo's own deliveries are a POINTER, never a copy.** A booked job gets a
+`tracked_parcels` row with `carrierKey='moovo'`, `moovoJobId` set,
+`pollMode='manual'` and **zero checkpoints for its whole life**; the detail
+endpoint hydrates the job through `job-hydration.service.ts` instead, so the live
+map and proof of delivery keep working and `job_status_events` keeps exactly one
+writer. The row exists so the tracker's list is ONE index scan over subscriptions
+rather than a union of two sources with two cursors and every filter written
+twice.
+
+### Open decisions, with owners
+
+**How long a tracked parcel is kept — OWNER: the tracker-product decision.**
+Unlike `job_location_pings` this one could not be left unregistered:
+`tracked_parcels` is the one table in this schema ANY caller can write to by
+pasting a string, so its sweep is a bound on an open-ended table rather than a
+filing policy. Two numbers therefore ship, in `db/tracking/retention.ts`:
+**30 days once nothing watches a parcel** (the figure that actually bounds the
+table — typos, abandoned pastes, one-off anonymous lookups) and **180 days past
+the terminal event while somebody does** (the figure a product owner must
+confirm). Closing this is changing a constant. It carries the same HAZARD
+`moderation_outboxes` does, stated in its `EXPIRY_TARGETS` reason: `expiresAt` is
+written at WRITE, not at completion, so a poller wedged for a whole window would
+have live parcels swept rather than updated. **Alert on poller staleness, not on
+the sweep.**
+
+**`sourceKind = 'public_page'` is a LEGAL decision per carrier, not a technical
+one — OWNER: legal.** Coverage comes from official carrier APIs where they exist
+and from parsing the carrier's own public tracking page where they do not, which
+is how a catalogue of hundreds is reachable without an aggregator contract. That
+second mode is a per-carrier judgement about that carrier's terms, so it lives in
+`tracking_carriers.source_kind` as a stored, operator-editable column: "which
+carriers are we parsing" has to be answerable without reading an adapter, and
+revocable without a deploy. No carrier is enabled in that mode without someone
+approving it.
+
+**`POST /tracking/lookup` is an enumeration surface by design, and what it
+REFUSES to return is the part that matters — OWNER: this domain.** Anyone can
+probe numbers; the carrier's own website works the same way. That is answered
+with a hard per-IP rate limit, and with an ALLOW-LIST of the fields a carrier
+response may contribute to a public answer — never the recipient's name, the
+delivery address or a signature, whatever the carrier hands us. Written as a
+list, compared as an exact set, for the same reason `DELIVERY_FACT_KEYS` is: a
+set of "must not contain X" assertions only fails when a named field disappears
+and is silent about one somebody ADDS, which is how every real leak arrives.
+
 ## CrowdSource moderation
 
 Reports leave Moovo durably, CrowdSource decides them with a randomly drawn jury,

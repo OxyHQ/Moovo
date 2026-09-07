@@ -4,18 +4,17 @@
  * Clearly-labelled simulated carriers used until real DHL/FedEx integrations
  * land. Each prices a shipment in FAIR off the great-circle distance + a flat
  * carrier-specific base, derives an ETA from the distance, and returns a single
- * simulated quote. `book`/`track`/`cancel` simulate provider responses. They
+ * simulated quote. `book`/`cancel` simulate provider responses. They
  * implement the SAME `ProviderAdapter` interface as any real carrier — the rest
  * of the codebase never special-cases them.
  */
 
-import type { ProviderQuote, FairMoney, JobStatus, GeoPoint } from '@moovo/shared-types';
+import type { ProviderQuote, FairMoney } from '@moovo/shared-types';
 import type { ShipmentRecord } from '../../../db/transport/shipmentShape.js';
 import type { QuoteRecord } from '../../../db/transport/quoteRepository.js';
 import type {
   ProviderAdapter,
   ProviderBooking,
-  ProviderTracking,
 } from '../provider-adapter.js';
 import { distanceMetersBetween } from '../../../utils/geo.js';
 import { log } from '../../../lib/logger.js';
@@ -95,14 +94,6 @@ function makeMockAdapter(params: MockCarrierParams): ProviderAdapter {
         'Mock provider booking created',
       );
       return { bookingRef, trackingUrl: `https://example.invalid/${params.key}/${bookingRef}` };
-    },
-
-    async track(bookingRef: string): Promise<ProviderTracking> {
-      // Mock carriers always report the booking as accepted (no live carrier feed).
-      const status: JobStatus = 'accepted';
-      const location: GeoPoint | undefined = undefined;
-      log.general.info({ providerKey: params.key, bookingRef, status }, 'Mock provider tracking');
-      return location ? { status, rawStatus: 'ACCEPTED', location } : { status, rawStatus: 'ACCEPTED' };
     },
 
     async cancel(bookingRef: string): Promise<void> {

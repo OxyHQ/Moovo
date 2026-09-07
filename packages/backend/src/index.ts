@@ -25,9 +25,12 @@ import courierRouter from './routes/courier.js';
 import shipmentsRouter from './routes/shipments.js';
 import jobsRouter from './routes/jobs.js';
 import reportsRouter from './routes/reports.js';
+import trackingRouter from './routes/tracking.js';
 import adminRouter from './routes/admin/index.js';
 import { createCrowdSourceWebhookRoutes } from './routes/crowdsource-webhook.js';
+import { createTrackingWebhookRoutes } from './routes/tracking-webhook.js';
 import { startModerationOutboxDispatcher } from './services/moderation/moderation-outbox.dispatcher.js';
+import { startTrackingPollDispatcher } from './services/tracking/tracking-poll.dispatcher.js';
 import { startExpirySweeper, stopExpirySweeper } from './db/expiry.js';
 
 // Socket.io
@@ -135,6 +138,28 @@ app.use((_req, res, next) => {
  */
 app.use('/webhooks', createCrowdSourceWebhookRoutes());
 
+/**
+ * Carrier pushes, mounted alongside — and ahead of the JSON parser for exactly
+ * the same reason: the signature covers the bytes that arrived.
+ *
+ * Its `express.raw` is scoped to `/webhooks/tracking/:carrierKey` INSIDE that
+ * router and must never move here. `@oxyhq/crowdsource-express` prefers a
+ * Buffer already stashed on the request over reading the stream, so a raw
+ * parser mounted at `/webhooks` would change what a late CrowdSource mount does
+ * from a loud refusal into silent success — disarming the neighbouring
+ * guarantee without touching its file. Its test checks this file for that
+ * property name as a LITERAL string, comments included, which is what keeps the
+ * check reliable; see `routes/tracking-webhook.ts` for the full argument.
+ *
+ * `null` when no carrier has a secret: not mounted beats mounted-and-permissive,
+ * because a route that answers without verifying is one somebody will later
+ * reason about as if it verified.
+ */
+const trackingWebhookRoutes = createTrackingWebhookRoutes();
+if (trackingWebhookRoutes) {
+  app.use('/webhooks', trackingWebhookRoutes);
+}
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -161,6 +186,7 @@ app.use('/courier', courierRouter);
 app.use('/shipments', shipmentsRouter);
 app.use('/jobs', jobsRouter);
 app.use('/reports', reportsRouter);
+app.use('/tracking', trackingRouter);
 app.use('/admin', adminRouter);
 
 // Root route
@@ -186,6 +212,7 @@ app.get('/', (_req, res) => {
       '/shipments',
       '/jobs',
       '/reports',
+      '/tracking',
       '/admin',
     ]
   });
@@ -240,6 +267,19 @@ try {
     })
     .catch((err) => log.general.error({ err }, 'Provider adapter registration/seed failed'));
 
+  // The same two steps for the tracker's carrier catalogue. A separate registry
+  // and a separate table on purpose: a row in `providers` becomes an option in
+  // a customer's checkout, and most carriers Moovo can TRACK are ones it cannot
+  // book with. See AGENTS.md §"Moovo Tracker".
+  import('./services/tracking/register-tracking-adapters.js')
+    .then(({ registerBuiltInTrackingAdapters }) => {
+      registerBuiltInTrackingAdapters();
+      return import('./services/tracking/seed-tracking-carriers.js').then(
+        ({ seedTrackingCarriers }) => seedTrackingCarriers(),
+      );
+    })
+    .catch((err) => log.general.error({ err }, 'Tracking carrier registration/seed failed'));
+
   server.listen(PORT, '0.0.0.0', () => {
     log.general.info({ port: PORT }, `API Server running on http://0.0.0.0:${PORT}`);
     // Verify Redis connectivity (non-blocking)
@@ -274,6 +314,22 @@ try {
      * while the integration is off deliver when it is switched on.
      */
     startModerationOutboxDispatcher();
+
+    /**
+     * Keeps tracked parcels current, on every task rather than on a leader —
+     * the same lease argument as the outbox above.
+     *
+     * Deliberately NOT a BullMQ repeatable job: those only run when REDIS_URL
+     * is set, and a tracker that silently stops polling on a deployment without
+     * Redis is the worst available failure shape. Every table keeps filling, no
+     * checkpoint ever arrives, and the symptom reads as every carrier being
+     * down at once.
+     *
+     * Announces itself when it does NOT start, because the gate has two halves
+     * (the flag AND a registered adapter that can fetch) and "off on purpose"
+     * has to be distinguishable from "never wired up".
+     */
+    startTrackingPollDispatcher();
 
     /**
      * Reaps the rows the five Mongo TTL indexes used to reap before the port.
@@ -344,6 +400,14 @@ try {
       );
       await stopModerationOutboxDispatcher();
       log.general.info('Moderation outbox dispatcher stopped');
+
+      // Same reasoning for the tracker: an abandoned lease is reclaimed once it
+      // lapses, but finishing cleanly avoids a lease-length delay per deploy.
+      const { stopTrackingPollDispatcher } = await import(
+        './services/tracking/tracking-poll.dispatcher.js'
+      );
+      await stopTrackingPollDispatcher();
+      log.general.info('Tracking poll dispatcher stopped');
 
       // Let a sweep in flight finish. Its DELETEs are bounded batches, so
       // this is short; abandoning one mid-batch is safe (the next run picks

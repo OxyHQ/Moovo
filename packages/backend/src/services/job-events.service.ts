@@ -20,6 +20,7 @@ import type { JobRecord } from '../db/transport/jobShape.js';
 import type { NotificationType } from '../lib/notification-service.js';
 import { EVENTS, type JobSocketEvent } from '../lib/socket-events.js';
 import { getIO } from '../socket.js';
+import { mirrorJobStatus } from './tracking/job-pointer.service.js';
 import { sendNotification } from '../lib/notification-service.js';
 import { log } from '../lib/logger.js';
 
@@ -119,6 +120,13 @@ export async function emitJobStatus(job: JobRecord, status: JobStatus): Promise<
     body: meta.body,
     data: { jobId, jobNumber: job.jobNumber, status },
   });
+
+  // The tracker's pointer row carries a denormalised copy of this status so the
+  // parcel list can sort and filter without joining `jobs`. THIS is its single
+  // writer, because this function is already the one chokepoint every job
+  // transition passes through. Best-effort: a mirror that cannot be written
+  // must not undo a transition that already committed.
+  await mirrorJobStatus(jobId, status);
 }
 
 /**
