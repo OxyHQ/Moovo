@@ -36,6 +36,7 @@ import { log } from '../lib/logger.js';
 import { jobOffers, quotes } from './schema/transport';
 import { moderationEvents, moderationOutboxes } from './schema/moderation';
 import { notifications, NOTIFICATION_DISMISSED_RETENTION_SECONDS } from './schema/notifications';
+import { trackedParcels, trackingWebhookEvents } from './schema/tracking';
 
 /** `expireAfterSeconds: 0` — the column IS the deadline. */
 const DEADLINE_IS_THE_COLUMN = 0;
@@ -96,11 +97,35 @@ export const EXPIRY_TARGETS: readonly ExpirySweepTarget[] = [
       'notification in any other state is never reaped, however old — which is ' +
       'why the column is `dismissedSince` and not `createdAt`.',
   },
+  {
+    table: trackedParcels,
+    column: trackedParcels.expiresAt,
+    retentionSeconds: DEADLINE_IS_THE_COLUMN,
+    reason:
+      'A parcel and, by cascade, its checkpoints and subscriptions. Unlike ' +
+      'everything above this is not a ported TTL: ANY caller can create a row ' +
+      'here by pasting a string at the anonymous lookup, so the sweep is the ' +
+      'bound on an open-ended table. Two policies reach it as ONE precomputed ' +
+      'deadline — 30 days unwatched, 180 days past the terminal event while ' +
+      'watched — because a target has no predicate field. See ' +
+      '`db/tracking/retention.ts`. HAZARD, the same one `moderation_outboxes` ' +
+      'carries: `expiresAt` is set at WRITE, not at completion, so a poller ' +
+      'wedged for a full window has live parcels swept rather than updated. ' +
+      'Alert on poller staleness, not on this sweep.',
+  },
+  {
+    table: trackingWebhookEvents,
+    column: trackingWebhookEvents.expiresAt,
+    retentionSeconds: DEADLINE_IS_THE_COLUMN,
+    reason:
+      'A carrier push is a dedupe claim plus an audit trail, kept 30 days — ' +
+      'comfortably longer than any carrier redelivery schedule, past which the ' +
+      'claim has nothing left to protect.',
+  },
 ];
 
 /**
- * Tables that GROW and are deliberately NOT swept, each with the reason and the
- * decision still owed.
+ * Tables that GROW and are deliberately NOT swept, each with its reason.
  *
  * This list exists because absence from `EXPIRY_TARGETS` above is otherwise
  * indistinguishable between "nothing here needs reaping" and "nobody has
@@ -111,6 +136,20 @@ export const EXPIRY_TARGETS: readonly ExpirySweepTarget[] = [
  * Not a registry the sweep reads: it takes no column and schedules nothing, on
  * purpose. A target with a retention nobody agreed is worse than an honest gap,
  * because it deletes on a guess.
+ *
+ * ## Two KINDS of entry live here, and conflating them loses the difference
+ *
+ * 1. **A decision still owed** — the table grows, nothing bounds it, and the
+ *    retention is a question for somebody outside this file. `job_location_pings`
+ *    is the only one, and its `why` names the owner.
+ * 2. **Bounded by `ON DELETE CASCADE` from a parent that IS swept.** Nothing is
+ *    owed: the rows are reaped, just transitively, so the table needs no
+ *    deadline of its own. What it does need is a TEST proving the cascade
+ *    actually fires, because a cascade that was never declared looks identical
+ *    to one that was — so each such `why` names that test.
+ *
+ * Without the second category the tracker's child tables read as open decisions
+ * with owners who do not exist, and the next person goes looking for them.
  */
 export const UNSWEPT_GROWING_TABLES: readonly { table: string; why: string }[] = [
   {
@@ -125,6 +164,25 @@ export const UNSWEPT_GROWING_TABLES: readonly { table: string; why: string }[] =
       'must stay reconstructible for a DISPUTE, which is a product decision. ' +
       'Closing it is one entry above keyed on `at`, plus a leading btree on ' +
       'that column. See AGENTS.md §"Open decisions the Postgres port left".',
+  },
+  {
+    table: 'tracking_checkpoints',
+    why:
+      'Bounded by `ON DELETE CASCADE` from `tracked_parcels`, which IS swept, ' +
+      'so nothing is owed here — a checkpoint outliving its parcel is not a ' +
+      'state this schema can reach. Roughly ten to thirty rows per parcel, ' +
+      'append-only. The cascade is the whole argument, so it is asserted rather ' +
+      'than assumed: see `db/__tests__/tracking-expiry.realdb.test.ts`, which ' +
+      'sweeps a parcel and reads this table back empty.',
+  },
+  {
+    table: 'tracked_parcel_subscriptions',
+    why:
+      'Bounded by `ON DELETE CASCADE` from `tracked_parcels`, which IS swept, ' +
+      'and further bounded by one row per (user, parcel). A subscription is ' +
+      'only reaped once its parcel is, which is the correct direction: the ' +
+      'parcel is retained BECAUSE somebody subscribes to it. Cascade asserted ' +
+      'in `db/__tests__/tracking-expiry.realdb.test.ts`.',
   },
 ];
 

@@ -14,6 +14,9 @@ export {
   REPORTED_TYPES,
   REPORT_CATEGORIES,
   REPORT_STATUSES,
+  TRACKING_POLL_MODES,
+  TRACKING_SOURCE_KINDS,
+  TRACKING_STATUSES,
 } from '@moovo/shared-types';
 
 /**
@@ -190,3 +193,12 @@ export const MODERATION_OUTBOX_STATUSES = [
 ] as const;
 export const MODERATION_EVENT_STATES = ['claimed', 'queued', 'ignored'] as const;
 export const MODERATION_ENFORCEMENT_TARGET_TYPES = ['courier', 'customer', 'delivery'] as const;
+
+/**
+ * What became of one inbound carrier webhook delivery.
+ *
+ * Internal to the ingest pipeline and deliberately NOT in `@moovo/shared-types`:
+ * no client is ever told whether a carrier's push was claimed by this task or
+ * by another one.
+ */
+export const TRACKING_WEBHOOK_STATES = ['claimed', 'queued', 'ignored'] as const;

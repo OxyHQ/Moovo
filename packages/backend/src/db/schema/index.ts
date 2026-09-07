@@ -22,4 +22,5 @@ export * from './moderation';
 export * from './notifications';
 export * from './sequences';
 export * from './stores';
+export * from './tracking';
 export * from './transport';
