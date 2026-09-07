@@ -25,8 +25,10 @@ import courierRouter from './routes/courier.js';
 import shipmentsRouter from './routes/shipments.js';
 import jobsRouter from './routes/jobs.js';
 import reportsRouter from './routes/reports.js';
+import trackingRouter from './routes/tracking.js';
 import adminRouter from './routes/admin/index.js';
 import { createCrowdSourceWebhookRoutes } from './routes/crowdsource-webhook.js';
+import { createTrackingWebhookRoutes } from './routes/tracking-webhook.js';
 import { startModerationOutboxDispatcher } from './services/moderation/moderation-outbox.dispatcher.js';
 import { startTrackingPollDispatcher } from './services/tracking/tracking-poll.dispatcher.js';
 import { startExpirySweeper, stopExpirySweeper } from './db/expiry.js';
@@ -136,6 +138,28 @@ app.use((_req, res, next) => {
  */
 app.use('/webhooks', createCrowdSourceWebhookRoutes());
 
+/**
+ * Carrier pushes, mounted alongside — and ahead of the JSON parser for exactly
+ * the same reason: the signature covers the bytes that arrived.
+ *
+ * Its `express.raw` is scoped to `/webhooks/tracking/:carrierKey` INSIDE that
+ * router and must never move here. `@oxyhq/crowdsource-express` prefers a
+ * Buffer already stashed on the request over reading the stream, so a raw
+ * parser mounted at `/webhooks` would change what a late CrowdSource mount does
+ * from a loud refusal into silent success — disarming the neighbouring
+ * guarantee without touching its file. Its test checks this file for that
+ * property name as a LITERAL string, comments included, which is what keeps the
+ * check reliable; see `routes/tracking-webhook.ts` for the full argument.
+ *
+ * `null` when no carrier has a secret: not mounted beats mounted-and-permissive,
+ * because a route that answers without verifying is one somebody will later
+ * reason about as if it verified.
+ */
+const trackingWebhookRoutes = createTrackingWebhookRoutes();
+if (trackingWebhookRoutes) {
+  app.use('/webhooks', trackingWebhookRoutes);
+}
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -162,6 +186,7 @@ app.use('/courier', courierRouter);
 app.use('/shipments', shipmentsRouter);
 app.use('/jobs', jobsRouter);
 app.use('/reports', reportsRouter);
+app.use('/tracking', trackingRouter);
 app.use('/admin', adminRouter);
 
 // Root route
@@ -187,6 +212,7 @@ app.get('/', (_req, res) => {
       '/shipments',
       '/jobs',
       '/reports',
+      '/tracking',
       '/admin',
     ]
   });

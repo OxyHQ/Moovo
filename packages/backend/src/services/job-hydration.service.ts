@@ -173,6 +173,10 @@ export async function hydrateJobs(
     if (job.courierOxyUserId) view.courierOxyUserId = job.courierOxyUserId;
     if (job.companyId) view.companyId = job.companyId;
     if (job.providerRef) view.providerRef = job.providerRef;
+    // Surfaced so the app can offer "view on the carrier's site". It had zero
+    // readers before this line, and a value nothing reads is a value that
+    // quietly stops being written.
+    if (job.trackingUrl) view.trackingUrl = job.trackingUrl;
     if (job.proofOfDelivery) view.proofOfDelivery = toProofOfDelivery(job.proofOfDelivery);
     // Owner-only: surface the plaintext QR codes for the sender to show/relay.
     if (opts.includeCodes) {

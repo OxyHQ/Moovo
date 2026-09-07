@@ -267,6 +267,18 @@ export const jobs = pgTable(
     companyId: text().references(() => courierCompanies.id, { onDelete: 'set null' }),
     /** An external provider's own reference. Not a Moovo key. */
     providerRef: text(),
+    /**
+     * The carrier's own tracking number and page for an externally fulfilled
+     * job.
+     *
+     * Both are produced by `ProviderAdapter.book` and, until now, thrown away —
+     * so Moovo discarded the one thing a customer wants when DHL is carrying
+     * their parcel. Nullable and unconstrained by the fulfillment CHECK: a
+     * carrier may return a booking reference without a customer-facing number,
+     * and refusing the booking over that would be the wrong trade.
+     */
+    trackingNumber: text(),
+    trackingUrl: text(),
 
     pickupLatitude: latitude().notNull(),
     pickupLongitude: longitude().notNull(),

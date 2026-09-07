@@ -63,6 +63,11 @@ export function notFound(message: string): MoovoError {
   return new MoovoError({ code: ErrorCodes.NOT_FOUND, message });
 }
 
+/** An unauthenticated domain error (401). */
+export function unauthorized(message: string): MoovoError {
+  return new MoovoError({ code: ErrorCodes.UNAUTHORIZED, message });
+}
+
 /** A forbidden domain error (403). */
 export function forbidden(message: string): MoovoError {
   return new MoovoError({ code: ErrorCodes.FORBIDDEN, message });

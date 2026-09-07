@@ -34,7 +34,13 @@ export type RateLimitScope =
   | 'company'
   | 'shipments'
   | 'jobs'
-  | 'reports';
+  | 'reports'
+  | 'tracking'
+  // TWO scopes, not one. The anonymous lookup spends real carrier calls and is
+  // the enumeration surface, so it needs a far tighter budget than a signed-in
+  // user reading their own list. Sharing a scope would also share a Redis key
+  // prefix and therefore a counter (`ERR_ERL_DOUBLE_COUNT`).
+  | 'tracking-lookup';
 
 /**
  * Build a rate-limit middleware for a scope. The scope drives a unique

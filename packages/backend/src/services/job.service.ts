@@ -256,6 +256,7 @@ export async function bookShipment(
   // transaction holds a connection for as long as somebody else's server takes.
   const isExternal = quote.source === 'external_provider';
   let providerRef: string | undefined;
+  let carrierTrackingUrl: string | undefined;
   if (isExternal) {
     if (!quote.providerId) {
       throw conflict('External quote is missing its provider');
@@ -270,6 +271,10 @@ export async function bookShipment(
     }
     const booking = await adapter.book(shipment, quote);
     providerRef = booking.bookingRef;
+    // Kept, at last. Every adapter has always returned this and `job.service`
+    // has always dropped it, so a customer whose parcel is on DHL had no way to
+    // reach DHL's own page from Moovo.
+    carrierTrackingUrl = booking.trackingUrl;
   }
 
   // For a Moovo-courier job, mint the two single-use QR proof codes at booking.
@@ -289,6 +294,7 @@ export async function bookShipment(
         type: shipment.type,
         fulfillmentType: isExternal ? 'external_provider' : 'moovo_courier',
         providerRef,
+        ...(carrierTrackingUrl ? { trackingUrl: carrierTrackingUrl } : {}),
         pickupSnapshot: shipment.pickup,
         dropoffSnapshot: shipment.dropoff,
         parcelSnapshot: shipment.parcel,

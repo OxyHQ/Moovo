@@ -637,3 +637,67 @@ export const scanJobSchema = z.object({
   code: z.string().trim().min(1).max(200),
   photoFileId: z.string().trim().min(1).optional(),
 });
+
+/* ── Moovo Tracker ─────────────────────────────────────────────────────── */
+
+/**
+ * A pasted tracking number, before normalisation.
+ *
+ * Bounded generously and NOT pattern-matched here: normalisation strips the
+ * separators a carrier prints, and refusing them at the edge would reject a
+ * number the user copied correctly. The one spelling of what is acceptable is
+ * `normalizeTrackingNumber` plus the CHECK constraint it agrees with.
+ */
+const trackingNumberField = z.string().trim().min(4).max(60);
+const carrierKeyField = z.string().trim().min(1).max(64);
+const countryField = z.string().trim().length(2).toUpperCase();
+
+/** Body for `POST /tracking/detect`. */
+export const trackingDetectSchema = z.object({
+  number: trackingNumberField,
+  destinationCountry: countryField.optional(),
+});
+
+/** Body for `POST /tracking/lookup` — the anonymous one-off question. */
+export const trackingLookupSchema = z.object({
+  number: trackingNumberField,
+  carrierKey: carrierKeyField.optional(),
+  destinationPostalCode: z.string().trim().max(16).optional(),
+});
+
+/** Body for `POST /tracking/parcels`. */
+export const trackParcelSchema = z.object({
+  number: trackingNumberField,
+  carrierKey: carrierKeyField.optional(),
+  title: z.string().trim().max(120).optional(),
+  destinationPostalCode: z.string().trim().max(16).optional(),
+  destinationCountry: countryField.optional(),
+  notify: z.boolean().optional(),
+});
+
+/**
+ * Body for `PATCH /tracking/parcels/:id`.
+ *
+ * `.refine` for at least one key, so an empty body is a validation error rather
+ * than a silent no-op that returns 200 and changes nothing.
+ */
+export const updateTrackedParcelSchema = z
+  .object({
+    title: z.string().trim().max(120).optional(),
+    notify: z.boolean().optional(),
+    archived: z.boolean().optional(),
+    carrierKey: carrierKeyField.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'Provide at least one field to update',
+  });
+
+/** Query for `GET /tracking/parcels`. */
+export const trackingListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  archived: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value === 'true'),
+});

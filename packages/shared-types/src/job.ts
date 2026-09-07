@@ -205,6 +205,8 @@ export interface Job extends Timestamps {
   companyId?: string;
   /** External provider booking reference, for `external_provider` jobs. */
   providerRef?: string;
+  /** The carrier's own tracking page, when an external provider gave us one. */
+  trackingUrl?: string;
   /** Immutable pickup snapshot taken at booking. */
   pickupSnapshot: JobEndpointSnapshot;
   /** Immutable dropoff snapshot taken at booking. */
@@ -259,6 +261,8 @@ export interface JobView {
   companyId?: string;
   /** External provider booking reference, for `external_provider` jobs. */
   providerRef?: string;
+  /** The carrier's own tracking page, when an external provider gave us one. */
+  trackingUrl?: string;
   /** Immutable pickup snapshot. */
   pickupSnapshot: JobEndpointSnapshot;
   /** Immutable dropoff snapshot. */
