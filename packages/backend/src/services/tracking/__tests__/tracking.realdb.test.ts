@@ -32,12 +32,14 @@ import { __resetTrackingRegistryForTests } from '../tracking-registry.js';
 import { seedTrackingCarriers } from '../seed-tracking-carriers.js';
 import {
   getParcelDetail,
+  listCarriers,
   listParcels,
   lookupParcel,
   trackParcel,
   untrackParcel,
   updateParcel,
 } from '../tracking.service.js';
+import { findTrackingCarrierByKey } from '../../../db/tracking/trackingCarrierRepository.js';
 import {
   findOrCreateParcel,
   findParcelByNumber,
@@ -277,6 +279,52 @@ describeIfPostgres('the tracking write path', () => {
       `;
       expect(fedex?.carrier_key).toBe('fedex');
       expect(fedex?.subscriber_count).toBe(0);
+    });
+  });
+
+  describe('the internal pointer carrier is not reachable from public input', () => {
+    // `moovo` rows are POINTERS: they carry a `moovoJobId` and zero checkpoints
+    // for their whole life, and `getParcelDetail` hydrates the JOB instead. A
+    // row on that key with no job behind it is a parcel the detail endpoint can
+    // never hydrate — it falls through to an empty carrier timeline forever.
+    //
+    // The app filters `moovo` out of its picker, but a filter in a client is not
+    // a rule: `POST /tracking/lookup {"carrierKey":"moovo"}` is a public,
+    // unauthenticated route, and `requireCarrier` only ever checked that a row
+    // exists and is enabled.
+    it('refuses an anonymous lookup that names it', async () => {
+      await expect(
+        lookupParcel({ number: 'MOOVOFAKE0001', carrierKey: 'moovo' }),
+      ).rejects.toThrow(/not a carrier you can select/i);
+    });
+
+    it('refuses a subscribe that names it', async () => {
+      await expect(
+        trackParcel('user-internal-1', { number: 'MOOVOFAKE0002', carrierKey: 'moovo' }),
+      ).rejects.toThrow(/not a carrier you can select/i);
+    });
+
+    it('refuses a re-point onto it', async () => {
+      const parcel = await trackParcel('user-internal-2', {
+        number: 'MOOVOFAKE0003',
+        carrierKey: 'ups',
+      });
+      await expect(
+        updateParcel(parcel.id, 'user-internal-2', { carrierKey: 'moovo' }),
+      ).rejects.toThrow(/not a carrier you can select/i);
+    });
+
+    it('keeps it out of the catalogue the picker reads', async () => {
+      expect((await listCarriers()).map((carrier) => carrier.key)).not.toContain('moovo');
+    });
+
+    it('still HYDRATES a genuine pointer, which is the row that must keep working', async () => {
+      // The refusal is on user INPUT, never on reading an existing row. A real
+      // pointer is created by booking a job, and its detail must still resolve —
+      // a blanket ban inside `requireCarrier` would break every Moovo delivery
+      // in every customer's list.
+      const carrier = await findTrackingCarrierByKey('moovo');
+      expect(carrier?.enabled).toBe(true);
     });
   });
 

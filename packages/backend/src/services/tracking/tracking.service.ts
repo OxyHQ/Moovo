@@ -25,6 +25,7 @@ import { log } from '../../lib/logger.js';
 import { findJobWithHistory } from '../../db/transport/jobRepository.js';
 import { hydrateJobs } from '../job-hydration.service.js';
 import { conflict, notFound, validationError } from '../../lib/errors/error-codes.js';
+import { MOOVO_CARRIER_KEY } from './job-pointer.service.js';
 import {
   findOrCreateParcel,
   findParcelById,
@@ -73,9 +74,43 @@ async function requireCarrier(carrierKey: string): Promise<TrackingCarrierRow> {
   return carrier;
 }
 
-/** The catalogue, for the picker. */
+/**
+ * The same, for a carrier key that came from a CALLER.
+ *
+ * `moovo` is the internal pointer key. Those rows carry a `moovoJobId` and zero
+ * checkpoints for their whole life, and `getParcelDetail` hydrates the JOB
+ * instead — so a row created on that key with no job behind it is a parcel the
+ * detail endpoint can never hydrate, falling through to an empty carrier
+ * timeline forever. A Moovo parcel is created by BOOKING, never by pasting.
+ *
+ * This is separate from {@link requireCarrier} rather than a check inside it,
+ * and the split is the whole point: reading an EXISTING pointer must keep
+ * working. `updateParcel` and `toTrackedParcel` resolve the carrier of a row
+ * that is already `moovo`, and a blanket ban inside `requireCarrier` would break
+ * every Moovo delivery in every customer's list.
+ *
+ * The app also filters `moovo` out of its picker, but a filter in a client is
+ * not a rule — `POST /tracking/lookup` is public and unauthenticated.
+ */
+async function requireSelectableCarrier(carrierKey: string): Promise<TrackingCarrierRow> {
+  if (carrierKey === MOOVO_CARRIER_KEY) {
+    throw validationError('That is not a carrier you can select.');
+  }
+  return await requireCarrier(carrierKey);
+}
+
+/**
+ * The catalogue, for the picker.
+ *
+ * `moovo` is excluded for the same reason {@link requireSelectableCarrier}
+ * refuses it: it is an internal pointer key, not something a person picks. A
+ * catalogue that lists a key the API then rejects is a worse contract than one
+ * that never offers it.
+ */
 export async function listCarriers(): Promise<TrackingCarrierSummary[]> {
-  return (await listEnabledTrackingCarriers()).map(toCarrierSummary);
+  return (await listEnabledTrackingCarriers())
+    .filter((carrier) => carrier.key !== MOOVO_CARRIER_KEY)
+    .map(toCarrierSummary);
 }
 
 /**
@@ -118,7 +153,7 @@ async function resolveCarrierOrThrow(
   carrierKey: string | undefined,
   destinationCountry: string | undefined,
 ): Promise<TrackingCarrierRow> {
-  if (carrierKey) return await requireCarrier(carrierKey);
+  if (carrierKey) return await requireSelectableCarrier(carrierKey);
 
   const detected = await detectCarriersForNumber(number, destinationCountry);
   if (!detected.carrierKey) {
@@ -361,7 +396,7 @@ async function repointSubscription(
   currentParcel: { id: string; trackingNumber: string },
   patch: UpdateParcelPatch,
 ): Promise<TrackedParcel> {
-  const carrier = await requireCarrier(patch.carrierKey!);
+  const carrier = await requireSelectableCarrier(patch.carrierKey!);
 
   const result = await getDb().transaction(async (tx) => {
     const previous = await findSubscriptionForUser(subscriptionId, oxyUserId, tx);
