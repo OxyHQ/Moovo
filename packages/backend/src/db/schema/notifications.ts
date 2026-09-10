@@ -11,7 +11,7 @@
 
 import { sql } from 'drizzle-orm';
 import { index, jsonb, pgTable, text } from 'drizzle-orm/pg-core';
-import { createdAt, generatedId, timestamptz, updatedAt } from '@oxyhq/db';
+import { createdAt, generatedId, timestamptz, updatedAt } from '@oxy.so/db';
 import { closedSet, closedSetArray, foreignServiceId } from './columns';
 import {
   NOTIFICATION_CHANNELS,
@@ -86,7 +86,7 @@ export const notifications = pgTable(
      * still `pending`, `sent` or `read` is kept forever. (The source's comment
      * says "dismissed/expired", which is wrong; the index is what runs.)
      *
-     * `@oxyhq/db`'s `ExpirySweepTarget` is `{table, column, retentionSeconds}`
+     * `@oxy.so/db`'s `ExpirySweepTarget` is `{table, column, retentionSeconds}`
      * — it has NO predicate field, so the partial filter has nowhere to live
      * as a sweep argument. Rather than fork the sweep or hand-roll a second
      * one, the filter is folded into the COLUMN: this is `created_at` for a
@@ -122,7 +122,7 @@ export const notifications = pgTable(
       .where(sql`${table.status} in ('pending', 'sent')`),
     /**
      * The sweep's supporting index. It must be a LEADING btree on the swept
-     * column or the sweep is a full table scan every run — `@oxyhq/db`'s
+     * column or the sweep is a full table scan every run — `@oxy.so/db`'s
      * expiry-coverage gate fails the build if it disappears.
      */
     index('notifications_dismissed_since_idx').on(table.dismissedSince),

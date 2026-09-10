@@ -14,7 +14,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express';
-import { isLiveEntityId } from '@oxyhq/db';
+import { isLiveEntityId } from '@oxy.so/db';
 import type { StoreRole, StorePermission } from '@moovo/shared-types';
 import { findMembership, findStoreById, type StoreMemberRecord, type StoreRecord } from '../db/stores/storeRepository.js';
 import { sendError, ErrorCodes } from '../utils/api-response.js';

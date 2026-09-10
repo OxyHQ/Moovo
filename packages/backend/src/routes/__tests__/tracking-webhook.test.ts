@@ -10,7 +10,7 @@
  *
  * **`express.raw` must stay scoped to `/webhooks/tracking`.** This is the
  * sharper of the two, because getting it wrong breaks a DIFFERENT file's
- * guarantee: `@oxyhq/crowdsource-express` prefers a Buffer already stashed on
+ * guarantee: `@oxy.so/crowdsource-express` prefers a Buffer already stashed on
  * the request over reading the stream, so a raw parser mounted at `/webhooks`
  * would turn that router's loud refusal of a late mount into silent success —
  * with nothing in its own file changed.

@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
-import { useOxy } from "@oxyhq/services";
+import { useOxy } from "@oxy.so/services";
 import { useTranslation } from "@/hooks/useTranslation";
 import { ChevronRight } from "lucide-react-native";
 

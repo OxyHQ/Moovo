@@ -36,9 +36,9 @@ from the tree: `bun run dev:courier` / `build:courier` drive `@moovo/courier-app
 
 Stack: Expo, NativeWind (Tailwind + postcss), Reanimated, Zustand, TanStack Query
 and expo-router on all four apps; Express, PostgreSQL (drizzle-orm +
-postgres.js via `@oxyhq/db`), optional Redis and Socket.IO on the backend;
-`@oxyhq/bloom` for UI; `@oxyhq/core` (including `@oxyhq/core/server`) and
-`@oxyhq/services` for device-first auth. Client id is
+postgres.js via `@oxy.so/db`), optional Redis and Socket.IO on the backend;
+`@oxy.so/bloom` for UI; `@oxy.so/core` (including `@oxy.so/core/server`) and
+`@oxy.so/services` for device-first auth. Client id is
 `EXPO_PUBLIC_OXY_CLIENT_ID`; backend auth wiring is in
 `packages/backend/src/middleware/auth.ts`.
 

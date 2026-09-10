@@ -28,7 +28,7 @@ import type {
   CompanyRole,
   TextTone,
 } from '@moovo/shared-types';
-import { uuidv7 } from '@oxyhq/db';
+import { uuidv7 } from '@oxy.so/db';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { companyMembers, companyServiceAreas, courierCompanies } from '../schema/fleet';
 

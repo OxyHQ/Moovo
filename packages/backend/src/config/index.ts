@@ -251,7 +251,7 @@ export interface DispatchConfig {
 /**
  * The CrowdSource moderation integration.
  *
- * The names come from the `@oxyhq/crowdsource*` packages, not from a plan's
+ * The names come from the `@oxy.so/crowdsource*` packages, not from a plan's
  * table, and the packages win.
  *
  * **There is no `CROWDSOURCE_APP_ID`, and one must never be added.** The

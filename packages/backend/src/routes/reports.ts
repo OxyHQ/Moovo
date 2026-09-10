@@ -16,8 +16,8 @@
 
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { isLiveEntityId } from '@oxyhq/db';
-import { getRequiredOxyUserId } from '@oxyhq/core/server';
+import { isLiveEntityId } from '@oxy.so/db';
+import { getRequiredOxyUserId } from '@oxy.so/core/server';
 import {
   REPORTED_TYPES,
   REPORT_CATEGORIES,

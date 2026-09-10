@@ -7,7 +7,7 @@ import { Text } from "@/components/ui/text";
 import { Logo } from "@/components/Logo";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { cn } from "@/lib/utils";
-import { useAuth, ProfileButton } from "@oxyhq/services";
+import { useAuth, ProfileButton } from "@oxy.so/services";
 import { NAV_ITEMS, isNavItemActive, type NavItem } from "./nav-items";
 
 const IS_WEB = Platform.OS === "web";

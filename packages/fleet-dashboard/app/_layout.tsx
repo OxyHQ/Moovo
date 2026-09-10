@@ -4,11 +4,11 @@ import { Stack } from 'expo-router';
 import {
   preventNativeSplashAutoHide,
   useHideNativeSplashWhenReady,
-} from '@oxyhq/expo-splash';
+} from '@oxy.so/expo-splash';
 import { useCallback, useEffect, useState } from 'react';
-import { OxyProvider, useOxy } from '@oxyhq/services';
-import { BloomThemeProvider } from '@oxyhq/bloom/theme';
-import { ImageResolverProvider } from '@oxyhq/bloom/image-resolver';
+import { OxyProvider, useOxy } from '@oxy.so/services';
+import { BloomThemeProvider } from '@oxy.so/bloom/theme';
+import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 
@@ -32,7 +32,7 @@ export const unstable_settings = {
 // Hold the native OS splash until the app is ready. The native OS splash — the
 // Oxy family "Instagram, from Meta" pattern: Moovo's own logo centered on the
 // dark brand background with the shared Oxy symbol pinned to the bottom
-// (configured by `@oxyhq/expo-splash` in app.config.js) — is the SINGLE splash
+// (configured by `@oxy.so/expo-splash` in app.config.js) — is the SINGLE splash
 // surface on native. On web this is a no-op (the shared helper guards
 // `Platform.OS === 'web'`); the custom <AppSplashScreen> covers the web boot.
 preventNativeSplashAutoHide();

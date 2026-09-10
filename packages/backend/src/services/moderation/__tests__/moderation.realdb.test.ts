@@ -45,7 +45,7 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
-import { isCheckViolation, isUniqueViolation, uuidv7 } from '@oxyhq/db';
+import { isCheckViolation, isUniqueViolation, uuidv7 } from '@oxy.so/db';
 import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,

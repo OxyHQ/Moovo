@@ -18,7 +18,7 @@
 
 import { sql } from 'drizzle-orm';
 import { boolean, check, index, integer, jsonb, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
-import { createdAt, generatedId, timestamptz, updatedAt } from '@oxyhq/db';
+import { createdAt, generatedId, timestamptz, updatedAt } from '@oxy.so/db';
 import { closedSet, closedSetArray, foreignServiceId } from './columns';
 import {
   MODERATION_ENFORCEMENT_ACTIONS,

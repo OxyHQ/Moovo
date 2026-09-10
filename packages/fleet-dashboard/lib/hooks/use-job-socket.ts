@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useOxy } from "@oxyhq/services";
+import { useOxy } from "@oxy.so/services";
 import type { GeoPoint } from "@moovo/shared-types";
 import {
   connectMoovoSocket,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useOxy } from "@oxyhq/services";
+import { useOxy } from "@oxy.so/services";
 import type { JobOfferView, JobView } from "@moovo/shared-types";
 import { connectSocket } from "@/lib/socket";
 import { queryKeys } from "@/lib/hooks/query-keys";

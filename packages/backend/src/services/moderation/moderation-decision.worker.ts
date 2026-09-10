@@ -12,7 +12,7 @@
  * happened.
  */
 
-import { DecisionSchema, type Decision } from '@oxyhq/crowdsource-contracts';
+import { DecisionSchema, type Decision } from '@oxy.so/crowdsource-contracts';
 import { log } from '../../lib/logger.js';
 import {
   applyDecisionToReport,

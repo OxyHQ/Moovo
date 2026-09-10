@@ -5,7 +5,7 @@
  *
  * This router MUST be mounted BEFORE `express.json()` in `index.ts`. The
  * signature covers the bytes that arrived, and once a JSON parser has run those
- * bytes are gone — `@oxyhq/crowdsource-express` needs the raw Buffer and will
+ * bytes are gone — `@oxy.so/crowdsource-express` needs the raw Buffer and will
  * refuse rather than verify a signature over a re-serialisation. That refusal is
  * the correct behaviour, and it is also why the mount order cannot be got wrong
  * silently. A test asserts `typeof req.body === 'undefined'` inside the route,
@@ -26,7 +26,7 @@
  */
 
 import { Router } from 'express';
-import { crowdsourceWebhooks } from '@oxyhq/crowdsource-express';
+import { crowdsourceWebhooks } from '@oxy.so/crowdsource-express';
 import { config } from '../config/index.js';
 import { log } from '../lib/logger.js';
 import {

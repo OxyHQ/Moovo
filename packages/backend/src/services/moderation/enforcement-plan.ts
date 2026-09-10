@@ -33,7 +33,7 @@
  * instead of letting a row imply Moovo did something it has no power to do.
  */
 
-import type { Decision, RecommendedAction, Severity } from '@oxyhq/crowdsource-contracts';
+import type { Decision, RecommendedAction, Severity } from '@oxy.so/crowdsource-contracts';
 import type { ModerationEnforcementAction } from '@moovo/shared-types';
 
 /** What a decision can be about. Decides which levers are available at all. */

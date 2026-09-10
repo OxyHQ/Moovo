@@ -9,7 +9,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { getRequiredOxyUserId } from '@oxyhq/core/server';
+import { getRequiredOxyUserId } from '@oxy.so/core/server';
 import type { CreateStoreInput, UpdateStoreInput, Store as StoreDTO } from '@moovo/shared-types';
 import type { StoreRecord } from '../../db/stores/storeRepository.js';
 import {

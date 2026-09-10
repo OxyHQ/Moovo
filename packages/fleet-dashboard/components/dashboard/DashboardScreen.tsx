@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { View, ScrollView, Platform, ActivityIndicator } from "react-native";
 import Head from "expo-router/head";
-import { useOxy, openAccountDialog } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxy.so/services";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";
 import { MoovoWordmark } from "@/components/ui/moovo-wordmark";

@@ -16,7 +16,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { getRequiredOxyUserId } from '@oxyhq/core/server';
+import { getRequiredOxyUserId } from '@oxy.so/core/server';
 import {
   detectCarriersForNumber,
   getParcelDetail,

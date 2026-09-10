@@ -1,10 +1,10 @@
-const { oxySplashScreenPlugin } = require('@oxyhq/expo-splash/config');
+const { oxySplashScreenPlugin } = require('@oxy.so/expo-splash/config');
 
 /**
  * Moovo Hub (fleet-dashboard) Expo config.
  *
  * Migrated from the previous static `app.json` so the native splash can adopt
- * the shared Oxy family pattern via `@oxyhq/expo-splash`, whose config plugin is
+ * the shared Oxy family pattern via `@oxy.so/expo-splash`, whose config plugin is
  * a FUNCTION (`oxySplashScreenPlugin(...)`) and therefore can't live in a static
  * JSON `plugins` array. All non-splash config below is a faithful port of the
  * old `app.json`.
@@ -19,7 +19,7 @@ module.exports = () => ({
     icon: './assets/icon-512.png',
     scheme: 'moovohub',
     userInterfaceStyle: 'automatic',
-    // The native OS splash is now owned by `@oxyhq/expo-splash` (see `plugins`),
+    // The native OS splash is now owned by `@oxy.so/expo-splash` (see `plugins`),
     // which configures `expo-splash-screen`. The old static `splash` block was
     // removed so there is a single source of truth for the native splash.
     ios: {
@@ -55,7 +55,7 @@ module.exports = () => ({
       // Native OS splash (Oxy family "Instagram, from Meta" pattern): Moovo's own
       // logo (white on transparent) centered on the dark brand background, with
       // the shared Oxy symbol pinned to the bottom. `oxySplashScreenPlugin`
-      // builds the `expo-splash-screen` tuple; the bare `@oxyhq/expo-splash`
+      // builds the `expo-splash-screen` tuple; the bare `@oxy.so/expo-splash`
       // entry (bundled Oxy asset) MUST immediately follow it to add the bottom
       // branding — this ordering is load-bearing.
       oxySplashScreenPlugin({
@@ -63,14 +63,14 @@ module.exports = () => ({
         imageWidth: 176,
         backgroundColor: '#0B0B0F',
       }),
-      '@oxyhq/expo-splash',
+      '@oxy.so/expo-splash',
       // Android shared keychain: `android:sharedUserId="so.oxy.shared"`, so Moovo
       // Hub joins the ecosystem's "sign in once, use everywhere" UID.
-      '@oxyhq/app-preset/plugin/withSharedUserId',
+      '@oxy.so/app-preset/plugin/withSharedUserId',
       // Reader side of the shared-identity native module (ships in
-      // @oxyhq/services): requests the signature permission + <queries> so cold
+      // @oxy.so/services): requests the signature permission + <queries> so cold
       // boot can silently read the Commons-hosted shared identity.
-      '@oxyhq/services/plugins/withSharedIdentityReader',
+      '@oxy.so/services/plugins/withSharedIdentityReader',
     ],
     experiments: {
       typedRoutes: true,

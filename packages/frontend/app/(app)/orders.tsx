@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { View, ScrollView, Pressable, ActivityIndicator, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
-import { useOxy, openAccountDialog } from '@oxyhq/services';
+import { useOxy, openAccountDialog } from '@oxy.so/services';
 import { ChevronRight, PackagePlus } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Footer } from '@/components/shell/Footer';

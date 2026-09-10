@@ -42,7 +42,7 @@ vi.mock('../../middleware/auth.js', () => ({
   oxyClient: {},
 }));
 
-vi.mock('@oxyhq/core/server', async (importOriginal) => {
+vi.mock('@oxy.so/core/server', async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>();
   return {
     ...actual,

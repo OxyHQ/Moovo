@@ -3,8 +3,8 @@ import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { openAccountDialog, useOxy } from '@oxyhq/services';
-import { toast } from '@oxyhq/bloom/toast';
+import { openAccountDialog, useOxy } from '@oxy.so/services';
+import { toast } from '@oxy.so/bloom/toast';
 
 import { CarrierPicker } from '@/components/CarrierPicker';
 import { StatusBadge } from '@/components/StatusBadge';

@@ -7,7 +7,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useOxy, openAccountDialog } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxy.so/services";
 import type { JobSummary } from "@moovo/shared-types";
 import { ChevronRight } from "lucide-react-native";
 import { Text } from "@/components/ui/text";

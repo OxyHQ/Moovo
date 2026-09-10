@@ -27,7 +27,7 @@ import {
   WEBHOOK_SIGNATURE_HEADER,
   WEBHOOK_SIGNATURE_VERSION,
   WEBHOOK_TIMESTAMP_HEADER,
-} from '@oxyhq/crowdsource-contracts';
+} from '@oxy.so/crowdsource-contracts';
 import { createServer, type Server } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -364,7 +364,7 @@ describe("the parser configuration the 'refused' test depends on", () => {
   /**
    * Why this exists, and it is not paranoia.
    *
-   * `readRawBody` in `@oxyhq/crowdsource-express` prefers a Buffer on
+   * `readRawBody` in `@oxy.so/crowdsource-express` prefers a Buffer on
    * `req.rawBody` before it reads the stream. So the consequence of mounting the
    * webhook LATE depends on middleware this integration does not own:
    *

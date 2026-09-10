@@ -17,14 +17,14 @@
  *
  * These are string assertions over configuration, which is the weakest kind of
  * test, so each one is written to fail LOUDLY on the specific edit that would
- * break it rather than to match loosely. Where a value is owned by `@oxyhq/db`
+ * break it rather than to match loosely. Where a value is owned by `@oxy.so/db`
  * or by `migrate.ts`, it is IMPORTED and compared, never respelled.
  */
 
 import { readFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { POST_PHASE_GREP_PATTERN } from '@oxyhq/db/migrate';
+import { POST_PHASE_GREP_PATTERN } from '@oxy.so/db/migrate';
 import { describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 import { MIGRATIONS_FOLDER } from '../migrate';
@@ -125,7 +125,7 @@ describe('the deploy can apply migrations', () => {
     expect(script).toContain('"None"');
   });
 
-  it('greps for the post-phase marker with the pattern @oxyhq/db exports', () => {
+  it('greps for the post-phase marker with the pattern @oxy.so/db exports', () => {
     const workflow = read(WORKFLOW_PATH);
     // Imported, never respelled. A local copy of this pattern drifts from the
     // library the day the marker syntax changes, and the drift reads as "this
@@ -147,7 +147,7 @@ describe('the deploy can apply migrations', () => {
   it('serialises deploys and NEVER cancels one that is already running', () => {
     const workflow = read(WORKFLOW_PATH);
 
-    // The migrator takes no lock — `@oxyhq/db`'s runner says so under a
+    // The migrator takes no lock — `@oxy.so/db`'s runner says so under a
     // heading reading "WHAT THIS DELIBERATELY DOES NOT DO", and it was
     // measured: two runs started together against one fresh database both
     // logged "Applying 1 migration(s)", one exited 0 and the other exited 1 on

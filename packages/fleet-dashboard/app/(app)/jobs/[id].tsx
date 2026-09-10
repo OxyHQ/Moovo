@@ -3,7 +3,7 @@ import { View, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MapPin, Flag, Phone } from "lucide-react-native";
-import { useOxy } from "@oxyhq/services";
+import { useOxy } from "@oxy.so/services";
 import type { JobView, JobStatusEvent, ShipmentEndpoint } from "@moovo/shared-types";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";

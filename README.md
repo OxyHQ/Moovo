@@ -29,7 +29,7 @@ One Express API owns the job, the offers, the quote and the shipment, so the thr
 
 ### 🔑 Identity comes from Oxy
 
-There is no Moovo account. Sign in is the device first Oxy session, handled end to end by [`@oxyhq/services`](https://www.npmjs.com/package/@oxyhq/services) on the client and [`@oxyhq/core`](https://www.npmjs.com/package/@oxyhq/core) on the server.
+There is no Moovo account. Sign in is the device first Oxy session, handled end to end by [`@oxy.so/services`](https://www.npmjs.com/package/@oxy.so/services) on the client and [`@oxy.so/core`](https://www.npmjs.com/package/@oxy.so/core) on the server.
 
 No local token providers, no auth interceptors, no hand rolled bearer parsing. See the [Oxy platform repo](https://github.com/OxyHQ/oxy) for how the session itself works.
 
@@ -47,7 +47,7 @@ No local token providers, no auth interceptors, no hand rolled bearer parsing. S
 | `@moovo/backend` | [`packages/backend/`](packages/backend/) | Express API: TypeScript, PostgreSQL via drizzle-orm, Socket.IO |
 | `@moovo/shared-types` | [`packages/shared-types/`](packages/shared-types/) | Domain DTOs every package imports |
 
-All three apps are Expo, render [`@oxyhq/bloom`](https://www.npmjs.com/package/@oxyhq/bloom) primitives with NativeWind, and draw maps with `react-native-maps`.
+All three apps are Expo, render [`@oxy.so/bloom`](https://www.npmjs.com/package/@oxy.so/bloom) primitives with NativeWind, and draw maps with `react-native-maps`.
 
 > Moovo was forked from the Mercaria marketplace shell, and the inherited marketplace code (listings, cart, checkout, stores, reviews) is still in the tree. Treat it as scaffolding on its way out, not as the Moovo domain.
 
@@ -118,7 +118,7 @@ What a jury sees is deliberately narrow. A job carries two names, two phone numb
 
 Moovo has one enforcement lever, the courier's status, applied to courier privileges and never to the Oxy account. There is deliberately no way to cancel a delivery in flight, because that strands a courier holding someone else's property.
 
-Built on [`@oxyhq/crowdsource`](https://www.npmjs.com/package/@oxyhq/crowdsource) and [`@oxyhq/crowdsource-express`](https://www.npmjs.com/package/@oxyhq/crowdsource-express).
+Built on [`@oxy.so/crowdsource`](https://www.npmjs.com/package/@oxy.so/crowdsource) and [`@oxy.so/crowdsource-express`](https://www.npmjs.com/package/@oxy.so/crowdsource-express).
 
 </details>
 
@@ -141,7 +141,7 @@ Everything ships from GitHub Actions in [`.github/workflows/`](.github/workflows
 
 ## Conventions
 
-TypeScript first, with no `as any`, no `@ts-ignore` and no non null assertions. Styling is NativeWind classes rather than inline styles. State is Zustand, data fetching is TanStack Query, routing is expo-router. Backend auth is `@oxyhq/core/server` middleware and is never hand rolled.
+TypeScript first, with no `as any`, no `@ts-ignore` and no non null assertions. Styling is NativeWind classes rather than inline styles. State is Zustand, data fetching is TanStack Query, routing is expo-router. Backend auth is `@oxy.so/core/server` middleware and is never hand rolled.
 
 Longer form docs live in [`docs/`](docs/), the full working agreement in [`AGENTS.md`](AGENTS.md), and setup details in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 

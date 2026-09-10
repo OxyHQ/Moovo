@@ -54,7 +54,7 @@ async function itemsOf(orderId: string, db: DatabaseOrTransaction): Promise<Orde
  *
  * `(at, id)` rather than `at` alone: the source's array had no other ordering
  * field, and two events written in the same millisecond would otherwise come
- * back in an arbitrary order — `@oxyhq/db`'s uuid v7 is NOT monotonic within a
+ * back in an arbitrary order — `@oxy.so/db`'s uuid v7 is NOT monotonic within a
  * millisecond, so the id tiebreaker is what makes this deterministic.
  */
 async function historyOf(

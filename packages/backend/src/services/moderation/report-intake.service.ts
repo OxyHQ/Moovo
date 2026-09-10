@@ -24,7 +24,7 @@
  * inferred from a missing row.
  */
 
-import { isLiveEntityId, isUniqueViolation } from '@oxyhq/db';
+import { isLiveEntityId, isUniqueViolation } from '@oxy.so/db';
 import {
   REPORTED_TYPES,
   type ModerationLocalStatus,

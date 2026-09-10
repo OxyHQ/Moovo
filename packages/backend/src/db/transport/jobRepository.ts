@@ -36,7 +36,7 @@
  */
 
 import { and, asc, count, desc, eq, inArray, or, sql } from 'drizzle-orm';
-import { uuidv7 } from '@oxyhq/db';
+import { uuidv7 } from '@oxy.so/db';
 import type { JobStatus } from '@moovo/shared-types';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { jobLocationPings, jobs, jobStatusEvents } from '../schema/transport';

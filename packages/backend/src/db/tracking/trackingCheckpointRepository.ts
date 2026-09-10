@@ -13,7 +13,7 @@
 
 import { asc, eq } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
-import { uuidv7 } from '@oxyhq/db';
+import { uuidv7 } from '@oxy.so/db';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { trackingCheckpoints } from '../schema/tracking';
 

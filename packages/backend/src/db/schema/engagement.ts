@@ -4,7 +4,7 @@
 
 import { sql } from 'drizzle-orm';
 import { boolean, check, index, integer, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
-import { createdAt, timestamptz, generatedId, updatedAt } from '@oxyhq/db';
+import { createdAt, timestamptz, generatedId, updatedAt } from '@oxy.so/db';
 import { closedSet, foreignServiceId } from './columns';
 import {
   FEEDBACK_STATUSES,

@@ -113,7 +113,7 @@ describeIfPostgres('the Postgres test harness', () => {
 
   it('creates a throwaway database, not the admin one it was pointed at', async () => {
     const name = new URL(suite!.databaseUrl).pathname.slice(1);
-    // The prefix is `@oxyhq/db`'s, and the check matters: `TEST_DATABASE_URL`
+    // The prefix is `@oxy.so/db`'s, and the check matters: `TEST_DATABASE_URL`
     // names the ADMIN database, so a harness that failed to create anything
     // would hand back a working handle to `postgres` and every suite would
     // quietly share one database.

@@ -22,7 +22,7 @@
  */
 
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
-import { isUniqueViolation } from '@oxyhq/db';
+import { isUniqueViolation } from '@oxy.so/db';
 import type { StorePermission, StoreRole, TextTone } from '@moovo/shared-types';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { storeMembers, stores } from '../schema/stores';

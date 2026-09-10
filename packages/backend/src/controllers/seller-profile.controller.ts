@@ -7,7 +7,7 @@
  */
 
 import type { Request, Response } from 'express';
-import { getRequiredOxyUserId } from '@oxyhq/core/server';
+import { getRequiredOxyUserId } from '@oxy.so/core/server';
 import type { SellerProfileRecord } from '../db/stores/sellerProfileRepository.js';
 import { getMine, updatePrefs, type SellerPrefsInput } from '../services/seller-profile.service.js';
 import { sendSuccess } from '../utils/api-response.js';

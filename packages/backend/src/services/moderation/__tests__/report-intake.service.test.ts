@@ -14,7 +14,7 @@
  *    have Moovo package a stranger's delivery into a case for a jury to read.
  */
 
-import { uuidv7 } from '@oxyhq/db';
+import { uuidv7 } from '@oxy.so/db';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const insertReport = vi.fn();

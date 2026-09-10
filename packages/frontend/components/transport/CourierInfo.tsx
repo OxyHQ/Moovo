@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
-import { useOxy } from '@oxyhq/services';
+import { useOxy } from '@oxy.so/services';
 import { Text } from '@/components/ui/text';
 
 /**

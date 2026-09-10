@@ -3,7 +3,7 @@ import { Link } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { openAccountDialog, useOxy } from '@oxyhq/services';
+import { openAccountDialog, useOxy } from '@oxy.so/services';
 
 import { ParcelSummaryCard } from '@/components/ParcelSummaryCard';
 import { TrackingSearch } from '@/components/TrackingSearch';

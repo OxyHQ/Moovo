@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
-import { OxyServices } from '@oxyhq/core';
+import { OxyServices } from '@oxy.so/core';
 import {
   createOptionalOxyAuth,
   createOxyAuthMiddleware,
@@ -8,7 +8,7 @@ import {
   type OxyRequestUser,
   type OxyServiceAppContext,
   type OxyServiceEnvironment,
-} from '@oxyhq/core/server';
+} from '@oxy.so/core/server';
 import { log } from '../lib/logger.js';
 import { getClientIp } from '../lib/net-utils.js';
 
@@ -48,7 +48,7 @@ declare global {
 }
 
 /**
- * Oxy authentication middleware (official @oxyhq/core/server)
+ * Oxy authentication middleware (official @oxy.so/core/server)
  * Validates JWT tokens (including service tokens) and sets req.userId, req.user, req.accessToken
  */
 export const authenticateToken = createOxyAuthMiddleware(oxyClient, { auth: { debug: true } });
@@ -70,7 +70,7 @@ export function optionalAuth(
   res: Response,
   next: NextFunction
 ): void {
-  // Uses @oxyhq/core/server optional auth — attaches user if valid, continues if not.
+  // Uses @oxy.so/core/server optional auth — attaches user if valid, continues if not.
   oxyOptionalAuth(req, res, next);
 }
 

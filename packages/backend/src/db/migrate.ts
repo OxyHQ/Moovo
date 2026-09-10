@@ -6,7 +6,7 @@ import {
   type RequiredExtension,
   readTargetDatabase,
   runMigrations,
-} from '@oxyhq/db/migrate';
+} from '@oxy.so/db/migrate';
 
 /**
  * The ONLY thing that applies migrations to a Moovo database.
