@@ -25,6 +25,7 @@
     "start:frontend": "bun run --filter @moovo/frontend start",
     "start:backend": "bun run --filter @moovo/backend start",
     "lint": "bun run --filter '*' lint",
+    "doctor:oxy": "oxy-doctor --ci",
     "android": "bun run --filter @moovo/frontend android",
     "ios": "bun run --filter @moovo/frontend ios",
     "web": "bun run --filter @moovo/frontend web",
@@ -39,6 +40,7 @@
   ],
   "author": "",
   "devDependencies": {
+    "@oxy.so/doctor": "1.0.0",
     "typescript": "^5.9.3"
   },
   "overrides": {
