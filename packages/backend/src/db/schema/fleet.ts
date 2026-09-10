@@ -68,7 +68,7 @@ export const courierCompanies = pgTable(
      * device. `accountRef` is the PROVIDER's own reference, so it gets the
      * foreign-service-id helper rather than a bare `text()`.
      */
-    payoutProvider: text().notNull().default('oxy_pay'),
+    payoutProvider: text().notNull().default('peable'),
     payoutAccountRef: foreignServiceId(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -226,7 +226,7 @@ export const courierProfiles = pgTable(
     completedJobs: integer().notNull().default(0),
     cancelledJobs: integer().notNull().default(0),
     acceptanceRate: doublePrecision(),
-    payoutProvider: text().notNull().default('oxy_pay'),
+    payoutProvider: text().notNull().default('peable'),
     payoutAccountRef: foreignServiceId(),
     /**
      * The courier's current fleet affiliation — optional and NOT part of any

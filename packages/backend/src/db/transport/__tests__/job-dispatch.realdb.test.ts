@@ -317,7 +317,7 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
       expect(read).not.toHaveProperty('proofOfDelivery');
       expect(read).not.toHaveProperty('idempotencyKey');
       // The payment sub-document's two defaults survive the port as columns.
-      expect(read?.payment).toEqual({ status: 'unpaid', provider: 'oxy_pay' });
+      expect(read?.payment).toEqual({ status: 'unpaid', provider: 'peable' });
     });
 
     /**

@@ -43,6 +43,13 @@
       "when": 1788743755230,
       "tag": "0005_kind_lila_cheney",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789004935114,
+      "tag": "0006_sour_warbound",
+      "breakpoints": true
     }
   ]
 }

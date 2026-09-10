@@ -338,7 +338,7 @@ export const jobs = pgTable(
     podAt: timestamptz(),
 
     paymentStatus: text().notNull().default('unpaid'),
-    paymentProvider: text().notNull().default('oxy_pay'),
+    paymentProvider: text().notNull().default('peable'),
     paymentReference: text(),
     paidAt: timestamptz(),
 

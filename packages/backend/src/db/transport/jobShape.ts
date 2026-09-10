@@ -74,7 +74,7 @@ export interface JobProofOfDeliveryValue {
 /** How the job is being paid for. */
 export interface JobPaymentValue {
   status: 'unpaid' | 'authorized' | 'paid' | 'refunded' | 'failed';
-  provider: 'oxy_pay';
+  provider: 'peable';
   reference?: string;
   paidAt?: Date;
 }

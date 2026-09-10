@@ -72,7 +72,7 @@ export const QUOTE_SOURCES = ['moovo_courier', 'external_provider'] as const;
 export const QUOTE_STATUSES = ['active', 'selected', 'expired'] as const;
 
 export const PAYMENT_STATUSES = ['unpaid', 'authorized', 'paid', 'refunded', 'failed'] as const;
-export const PAYMENT_PROVIDERS = ['oxy_pay'] as const;
+export const PAYMENT_PROVIDERS = ['peable'] as const;
 
 export const ORDER_STATUSES = [
   'pending_payment',
