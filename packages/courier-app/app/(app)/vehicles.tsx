@@ -2,7 +2,7 @@ import { View, ScrollView, ActivityIndicator, Pressable } from "react-native";
 import Head from "expo-router/head";
 import { useRouter } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOxy, openAccountDialog } from "@oxyhq/services";
+import { useOxy, openAccountDialog } from "@oxy.so/services";
 import type { Vehicle } from "@moovo/shared-types";
 import { Plus, Check, Trash2 } from "lucide-react-native";
 import { Text } from "@/components/ui/text";

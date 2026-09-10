@@ -42,7 +42,7 @@ await esbuild.build({
   // workspace packages (e.g. shared-types) are inlined so the runtime image has
   // no dependency on their dist or their build-time devDependencies.
   //
-  // @oxyhq/* MUST stay external. The @oxyhq/crowdsource* packages are published
+  // @oxy.so/* MUST stay external. The @oxy.so/crowdsource* packages are published
   // as CommonJS, and inlining CJS into this ESM bundle rewrites each of their
   // internal require() calls into an esbuild shim that throws the moment it
   // runs — the container died at startup with

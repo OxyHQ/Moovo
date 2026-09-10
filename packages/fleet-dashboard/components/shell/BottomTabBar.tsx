@@ -21,8 +21,8 @@ import * as Haptics from "expo-haptics";
 import { UserAvatar } from "@/components/user-avatar";
 import { useColorScheme } from "@/lib/useColorScheme";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useTheme } from "@oxyhq/bloom/theme";
-import { useOxy, openAccountDialog } from "@oxyhq/services";
+import { useTheme } from "@oxy.so/bloom/theme";
+import { useOxy, openAccountDialog } from "@oxy.so/services";
 import { AccountMenu } from "./AccountMenu";
 import {
   NAV_ITEMS,

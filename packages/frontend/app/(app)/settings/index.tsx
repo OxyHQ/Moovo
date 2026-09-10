@@ -1,6 +1,6 @@
 import { View, ScrollView } from "react-native";
 import { useEffect } from "react";
-import { useOxy } from "@oxyhq/services";
+import { useOxy } from "@oxy.so/services";
 import { useRouter } from "expo-router";
 import { useTranslation } from "@/hooks/useTranslation";
 import { AccountSection } from "@/components/settings/account-section";

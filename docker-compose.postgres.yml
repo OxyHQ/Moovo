@@ -20,7 +20,7 @@
 ##
 ## The image is only half of it. A new database is cloned from `template1`, which
 ## the image never seeds, so `CREATE EXTENSION` still has to run per database —
-## which is what `db/migrate.ts` declares and `@oxyhq/db` performs here. On RDS
+## which is what `db/migrate.ts` declares and `@oxy.so/db` performs here. On RDS
 ## that same statement needs the MASTER user: postgis is not a trusted extension,
 ## so the owning role cannot install it.
 ##

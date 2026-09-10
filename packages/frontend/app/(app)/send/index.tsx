@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { View, ScrollView, Pressable, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useOxy } from '@oxyhq/services';
+import { useOxy } from '@oxy.so/services';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';

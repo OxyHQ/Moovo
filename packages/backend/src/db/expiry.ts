@@ -8,7 +8,7 @@
  * no failing test, until somebody notices the disk or notices rows being
  * served that should have been gone.
  *
- * `@oxyhq/db` supplies the SWEEP. This file supplies the two halves that are
+ * `@oxy.so/db` supplies the SWEEP. This file supplies the two halves that are
  * Moovo's: the REGISTRY of what to reap, and — below it — the CALLER that
  * actually runs it on a schedule. A registry with no caller is the failure
  * this file most needs to avoid, because it looks complete: every table is
@@ -30,7 +30,7 @@
  * in the only case a backstop matters. See its column comment.
  */
 
-import { sweepAllExpiredRows, type ExpirySweepResult, type ExpirySweepTarget } from '@oxyhq/db/expiry';
+import { sweepAllExpiredRows, type ExpirySweepResult, type ExpirySweepTarget } from '@oxy.so/db/expiry';
 import { getDb } from './postgres';
 import { log } from '../lib/logger.js';
 import { jobOffers, quotes } from './schema/transport';
@@ -233,7 +233,7 @@ async function runOnce(): Promise<void> {
 /**
  * Start the sweep.
  *
- * THIS is the half `@oxyhq/db` cannot supply, and the half whose absence is
+ * THIS is the half `@oxy.so/db` cannot supply, and the half whose absence is
  * undetectable from the registry above. It runs on every task: the sweep is
  * idempotent and bounded, so several tasks running it concurrently costs a
  * little duplicated work and nothing else.

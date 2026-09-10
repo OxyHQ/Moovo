@@ -1,7 +1,7 @@
 /**
  * The column shapes this schema repeats, defined once.
  *
- * `@oxyhq/db` owns the ecosystem-wide ones (`generatedId`, `createdAt`,
+ * `@oxy.so/db` owns the ecosystem-wide ones (`generatedId`, `createdAt`,
  * `updatedAt`, `timestamptz`, `geography`, `tsvector`, `inList`). What lives
  * here is the handful that are Moovo's own — money, geographic points and the
  * closed-set CHECK — because each encodes a decision a hand-written column
@@ -11,7 +11,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 import { bigint, check, doublePrecision, text } from 'drizzle-orm/pg-core';
 import type { PgColumn } from 'drizzle-orm/pg-core';
-import { geography, inList } from '@oxyhq/db';
+import { geography, inList } from '@oxy.so/db';
 
 /**
  * A money AMOUNT: integer minor units, never a float.

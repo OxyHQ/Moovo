@@ -13,7 +13,7 @@
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { findIdColumnViolations, findSchemaInvariantViolations } from '@oxyhq/db/assert';
+import { findIdColumnViolations, findSchemaInvariantViolations } from '@oxy.so/db/assert';
 import { is } from 'drizzle-orm';
 import { Table } from 'drizzle-orm';
 import {

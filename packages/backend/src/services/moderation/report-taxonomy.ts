@@ -51,7 +51,7 @@
  * to a lighter review.
  */
 
-import type { TaxonomyCode } from '@oxyhq/crowdsource-contracts';
+import type { TaxonomyCode } from '@oxy.so/crowdsource-contracts';
 import type { ReportCategory } from '@moovo/shared-types';
 
 export const REPORT_TAXONOMY_VERSION = '2026.07';

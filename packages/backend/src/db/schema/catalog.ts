@@ -15,7 +15,7 @@ import {
   text,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { createdAt, generatedId, timestamptz, tsvector, updatedAt } from '@oxyhq/db';
+import { createdAt, generatedId, timestamptz, tsvector, updatedAt } from '@oxy.so/db';
 import {
   closedSet,
   foreignServiceId,
@@ -93,7 +93,7 @@ export const listings = pgTable(
      * NOT NULL with no DATABASE default, though the source declares
      * `default: ''`.
      *
-     * `@oxyhq/db`'s invariant gate refuses an empty-string default across the
+     * `@oxy.so/db`'s invariant gate refuses an empty-string default across the
      * whole schema, because `''` is a VALUE standing in for absence — and a
      * value collides where a NULL does not. The source's `default: ''` is a
      * document-creation convenience, so the column stays NOT NULL (a listing

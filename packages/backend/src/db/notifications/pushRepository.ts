@@ -21,7 +21,7 @@
  */
 
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { sqlColumnName, uuidv7 } from '@oxyhq/db';
+import { sqlColumnName, uuidv7 } from '@oxy.so/db';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { pushTokens, webPushSubscriptions } from '../schema/engagement';
 

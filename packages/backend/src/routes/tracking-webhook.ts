@@ -11,7 +11,7 @@
  * **`express.raw()` is applied per-route here and must NEVER be mounted at
  * `/webhooks`.** `crowdsource-webhook.test.ts` asserts that `index.ts` contains
  * no `verify` hook and that the string `rawBody` does not appear in it at all,
- * because `@oxyhq/crowdsource-express`'s `readRawBody` prefers a Buffer on
+ * because `@oxy.so/crowdsource-express`'s `readRawBody` prefers a Buffer on
  * `req.rawBody` before reading the stream. Anything that stashes raw bytes
  * upstream changes what a late mount does from LOUD REFUSAL to silent success —
  * which would quietly disarm the neighbouring router's whole guarantee. So

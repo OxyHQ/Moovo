@@ -143,7 +143,7 @@ app.use('/webhooks', createCrowdSourceWebhookRoutes());
  * the same reason: the signature covers the bytes that arrived.
  *
  * Its `express.raw` is scoped to `/webhooks/tracking/:carrierKey` INSIDE that
- * router and must never move here. `@oxyhq/crowdsource-express` prefers a
+ * router and must never move here. `@oxy.so/crowdsource-express` prefers a
  * Buffer already stashed on the request over reading the stream, so a raw
  * parser mounted at `/webhooks` would change what a late CrowdSource mount does
  * from a loud refusal into silent success — disarming the neighbouring
@@ -334,7 +334,7 @@ try {
     /**
      * Reaps the rows the five Mongo TTL indexes used to reap before the port.
      *
-     * This call is the half of the expiry work that `@oxyhq/db` cannot
+     * This call is the half of the expiry work that `@oxy.so/db` cannot
      * supply and whose absence is undetectable by reading `db/expiry.ts`:
      * the registry there lists every table and every retention and deletes
      * nothing at all without something invoking it. A registry with no

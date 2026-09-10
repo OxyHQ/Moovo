@@ -4,9 +4,9 @@ import { Stack } from 'expo-router';
 import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
-import { OxyProvider, useOxy } from '@oxyhq/services';
-import { BloomThemeProvider } from '@oxyhq/bloom/theme';
-import { ImageResolverProvider } from '@oxyhq/bloom/image-resolver';
+import { OxyProvider, useOxy } from '@oxy.so/services';
+import { BloomThemeProvider } from '@oxy.so/bloom/theme';
+import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 
 import { AppErrorBoundary } from '@/components/error-boundary';
 import { QueryProvider } from '@/lib/query-client';

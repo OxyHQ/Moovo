@@ -12,7 +12,7 @@
  * transaction between two people at two street addresses.
  */
 
-import { isLiveEntityId } from '@oxyhq/db';
+import { isLiveEntityId } from '@oxy.so/db';
 import {
   findJobModerationFacts,
   type JobModerationFacts,

@@ -39,7 +39,7 @@
 
 import { sql } from 'drizzle-orm';
 import { boolean, check, index, integer, jsonb, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
-import { createdAt, generatedId, timestamptz, updatedAt } from '@oxyhq/db';
+import { createdAt, generatedId, timestamptz, updatedAt } from '@oxy.so/db';
 import {
   closedSet,
   foreignServiceId,
@@ -266,7 +266,7 @@ export const trackedParcels = pgTable(
       .where(sql`${table.moovoJobId} is not null`),
     /**
      * The sweep's supporting index. Must be a LEADING btree on the swept
-     * column: `@oxyhq/db`'s expiry-coverage gate fails the BUILD without it,
+     * column: `@oxy.so/db`'s expiry-coverage gate fails the BUILD without it,
      * and without the gate it would merely be a sequential scan on a timer.
      */
     index('tracked_parcels_expires_at_idx').on(table.expiresAt),

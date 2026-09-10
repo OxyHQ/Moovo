@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View, ActivityIndicator } from "react-native";
 import { Link } from "expo-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOxy } from "@oxyhq/services";
+import { useOxy } from "@oxy.so/services";
 import { UserPlus, Trash2, Settings } from "lucide-react-native";
 import type {
   Company,
@@ -22,7 +22,7 @@ import {
   PermissionDenied,
 } from "@/components/dashboard/CompanyHeader";
 import { UserCell } from "@/components/dashboard/UserCell";
-import { toast } from '@oxyhq/bloom/toast';
+import { toast } from '@oxy.so/bloom/toast';
 import {
   fetchMembers,
   inviteMember,

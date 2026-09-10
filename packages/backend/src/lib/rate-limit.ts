@@ -13,7 +13,7 @@
 
 import type { RequestHandler } from 'express';
 import { RedisStore } from 'rate-limit-redis';
-import { createOxyRateLimit, type OxyRateLimitOptions } from '@oxyhq/core/server';
+import { createOxyRateLimit, type OxyRateLimitOptions } from '@oxy.so/core/server';
 import { oxyClient } from '../middleware/auth.js';
 import { getRedisClient } from './redis.js';
 import { log } from './logger.js';

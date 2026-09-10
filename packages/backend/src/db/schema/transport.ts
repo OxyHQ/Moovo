@@ -28,7 +28,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { bigint } from 'drizzle-orm/pg-core';
-import { createdAt, generatedId, timestamptz, updatedAt } from '@oxyhq/db';
+import { createdAt, generatedId, timestamptz, updatedAt } from '@oxy.so/db';
 import {
   closedSet,
   closedSetArray,
@@ -235,7 +235,7 @@ export const quotes = pgTable(
      * Required by the expiry sweep, not merely useful: the sweep deletes with
      * `expires_at <= now() - interval`, and without a LEADING btree here that
      * predicate is a full table scan on every run — the exact cost Mongo's TTL
-     * index hid. `@oxyhq/db`'s expiry-coverage gate fails the build if this
+     * index hid. `@oxy.so/db`'s expiry-coverage gate fails the build if this
      * index disappears.
      */
     index('quotes_expires_at_idx').on(table.expiresAt),

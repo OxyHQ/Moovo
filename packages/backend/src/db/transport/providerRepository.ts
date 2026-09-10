@@ -22,7 +22,7 @@
  */
 
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { uuidv7 } from '@oxyhq/db';
+import { uuidv7 } from '@oxy.so/db';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { providers } from '../schema/transport';
 

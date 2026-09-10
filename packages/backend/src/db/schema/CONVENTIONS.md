@@ -33,7 +33,7 @@ columns with GiST indexes.
 
 ## Naming and casing
 
-`casing` comes from `@oxyhq/db`'s `DATABASE_CASING`, read by BOTH
+`casing` comes from `@oxy.so/db`'s `DATABASE_CASING`, read by BOTH
 `drizzle.config.ts` (which GENERATES the column names) and `db/postgres.ts`
 (which REFERENCES them). Never spell it out in either place: two copies of that
 decision produce queries against columns that do not exist, and the failure
@@ -81,7 +81,7 @@ Mongo had five TTL indexes. Four are `expireAfterSeconds: 0` expire-at-date
 (`joboffers`, `moderationevents`, `moderationoutboxes`, `quotes`) and one is a
 90-day retention on `notifications`.
 
-They become `@oxyhq/db`'s `./expiry` registry — and **the registry is only half
+They become `@oxy.so/db`'s `./expiry` registry — and **the registry is only half
 of it.** The package supplies the sweep; Moovo must supply the thing that calls
 it on a schedule. A registry with no caller is a TTL that never reaps, which is
 invisible until rows nobody expected are still being served.
@@ -243,7 +243,7 @@ bug report three months later.
 - **`cart_items.variant_id` cascades.** Deleting a variant currently leaves a
   cart line pointing at a dead variant, which fails at hydration; now the line
   vanishes. Better behaviour, but different from production.
-- **Empty-string defaults are not carried over.** `@oxyhq/db`'s invariant gate
+- **Empty-string defaults are not carried over.** `@oxy.so/db`'s invariant gate
   refuses a `''` default schema-wide, because `''` is a value standing in for
   absence. The affected columns stay NOT NULL with no database default, so an
   omitted description fails loudly rather than being invented.

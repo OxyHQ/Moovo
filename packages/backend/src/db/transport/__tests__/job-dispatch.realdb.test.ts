@@ -32,7 +32,7 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { PriceBreakdown } from '@moovo/shared-types';
-import { uuidv7 } from '@oxyhq/db';
+import { uuidv7 } from '@oxy.so/db';
 import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,

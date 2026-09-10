@@ -22,7 +22,7 @@
  * Integer minor units are used (rather than a float) so the persisted source of
  * truth can never accumulate binary floating-point drift. Two decimals mirror the
  * rest of the Oxy ecosystem, where FAIR balances are displayed with two decimals
- * (`@oxyhq/accounts` `formatFairCoinBalance` → `toFixed(2)`; the Oxy wallet
+ * (`@oxy.so/accounts` `formatFairCoinBalance` → `toFixed(2)`; the Oxy wallet
  * `balance` is a 2-decimal number) and matches the inherited `Money` convention
  * of integer minor units.
  */

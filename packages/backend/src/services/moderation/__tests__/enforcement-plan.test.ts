@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { RecommendedAction } from '@oxyhq/crowdsource-contracts';
+import type { RecommendedAction } from '@oxy.so/crowdsource-contracts';
 import { planEnforcement } from '../enforcement-plan.js';
 import { decision } from './decision-fixtures.js';
 

@@ -3,7 +3,7 @@ import { View, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import Head from "expo-router/head";
 import { useRouter } from "expo-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOxy } from "@oxyhq/services";
+import { useOxy } from "@oxy.so/services";
 import type { CreateVehicleInput, VehicleType } from "@moovo/shared-types";
 import { Text } from "@/components/ui/text";
 import { Button } from "@/components/ui/button";

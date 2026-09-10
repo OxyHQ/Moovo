@@ -1,5 +1,5 @@
-import { createDatabase } from '@oxyhq/db';
-import { createTestDatabase, dropTestDatabase } from '@oxyhq/db/testing';
+import { createDatabase } from '@oxy.so/db';
+import { createTestDatabase, dropTestDatabase } from '@oxy.so/db/testing';
 import type postgres from 'postgres';
 import { main as runMigrateEntrypoint } from './migrate';
 import { setDatabaseForTesting, type Database } from './postgres';

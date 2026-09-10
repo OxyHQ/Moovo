@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import { Avatar } from "@oxyhq/bloom/avatar";
+import { Avatar } from "@oxy.so/bloom/avatar";
 import { Text } from "@/components/ui/text";
 import { useUserProfile } from "@/lib/hooks/use-user-profile";
 

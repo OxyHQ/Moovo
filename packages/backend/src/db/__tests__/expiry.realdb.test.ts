@@ -12,7 +12,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { findUnsupportedExpiryColumns } from '@oxyhq/db/assert';
+import { findUnsupportedExpiryColumns } from '@oxy.so/db/assert';
 import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,

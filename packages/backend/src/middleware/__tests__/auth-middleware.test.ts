@@ -11,7 +11,7 @@ vi.mock('../../lib/net-utils.js', () => ({
   getClientIp: vi.fn(() => '127.0.0.1'),
 }));
 
-vi.mock('@oxyhq/core', () => {
+vi.mock('@oxy.so/core', () => {
   interface MockAuthRequest extends Request {
     userId?: string;
     user?: { id: string };

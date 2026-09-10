@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useOxy } from "@oxyhq/services";
-import type { User } from "@oxyhq/core";
+import { useOxy } from "@oxy.so/services";
+import type { User } from "@oxy.so/core";
 
 /**
  * Resolve an Oxy user profile by id, cached by TanStack Query.
