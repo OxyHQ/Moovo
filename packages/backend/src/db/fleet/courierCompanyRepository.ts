@@ -54,7 +54,7 @@ export interface CompanyMemberValue {
 /** The company statuses `courier_companies_status_check` admits. */
 export type CompanyStatus = 'active' | 'suspended' | 'closed';
 /** The payout providers `courier_companies_payout_provider_check` admits. */
-export type CompanyPayoutProvider = 'oxy_pay';
+export type CompanyPayoutProvider = 'peable';
 
 /** A circle the company serves. */
 export interface CompanyServiceAreaValue {

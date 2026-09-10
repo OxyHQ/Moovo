@@ -105,10 +105,10 @@ export interface CreateVehicleInput {
   };
 }
 
-/** Payout configuration for a courier or company (Oxy Pay). */
+/** Payout configuration for a courier or company (Peable). */
 export interface CourierPayout {
   /** Payout provider. */
-  provider: 'oxy_pay';
+  provider: 'peable';
   /** Opaque provider account reference, when linked. */
   accountRef?: string;
 }
