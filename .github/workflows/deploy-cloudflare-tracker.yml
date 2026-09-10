@@ -45,7 +45,7 @@ jobs:
       - name: Verify the exported web shell
         run: node packages/tracker-app/scripts/verify-web-shell.mjs packages/tracker-app/dist
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
