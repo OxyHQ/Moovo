@@ -42,7 +42,7 @@ on:
 # Two independent reasons, either of which alone justifies this:
 #
 # 1. THE MIGRATOR TAKES NO LOCK, and that is deliberate rather than an
-#    oversight. `@oxyhq/db`'s runner documents it under a heading reading
+#    oversight. `@oxy.so/db`'s runner documents it under a heading reading
 #    "WHAT THIS DELIBERATELY DOES NOT DO": drizzle's migrator reads the
 #    ledger's high-water mark OUTSIDE its transaction and replays everything
 #    newer INSIDE one, so two runs both read the same mark and both attempt
@@ -289,7 +289,7 @@ jobs:
           echo "network=$(echo "$NET" | jq -c .)" >> "$GITHUB_OUTPUT"
 
       # Does this release contain a post-rollout migration at all? Grepped with
-      # the pattern @oxyhq/db EXPORTS (`POST_PHASE_GREP_PATTERN`), never a copy —
+      # the pattern @oxy.so/db EXPORTS (`POST_PHASE_GREP_PATTERN`), never a copy —
       # `src/db/__tests__/deployWorkflow.test.ts` asserts this workflow contains
       # that exact string, so the two cannot drift. The grep is sound only
       # because the migrator separately proves every file carries exactly one
