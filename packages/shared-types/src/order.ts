@@ -35,7 +35,7 @@ export interface PaymentInfo {
   /** Where the payment is in its own lifecycle. */
   status: 'unpaid' | 'authorized' | 'paid' | 'refunded' | 'failed';
   /** Payment provider that settled (or will settle) this order. */
-  provider: 'oxy_pay';
+  provider: 'peable';
   /** Provider-side reference/transaction id, when one exists. */
   reference?: string;
   /** ISO-8601 time the order was paid, when paid. */

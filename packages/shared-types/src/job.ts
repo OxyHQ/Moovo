@@ -164,12 +164,12 @@ export interface ProofOfDelivery {
   at: string;
 }
 
-/** Payment state + provider reference for a job (Oxy Pay). */
+/** Payment state + provider reference for a job (Peable). */
 export interface JobPaymentInfo {
   /** Where the payment is in its own lifecycle. */
   status: 'unpaid' | 'authorized' | 'paid' | 'refunded' | 'failed';
   /** Payment provider that settled (or will settle) this job. */
-  provider: 'oxy_pay';
+  provider: 'peable';
   /** Provider-side reference/transaction id, when one exists. */
   reference?: string;
   /** ISO-8601 time the job was paid, when paid. */

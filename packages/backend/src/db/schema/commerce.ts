@@ -217,7 +217,7 @@ export const orders = pgTable(
 
     // `payment`, flattened.
     paymentStatus: text().notNull().default('unpaid'),
-    paymentProvider: text().notNull().default('oxy_pay'),
+    paymentProvider: text().notNull().default('peable'),
     paymentReference: text(),
     paidAt: timestamptz(),
 
