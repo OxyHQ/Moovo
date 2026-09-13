@@ -20,7 +20,7 @@
     "@moovo/shared-types": "workspace:*",
     "@oxy.so/app-preset": "^1.0.0",
     "@oxy.so/bloom": "^1.0.1",
-    "@oxy.so/core": "1.1.0",
+    "@oxy.so/core": "^1.1.2",
     "@oxy.so/services": "^1.0.1",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@shopify/flash-list": "2.0.2",
@@ -57,7 +57,7 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "4.2.2",
     "tailwindcss-animate": "^1.0.7",
-    "@oxy.so/telemetry": "1.1.0"
+    "@oxy.so/telemetry": "^1.1.1"
   },
   "devDependencies": {
     "@babel/plugin-syntax-dynamic-import": "^7.8.3",
