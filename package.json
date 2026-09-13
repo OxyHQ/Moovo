@@ -29,7 +29,8 @@
     "android": "bun run --filter @moovo/frontend android",
     "ios": "bun run --filter @moovo/frontend ios",
     "web": "bun run --filter @moovo/frontend web",
-    "postinstall": "bun run --filter @moovo/shared-types build"
+    "postinstall": "bun run --filter @moovo/shared-types build",
+    "test:edge": "bun test scripts/edge-activity.test.ts"
   },
   "keywords": [
     "monorepo",
