@@ -1,3 +1,4 @@
+import { startEcosystemActivity, stopEcosystemActivity, ecosystemActivityMiddleware } from './ecosystemActivity';
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
@@ -45,6 +46,7 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '../.env') });
 
 const app = express();
+  app.use(ecosystemActivityMiddleware);
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Create HTTP server with optimized settings
@@ -71,6 +73,7 @@ server.on('connection', (socket) => {
   socket.setKeepAlive(true, 60000);
 });
 
+startEcosystemActivity(() => server.listening);
 initSocket(server);
 
 // CORS — restricted to the Moovo first-party origins: the apex (customer app)
@@ -425,7 +428,8 @@ try {
       log.general.info('Redis connections closed');
 
       clearTimeout(forceTimeout);
-      log.general.info('Graceful shutdown complete');
+      await stopEcosystemActivity();
+        log.general.info('Graceful shutdown complete');
       process.exit(0);
     } catch (error) {
       log.general.error({ err: error }, 'Error during shutdown');
