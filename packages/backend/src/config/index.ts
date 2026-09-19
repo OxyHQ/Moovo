@@ -251,12 +251,22 @@ export interface DispatchConfig {
 /**
  * The CrowdSource moderation integration.
  *
- * The names come from the `@oxy.so/crowdsource*` packages, not from a plan's
- * table, and the packages win.
+ * The names come from the `@crowdsource.you/*` packages, not from a plan's
+ * table, and the packages win: `@crowdsource.you/core` reads
+ * `CROWDSOURCE_BASE_URL`, and `@crowdsource.you/core/express` reads
+ * `CROWDSOURCE_WEBHOOK_SECRET` and `CROWDSOURCE_WEBHOOK_SECRET_PREVIOUS`.
+ *
+ * **There is no `CROWDSOURCE_SERVICE_KEY` either, and that is the change here.**
+ * Moovo is a first-party Oxy application, so `crowdSourceForOxyService()`
+ * presents the Oxy service token this process already mints — attested from the
+ * ECS task role in a deployment (oxy ADR 0026) — and CrowdSource resolves the
+ * tenant from the Oxy application that token names. Nothing is issued by hand or
+ * kept in a parameter store, so there is no variable left for this file to read
+ * or to compare anything against.
  *
  * **There is no `CROWDSOURCE_APP_ID`, and one must never be added.** The
- * `applicationId` is read off the service credential; a variable holding it could
- * only ever disagree with the credential, and a surface able to carry an
+ * `applicationId` is whatever tenant CrowdSource maps that token to; a variable
+ * holding it could only ever disagree, and a surface able to carry an
  * `applicationId` is exactly the cross-tenant write the tenancy model exists to
  * prevent. The SDK offers no option, field or parameter through which one could
  * be passed.
@@ -269,8 +279,6 @@ export interface CrowdSourceConfig {
    * backlog instead of stranding it. Only the dispatcher loop is gated.
    */
   readonly enabled: boolean;
-  /** `applicationId:credentialId:secret` — ONE opaque value. */
-  readonly serviceKey: string | undefined;
   /** Optional; the SDK defaults to the one deployment. */
   readonly baseUrl: string | undefined;
   readonly webhookSecret: string | undefined;
@@ -363,10 +371,10 @@ export interface AppConfig {
  * Read an optional secret: unset and empty are the SAME thing.
  *
  * `strEnv` would hand back a default; here there is no sensible default and an
- * empty string must not read as "configured". A blank `CROWDSOURCE_SERVICE_KEY`
+ * empty string must not read as "configured". A blank `CROWDSOURCE_WEBHOOK_SECRET`
  * is how a placeholder secret (`-`, ``, `TODO`) reaches production, and it must
- * fail the enabled check below rather than build a client that 401s every
- * delivery.
+ * fail the enabled check below rather than arm a delivery loop whose decisions
+ * can never be verified coming back.
  */
 /**
  * The FedEx pair, or nothing.
@@ -409,22 +417,29 @@ function enforcementModeEnv(): ModerationEnforcementMode {
 }
 
 /**
- * `CROWDSOURCE_ENABLED=true` requires BOTH the service key and the webhook
- * secret.
+ * `CROWDSOURCE_ENABLED=true` requires the webhook secret, and now nothing else.
  *
  * A half-configured integration is the worst of the three states: it sends
  * reports that can never come back, so cases open, juries decide them, and every
  * decision is dropped on the floor with nothing logging an error. Refusing to
- * enable is the only honest reading of a missing half.
+ * enable is the only honest reading of a missing return path.
+ *
+ * The OUTBOUND half is no longer configuration, which is why it is no longer
+ * checked here. Whether Moovo can reach CrowdSource is whether this process can
+ * mint an Oxy service token — something it IS rather than something somebody
+ * typed — so `crowdSourceForOxyService()` answers it at the client, and a
+ * variable this function could compare against would only ever be a second,
+ * staler answer. Keeping the old check would have been strictly worse than
+ * removing it: it would refuse to enable a deployment that authenticates
+ * perfectly well, for omitting a value nothing reads.
  */
-function crowdSourceEnabled(serviceKey: string | undefined, webhookSecret: string | undefined): boolean {
+function crowdSourceEnabled(webhookSecret: string | undefined): boolean {
   if (!boolEnv('CROWDSOURCE_ENABLED', false)) {
     return false;
   }
-  return serviceKey !== undefined && webhookSecret !== undefined;
+  return webhookSecret !== undefined;
 }
 
-const crowdSourceServiceKey = optionalSecretEnv('CROWDSOURCE_SERVICE_KEY');
 const crowdSourceWebhookSecret = optionalSecretEnv('CROWDSOURCE_WEBHOOK_SECRET');
 
 /**
@@ -499,8 +514,7 @@ export const config: AppConfig = Object.freeze({
     expireOffersIntervalMs: intEnv('DISPATCH_EXPIRE_OFFERS_INTERVAL_MS', 30 * SECOND_MS),
   }),
   crowdSource: Object.freeze({
-    enabled: crowdSourceEnabled(crowdSourceServiceKey, crowdSourceWebhookSecret),
-    serviceKey: crowdSourceServiceKey,
+    enabled: crowdSourceEnabled(crowdSourceWebhookSecret),
     baseUrl: optionalSecretEnv('CROWDSOURCE_BASE_URL'),
     webhookSecret: crowdSourceWebhookSecret,
     webhookPreviousSecret: optionalSecretEnv('CROWDSOURCE_WEBHOOK_SECRET_PREVIOUS'),

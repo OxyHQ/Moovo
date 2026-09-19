@@ -118,7 +118,7 @@ What a jury sees is deliberately narrow. A job carries two names, two phone numb
 
 Moovo has one enforcement lever, the courier's status, applied to courier privileges and never to the Oxy account. There is deliberately no way to cancel a delivery in flight, because that strands a courier holding someone else's property.
 
-Built on [`@oxy.so/crowdsource`](https://www.npmjs.com/package/@oxy.so/crowdsource) and [`@oxy.so/crowdsource-express`](https://www.npmjs.com/package/@oxy.so/crowdsource-express).
+Built on [`@crowdsource.you/core`](https://www.npmjs.com/package/@crowdsource.you/core) — the client at the root, the Express webhook receiver under `/express` — and [`@crowdsource.you/contracts`](https://www.npmjs.com/package/@crowdsource.you/contracts), which must resolve to exactly one copy in the tree. Moovo holds no CrowdSource key: the client presents the Oxy service token this process mints, and CrowdSource resolves the tenant from the Oxy application that token names.
 
 </details>
 

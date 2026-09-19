@@ -146,7 +146,7 @@ app.use('/webhooks', createCrowdSourceWebhookRoutes());
  * the same reason: the signature covers the bytes that arrived.
  *
  * Its `express.raw` is scoped to `/webhooks/tracking/:carrierKey` INSIDE that
- * router and must never move here. `@oxy.so/crowdsource-express` prefers a
+ * router and must never move here. `@crowdsource.you/core/express` prefers a
  * Buffer already stashed on the request over reading the stream, so a raw
  * parser mounted at `/webhooks` would change what a late CrowdSource mount does
  * from a loud refusal into silent success — disarming the neighbouring

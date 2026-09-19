@@ -455,14 +455,22 @@ violation of something they had been cleared of. Storing the column makes the
 refusal real. That is a behaviour CHANGE, not a faithful port, and both
 directions are pinned in the realdb suite.
 
-**Env:** `CROWDSOURCE_ENABLED` (requires BOTH the service key and the webhook
-secret to take effect), `CROWDSOURCE_SERVICE_KEY`, `CROWDSOURCE_BASE_URL`,
-`CROWDSOURCE_WEBHOOK_SECRET`, `CROWDSOURCE_WEBHOOK_SECRET_PREVIOUS`,
-`CROWDSOURCE_OUTBOX_BATCH_SIZE`, `CROWDSOURCE_OUTBOX_POLL_INTERVAL_MS`,
-`CROWDSOURCE_ENFORCEMENT_MODE` (default `observe`). **There is no
-`CROWDSOURCE_APP_ID`, and never add one**: `applicationId` is read off the
-credential, and a surface able to carry one is the cross-tenant write the tenancy
-model exists to prevent.
+**Moovo holds no CrowdSource key and no Oxy service key.** The client is
+`crowdSourceForOxyService()` from `@crowdsource.you/core`, which presents the Oxy
+service token this process mints by attesting its ECS task role (oxy ADR 0026);
+CrowdSource resolves the tenant from the Oxy application that token names. The
+wrapper the three sibling apps each carried is that one call now — anything
+genuinely Moovo's lives where it is acted on, not at the client.
+
+**Env:** `CROWDSOURCE_ENABLED` (requires the webhook secret to take effect),
+`CROWDSOURCE_BASE_URL`, `CROWDSOURCE_WEBHOOK_SECRET`,
+`CROWDSOURCE_WEBHOOK_SECRET_PREVIOUS`, `CROWDSOURCE_OUTBOX_BATCH_SIZE`,
+`CROWDSOURCE_OUTBOX_POLL_INTERVAL_MS`, `CROWDSOURCE_ENFORCEMENT_MODE` (default
+`observe`). **There is no `CROWDSOURCE_SERVICE_KEY` any more and there is no
+`CROWDSOURCE_APP_ID` — never add either**: the tenant follows the token, a
+variable holding one could only ever disagree with it, and a surface able to
+carry an `applicationId` is the cross-tenant write the tenancy model exists to
+prevent.
 
 ## Deploy
 

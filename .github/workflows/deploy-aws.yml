@@ -211,6 +211,28 @@ jobs:
       # CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN and NPM_TOKEN — so the
       # entry below resolves to an empty string and this step is a no-op today.
       #
+      # OXY_SERVICE_API_KEY / OXY_SERVICE_API_SECRET ARE NOT HERE, and adding
+      # them would be the wrong repair for the wrong problem.
+      #
+      # The API no longer wants them: it proves what it IS by attesting its ECS
+      # task role and gets the same short-lived Oxy service token back (oxy ADR
+      # 0026), which `@oxy.so/core` >= 1.6.1 does on its own whenever no pair is
+      # set. Nothing in this repository reads either variable any more.
+      #
+      # Retiring them is therefore a TERRAFORM edit, not a line in this file, and
+      # that is worth stating because this workflow has no way to do it. Unlike
+      # the sibling apps' deploys it never renders a task definition — the
+      # rollout below is `update-service --force-new-deployment` on the revision
+      # the service is already running, so every `secrets` entry is inherited
+      # from whatever oxy-infra last registered. There is no override list to
+      # drop them from and no removal list to add them to; the half a deploy
+      # could own does not exist here.
+      #
+      # Until that terraform change lands the pair stays on the container and is
+      # simply unread, which is the safe order: a task definition that loses the
+      # credential before the task role is bound as the Oxy application `moovo`
+      # has no identity at all.
+      #
       # MONGODB_URI was removed here when Mongo was removed from the service.
       # It synced to /oxy/moovo/MONGODB_URI, which no task definition has
       # referenced since `oxy-moovo:3` and which does not exist in SSM at all
