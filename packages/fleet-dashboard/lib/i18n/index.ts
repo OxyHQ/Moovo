@@ -3,6 +3,10 @@ import { getLocales } from 'expo-localization';
 import en from './locales/en.json';
 import es from './locales/es.json';
 
+/** This app's own catalog: the exact locales `en.json`/`es.json` back. */
+export const DEFAULT_LOCALE = 'en-US';
+export const SUPPORTED_LOCALES = ['en-US', 'en-GB', 'es-ES', 'es-MX'] as const;
+
 // Create i18n instance with translations
 // Using BCP 47 locale codes (en-US, es-ES) with fallback to language codes (en, es)
 const i18n = new I18n({
@@ -45,6 +49,6 @@ i18n.enableFallback = true;
 i18n.missingBehavior = 'guess';
 
 // Default locale
-i18n.defaultLocale = 'en-US';
+i18n.defaultLocale = DEFAULT_LOCALE;
 
 export default i18n;
