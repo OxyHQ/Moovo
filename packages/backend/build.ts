@@ -42,14 +42,15 @@ await esbuild.build({
   // workspace packages (e.g. shared-types) are inlined so the runtime image has
   // no dependency on their dist or their build-time devDependencies.
   //
-  // @oxy.so/* MUST stay external. The @oxy.so/crowdsource* packages are published
-  // as CommonJS, and inlining CJS into this ESM bundle rewrites each of their
-  // internal require() calls into an esbuild shim that throws the moment it
-  // runs — the container died at startup with
+  // @oxy.so/* and @crowdsource.you/* MUST stay external. The moderation SDK
+  // still ships a CommonJS build, and inlining CJS into this ESM bundle rewrites
+  // each of its internal require() calls into an esbuild shim that throws the
+  // moment it runs — the container died at startup with
   //   Error: Dynamic require of "zod" is not supported
-  // and the API could not deploy (2026-07-30). Node's own ESM loader imports
-  // those CJS packages correctly, so leave the resolution to Node; the runtime
-  // image ships node_modules (see the Dockerfile), so they resolve there.
+  // and the API could not deploy (2026-07-30), back when those packages were
+  // named @oxy.so/crowdsource*. Node's own ESM loader picks the right build, so
+  // leave the resolution to Node; the runtime image ships node_modules (see the
+  // Dockerfile), so they resolve there.
   plugins: [{
     name: 'externalize-third-party',
     setup(build) {

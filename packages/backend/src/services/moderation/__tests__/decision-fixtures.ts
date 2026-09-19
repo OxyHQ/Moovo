@@ -9,7 +9,7 @@
  * mode a fixture is supposed to prevent, not create.
  */
 
-import type { Decision } from '@oxy.so/crowdsource-contracts';
+import type { Decision } from '@crowdsource.you/contracts';
 
 /** A jury whose arithmetic satisfies the contract's own cross-check. */
 function jury(): Decision['jury'] {
