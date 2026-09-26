@@ -10,7 +10,7 @@
  *
  * Media resolution is funneled through ONE chokepoint (`resolveMedia`): absolute
  * URLs pass through unchanged (e.g. seeded Shopify CDN assets), everything else
- * is treated as an Oxy media file id and resolved via `getFileDownloadUrl` — the
+ * is treated as an Oxy media file id and resolved via `assets.publicUrl` — the
  * only sanctioned media resolver.
  *
  * ## This is the ONE hydration path, and that is the point

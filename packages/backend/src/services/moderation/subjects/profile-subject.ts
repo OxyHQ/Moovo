@@ -67,9 +67,9 @@ export function createProfileSubjectProvider(input: {
        * thing that was reviewed — and a moderation snapshot is a
        * consistency-critical read by definition.
        */
-      let user: Awaited<ReturnType<typeof oxyClient.getUserById>>;
+      let user: Awaited<ReturnType<typeof oxyClient.users.get>>;
       try {
-        user = await oxyClient.getUserById(reportedId, { cache: false });
+        user = await oxyClient.users.get(reportedId, { cache: false });
       } catch (error: unknown) {
         /**
          * An account that cannot be loaded is treated as gone rather than as an

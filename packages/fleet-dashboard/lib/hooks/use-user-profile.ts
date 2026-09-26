@@ -16,7 +16,7 @@ export function useUserProfile(oxyUserId: string | undefined) {
 
   return useQuery<User>({
     queryKey: ["oxy-profile", oxyUserId],
-    queryFn: () => oxyServices.getUserById(oxyUserId as string),
+    queryFn: () => oxyServices.users.get(oxyUserId as string),
     enabled: canUsePrivateApi && !!oxyUserId,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,

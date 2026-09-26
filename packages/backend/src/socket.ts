@@ -46,13 +46,13 @@ export function initSocket(server: http.Server) {
   // `handshake.auth.token` and sets `socket.data.userId`. Unauthenticated
   // connections are rejected. This is the ONLY source of the room identity —
   // clients can no longer name the room they join.
-  socketServer.use(oxyClient.authSocket());
+  socketServer.use(oxyClient.middleware.socket());
 
   socketServer.on('connection', (socket) => {
     observeEcosystemSocket(socket);
     const userId = (socket.data as { userId?: string }).userId;
     if (!userId) {
-      // authSocket() guarantees userId, but fail closed if it is ever missing.
+      // middleware.socket() guarantees userId, but fail closed if it is ever missing.
       socket.disconnect(true);
       return;
     }

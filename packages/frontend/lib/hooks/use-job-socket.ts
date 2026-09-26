@@ -66,7 +66,7 @@ export function useJobSocket(jobId: string | undefined): LiveCourierPosition | n
       return;
     }
 
-    const token = oxyServices.getAccessToken();
+    const token = oxyServices.session.accessToken;
     const socket = getSocket(token);
     if (!socket) {
       return;

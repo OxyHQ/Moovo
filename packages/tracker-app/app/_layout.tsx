@@ -31,11 +31,11 @@ const AUTH_REDIRECT_URI = Linking.createURL('/');
 function AuthSetup({ children }: { children: React.ReactNode }) {
   const { oxyServices } = useOxy();
 
-  setTokenGetter(() => oxyServices.getAccessToken() || null);
+  setTokenGetter(() => oxyServices.session.accessToken || null);
 
   const resolveImageSource = useCallback(
     (fileId: string, variant?: string): string | undefined => {
-      const url = oxyServices.getFileDownloadUrl(fileId, variant ?? 'thumb');
+      const url = oxyServices.assets.publicUrl(fileId, variant ?? 'thumb');
       return url && url.startsWith('http') ? url : undefined;
     },
     [oxyServices],

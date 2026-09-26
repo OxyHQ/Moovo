@@ -133,7 +133,7 @@ function InviteForm({ companyId }: { companyId: string }) {
       const handle = username.trim().replace(/^@/, "");
       // Resolve the username to a canonical Oxy user id — the invite contract
       // is keyed by `oxyUserId`, so the username is looked up first.
-      const profile = await oxyServices.getProfileByUsername(handle);
+      const profile = await oxyServices.users.byUsername(handle);
       return inviteMember(companyId, { oxyUserId: profile.id, role });
     },
     onSuccess: (members) => {

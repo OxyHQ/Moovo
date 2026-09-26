@@ -3,7 +3,7 @@
  *
  * Absolute URLs are returned as-is (seeded CDN assets pass through unchanged);
  * anything else is treated as an Oxy media file id and resolved through the
- * SDK's `getFileDownloadUrl` — the only sanctioned resolver. Do NOT build
+ * SDK's `assets.publicUrl` — the only sanctioned resolver. Do NOT build
  * another, and do not hardcode `cloud.oxy.so` anywhere.
  *
  * ## Why this is its own module
@@ -33,5 +33,5 @@ export function resolveMedia(value: string, variant?: string): string {
   if (ABSOLUTE_URL.test(value)) {
     return value;
   }
-  return oxyClient.getFileDownloadUrl(value, variant);
+  return oxyClient.assets.publicUrl(value, variant);
 }

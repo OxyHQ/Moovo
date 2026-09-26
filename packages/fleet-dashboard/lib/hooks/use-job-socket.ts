@@ -57,7 +57,7 @@ export function useJobSocket(enabled: boolean): JobSocketState {
       return;
     }
 
-    const socket = connectMoovoSocket(() => oxyServices.getAccessToken());
+    const socket = connectMoovoSocket(() => oxyServices.session.accessToken);
 
     socket.on("connect", () => setConnected(true));
     socket.on("disconnect", () => setConnected(false));

@@ -34,7 +34,7 @@ const AUTH_REDIRECT_URI = Linking.createURL('/');
 function AuthSetup({ children }: { children: React.ReactNode }) {
   const { oxyServices } = useOxy();
 
-  setTokenGetter(() => oxyServices.getAccessToken() || null);
+  setTokenGetter(() => oxyServices.session.accessToken || null);
 
   // Resolve Oxy file IDs to download URLs for any Bloom component that reads
   // useImageResolver() (e.g. Avatar with a raw file id `source`). Honors the
@@ -42,7 +42,7 @@ function AuthSetup({ children }: { children: React.ReactNode }) {
   // the thumbnail rendition when a caller omits it.
   const resolveImageSource = useCallback(
     (fileId: string, variant?: string): string | undefined => {
-      const url = oxyServices.getFileDownloadUrl(fileId, variant ?? 'thumb');
+      const url = oxyServices.assets.publicUrl(fileId, variant ?? 'thumb');
       return url && url.startsWith('http') ? url : undefined;
     },
     [oxyServices]

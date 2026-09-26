@@ -19,7 +19,7 @@ export function CourierInfo({ courierOxyUserId }: { courierOxyUserId: string }) 
 
   const { data: courier } = useQuery({
     queryKey: ['oxy-user', courierOxyUserId],
-    queryFn: () => oxyServices.getUserById(courierOxyUserId),
+    queryFn: () => oxyServices.users.get(courierOxyUserId),
     enabled: isAuthenticated && Boolean(courierOxyUserId),
     staleTime: 5 * 60 * 1000,
   });
@@ -29,7 +29,7 @@ export function CourierInfo({ courierOxyUserId }: { courierOxyUserId: string }) 
   // the courier profile is still loading.
   const displayName = courier ? courier.name.displayName?.trim() || courier.username : 'Your courier';
   const avatarUrl = courier?.avatar
-    ? oxyServices.getFileDownloadUrl(courier.avatar, 'thumb')
+    ? oxyServices.assets.publicUrl(courier.avatar, 'thumb')
     : null;
   const initial = displayName.charAt(0).toUpperCase();
 

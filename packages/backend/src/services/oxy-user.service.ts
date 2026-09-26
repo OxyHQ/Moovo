@@ -35,7 +35,7 @@ export async function getProfiles(oxyUserIds: string[]): Promise<Map<string, Oxy
   await Promise.all(
     uniqueIds.map(async (id) => {
       try {
-        const user = await oxyClient.getUserById(id);
+        const user = await oxyClient.users.get(id);
         map.set(id, {
           id: user.id,
           username: user.username,
