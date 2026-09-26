@@ -11,7 +11,9 @@ vi.mock('../../lib/net-utils.js', () => ({
   getClientIp: vi.fn(() => '127.0.0.1'),
 }));
 
-vi.mock('@oxy.so/core', () => {
+vi.mock('@oxy.so/core/server', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+
   interface MockAuthRequest extends Request {
     userId?: string;
     user?: { id: string };
@@ -24,12 +26,15 @@ vi.mock('@oxy.so/core', () => {
     next();
   };
 
-  class MockOxyServices {
-    auth() { return vi.fn(passThroughMiddleware); }
-    serviceAuth() { return vi.fn(passThroughMiddleware); }
+  class MockOxyServer {
+    middleware = {
+      auth: () => vi.fn(passThroughMiddleware),
+      service: () => vi.fn(passThroughMiddleware),
+      socket: () => vi.fn(),
+    };
   }
 
-  return { OxyServices: MockOxyServices };
+  return { ...actual, OxyServer: MockOxyServer };
 });
 
 import {

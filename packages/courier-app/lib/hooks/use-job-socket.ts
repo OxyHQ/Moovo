@@ -62,7 +62,7 @@ export function useJobSocket(): JobSocketState {
   const offerRef = useRef<JobOfferView | null>(null);
   offerRef.current = offer;
 
-  const token = isAuthenticated ? oxyServices.getAccessToken() : null;
+  const token = isAuthenticated ? oxyServices.session.accessToken : null;
 
   useEffect(() => {
     if (!token) {

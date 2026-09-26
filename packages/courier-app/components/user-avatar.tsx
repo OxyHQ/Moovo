@@ -14,7 +14,7 @@ export function UserAvatar({ size = 24 }: UserAvatarProps) {
   ).toUpperCase();
 
   const avatarUrl = user?.avatar
-    ? oxyServices.getFileDownloadUrl(user.avatar, "thumb")
+    ? oxyServices.assets.publicUrl(user.avatar, "thumb")
     : null;
 
   return (
