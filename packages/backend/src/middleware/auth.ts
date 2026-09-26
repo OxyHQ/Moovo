@@ -110,6 +110,7 @@ export function authenticateTokenOrApiKey(
       ownerAccountId: 'internal',
       scopes: ['internal'],
       environment: SERVICE_ENVIRONMENT,
+      tier: 'internal',
     };
     return next();
   }
