@@ -51,3 +51,4 @@ Configured in `lib/config.ts` (respects `EXPO_PUBLIC_API_URL`). Production API:
 ```bash
 bun run build   # Expo web export -> dist/
 ```
+
