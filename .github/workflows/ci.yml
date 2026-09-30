@@ -76,15 +76,6 @@ jobs:
         with:
           node-version: 22
 
-      # bun's global install cache, keyed on the lockfile. A PR restores the
-      # cache saved by `main` (caches are readable from the base branch).
-      - name: Cache bun install cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-${{ runner.arch }}-
-
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -141,15 +132,11 @@ jobs:
         with:
           node-version: 22
 
-      # bun's global install cache, keyed on the lockfile. A PR restores the
-      # cache saved by `main` (caches are readable from the base branch).
-      - name: Cache bun install cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-${{ runner.arch }}-
-
+      # No cache for ~/.bun/install/cache, deliberately. Measured on #111
+      # (runs 36715141012, 36720741457, 36721889380): a warm restore took
+      # 7-9s plus a 3-5s install, and a save took up to 8s, against a plain
+      # install of 5-14s. It never paid for itself, and each save spends
+      # the repo's 10 GB Actions cache budget.
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -173,15 +160,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      # bun's global install cache, keyed on the lockfile. A PR restores the
-      # cache saved by `main` (caches are readable from the base branch).
-      - name: Cache bun install cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
-          restore-keys: bun-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
