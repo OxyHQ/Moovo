@@ -6,13 +6,62 @@ on:
   pull_request:
     branches: [main]
 
+# A new push to a pull request supersedes its previous run. A push to `main`
+# never cancels anything: each `main` commit gets its own group (keyed on the
+# sha), because a shared group also replaces a PENDING run, and a cancelled run
+# on `main` is the only post-merge evidence that commit would ever have had.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
+  # Pull requests only run the jobs whose inputs they touch; the org shares one
+  # 20-job Actions concurrency cap across every repository. Anything that is
+  # not a pull request (push to main, workflow_dispatch) skips this job, and a
+  # skipped `changes` makes every job below run. Shared inputs mark everything
+  # affected: the lockfile, any manifest, shared-types, the root config and
+  # this workflow itself.
+  changes:
+    name: Detect affected packages
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.filter.outputs.backend == 'true' || steps.filter.outputs.shared == 'true' }}
+      frontend: ${{ steps.filter.outputs.frontend == 'true' || steps.filter.outputs.shared == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            shared:
+              - '.github/**'
+              - 'bun.lock'
+              - 'bunfig.toml'
+              - 'package.json'
+              - 'packages/*/package.json'
+              - 'packages/shared-types/**'
+              - 'tsconfig*.json'
+              - 'app.json'
+              - 'scripts/**'
+            backend:
+              - 'packages/backend/**'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - 'docker-compose.postgres.yml'
+            frontend:
+              - 'packages/frontend/**'
+
   lint-and-test:
     name: Lint & Test
+    needs: changes
+    if: ${{ !cancelled() && !failure() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -26,6 +75,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # bun's global install cache, keyed on the lockfile. A PR restores the
+      # cache saved by `main` (caches are readable from the base branch).
+      - name: Cache bun install cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -67,9 +125,10 @@ jobs:
 
   build-api:
     name: Build API
+    needs: changes
+    if: ${{ !cancelled() && !failure() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: lint-and-test
 
     steps:
       - uses: actions/checkout@v4
@@ -81,6 +140,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # bun's global install cache, keyed on the lockfile. A PR restores the
+      # cache saved by `main` (caches are readable from the base branch).
+      - name: Cache bun install cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -90,9 +158,10 @@ jobs:
 
   build-app:
     name: Build App
+    needs: changes
+    if: ${{ !cancelled() && !failure() && (github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: lint-and-test
 
     steps:
       - uses: actions/checkout@v4
@@ -104,6 +173,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # bun's global install cache, keyed on the lockfile. A PR restores the
+      # cache saved by `main` (caches are readable from the base branch).
+      - name: Cache bun install cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+          restore-keys: bun-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
