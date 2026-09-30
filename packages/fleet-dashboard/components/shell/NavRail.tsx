@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, Pressable, Platform, type LayoutRectangle } from "react-native";
+import { View, Pressable, Platform, type LayoutRectangle, type ViewStyle } from "react-native";
 import { createPortal } from "react-dom";
 import { useRouter, usePathname } from "expo-router";
 import { type LucideIcon } from "lucide-react-native";
@@ -52,7 +52,8 @@ function RailTooltip({ label, anchor }: { label: string; anchor: AnchorRect | nu
   return createPortal(
     <View
       pointerEvents="none"
-      style={{ position: "fixed", left, top, transform: [{ translateY: "-50%" }], zIndex: 2147483647 }}
+      // `fixed` is web-only (this tooltip only renders on web); RN's ViewStyle does not list it.
+      style={{ position: "fixed", left, top, transform: [{ translateY: "-50%" }], zIndex: 2147483647 } as unknown as ViewStyle}
       className="rounded-md bg-foreground px-2.5 py-1"
     >
       <Text className="text-xs font-medium text-background" numberOfLines={1}>
