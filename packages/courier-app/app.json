@@ -59,8 +59,7 @@
           "cameraPermission": "Scan pickup/delivery QR codes."
         }
       ],
-      "@oxy.so/app-preset/plugin/withSharedUserId",
-      "@oxy.so/services/plugins/withSharedIdentityReader"
+      "@oxy.so/services/plugins/withOxySharedPermissions"
     ],
     "experiments": {
       "typedRoutes": true

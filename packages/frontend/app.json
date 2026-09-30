@@ -51,8 +51,7 @@
           "locationWhenInUsePermission": "Moovo uses your location to show nearby couriers and track your delivery in real time."
         }
       ],
-      "@oxy.so/app-preset/plugin/withSharedUserId",
-      "@oxy.so/services/plugins/withSharedIdentityReader"
+      "@oxy.so/services/plugins/withOxySharedPermissions"
     ],
     "experiments": {
       "typedRoutes": true

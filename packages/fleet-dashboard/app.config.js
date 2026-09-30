@@ -64,13 +64,11 @@ module.exports = () => ({
         backgroundColor: '#0B0B0F',
       }),
       '@oxy.so/expo-splash',
-      // Android shared keychain: `android:sharedUserId="so.oxy.shared"`, so Moovo
-      // Hub joins the ecosystem's "sign in once, use everywhere" UID.
-      '@oxy.so/app-preset/plugin/withSharedUserId',
-      // Reader side of the shared-identity native module (ships in
-      // @oxy.so/services): requests the signature permission + <queries> so cold
-      // boot can silently read the Commons-hosted shared identity.
-      '@oxy.so/services/plugins/withSharedIdentityReader',
+      // Declares and requests the Oxy signature permissions (identity, device
+      // session) and adds the <queries> for the Commons/Accounts providers, so
+      // Moovo Hub, on its own Android UID, can ask Commons for the Oxy identity
+      // ("sign in once, use everywhere").
+      '@oxy.so/services/plugins/withOxySharedPermissions',
     ],
     experiments: {
       typedRoutes: true,

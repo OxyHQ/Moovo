@@ -44,8 +44,7 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-asset",
-      "@oxy.so/app-preset/plugin/withSharedUserId",
-      "@oxy.so/services/plugins/withSharedIdentityReader"
+      "@oxy.so/services/plugins/withOxySharedPermissions"
     ],
     "experiments": {
       "typedRoutes": true
