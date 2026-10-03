@@ -1,0 +1,11 @@
+$ vitest run src/__tests__/receiverSdk.test.ts
+
+ RUN  v4.1.10 /home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/packages/backend
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  20:18:42
+   Duration  308ms (transform 13ms, setup 0ms, import 20ms, tests 207ms, environment 0ms)
+
+$ tsc --noEmit
