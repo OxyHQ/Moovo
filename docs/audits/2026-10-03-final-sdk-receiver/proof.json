@@ -1,0 +1,93 @@
+{
+  "repository": "Moovo",
+  "base": "dde4ab8bce332e2e971866483530f8f6754c2f94",
+  "sourceCommit": "c2f44694d937287c4868c278897cf080442aec41",
+  "sources": [
+    {
+      "path": "packages/backend/src/__tests__/receiverSdk.test.ts",
+      "bytes": 4088,
+      "sha256": "01863ed2f023095d41982c9fb2a9ecf189bbe002a61ef6ce6a358a1007c9085e"
+    }
+  ],
+  "installed": [
+    {
+      "name": "@oxy.so/core",
+      "version": "4.2.0",
+      "path": "/home/nate/Oxy/.agent-evidence/i04-consumer-frozen-1b-packs/oxy.so-core-4.2.0.tgz",
+      "source": "1b50557ccfe28b382f5b219405a616b332036d42",
+      "sourceTree": "3937031b8c95a6b8feff65720905de1ad651689d",
+      "sha256": "83059583068cf96d8dc7e4335fe226126cb795f7c6cfba469f8cec4ef9c6a385",
+      "published": false,
+      "resolved": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/core",
+      "filesByteEqual": 581
+    },
+    {
+      "name": "@oxy.so/contracts",
+      "version": "4.9.0",
+      "path": "/home/nate/Oxy/.agent-evidence/i04-consumer-frozen-1b-packs/oxy.so-contracts-4.9.0.tgz",
+      "source": "1b50557ccfe28b382f5b219405a616b332036d42",
+      "sourceTree": "6ff8352ea7920065590dceda3fff3ca420b94b69",
+      "sha256": "6b1e6a8da92341871d2832834ad063df1a1e84a46dc367786599fdd26be6e635",
+      "published": false,
+      "resolved": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/contracts",
+      "filesByteEqual": 198
+    },
+    {
+      "name": "@oxy.so/protocol",
+      "version": "1.2.2",
+      "path": "/home/nate/Oxy/.agent-evidence/i04-consumer-frozen-1b-packs/oxy.so-protocol-1.2.2.tgz",
+      "source": "1b50557ccfe28b382f5b219405a616b332036d42",
+      "sourceTree": "77ed4e428f59cff076fd44daf42e18a1b39f7fdb",
+      "sha256": "325b20125f1cf5159c36ca7a75f32c83a4560cf41c55526828b1718595acc843",
+      "published": false,
+      "resolved": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/protocol",
+      "filesByteEqual": 145
+    }
+  ],
+  "records": [
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/logs/i04-moovo-candidate-install.log",
+      "bytes": 476,
+      "sha256": "5e7268799fb94ea2fbf40b74dbf9a9cfdb75d87d7a3cd02da01a1de4b35f9a9d"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/logs/i04-moovo-backend-candidate-build.log",
+      "bytes": 432,
+      "sha256": "8f8b2bc7351611e87df14cc0bba9e90321eb2a2019318e79d2d8ca2cbc49b016"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/logs/i04-moovo-receiver-http.log",
+      "bytes": 311,
+      "sha256": "542fd83a03ae97309053abaa7eded03a8eb386390ca3c67f166aa16bf7ec02cd"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/logs/i04-moovo-receiver-final-checks.log",
+      "bytes": 326,
+      "sha256": "f35fdf3b7bb95c5d8ba2403dcc9eaee3af6e051785f46fbc7bee11a12c92c3da"
+    }
+  ],
+  "candidateInputs": [
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/inputs/package.json",
+      "bytes": 3659,
+      "sha256": "6567b2a1f3c250ae36eb48948834c8c2be1dd46e73dd9b737dd1db2ae8d1a719"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/inputs/bun.lock",
+      "bytes": 439398,
+      "sha256": "1519e01dbfd706f546f4655d01ab413e5106fd089e508cd6f0788b28edc8567b"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/inputs/packages__backend__package.json",
+      "bytes": 1718,
+      "sha256": "a87298c29f099e2d5da559f862559637cadb010a88648ad9d394f7fcb0ed1e99"
+    }
+  ],
+  "limits": [
+    "Candidate source1b505; subsequent SDK fix/refreeze and published registry adoption remain pending. Package manifests and lockfile are local file candidates, not committed as adoption.",
+    "Real loopback HTTP and installed SDK; issuer session validation is synthetic, no signing-authority proof, product SQL or domain effects.",
+    "Willo uses its actual createOxyClient factory and canonical auth helper on an owned fixture route; other repos import their actual middleware binding.",
+    "No production configuration, deployment, scopes, grants, schemas or credentials changed.",
+    "Initial Bun fixture cleanup order caused ERR_SERVER_NOT_RUNNING; close then closeAllConnections now passes. Willo initial script selected all src; DB hooks reached only the explicit unused port1 config and failed. Final name filter excludes46 domain tests."
+  ]
+}
