@@ -1,0 +1,46 @@
+{
+  "sourceCommit": "27fb690df6b784e8348b7f932f6a6f2885d08b97",
+  "sources": [
+    {
+      "path": "packages/backend/src/__tests__/receiverSdk.test.ts",
+      "sha256": "0d58aac54a36a48d29980f446aa054daa3a1d8783ee36d1f2122db03a14b794a",
+      "bytes": 1043
+    },
+    {
+      "path": "packages/backend/src/__tests__/fixtures/receiver-sdk-probe.ts",
+      "sha256": "7cdb6e418c11fac46496be37fae61fa8bf2406d853e1595fc19de4407fe515b1",
+      "bytes": 4537
+    }
+  ],
+  "records": [
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/isolation/logs/i04-moovo-isolated-receiver.log",
+      "sha256": "8f74344d8c906f032c5328932884950f2c4d501eb4f521094bbe3d6c43cfd72a",
+      "bytes": 311
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/isolation/logs/i04-moovo-isolated-types.log",
+      "sha256": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+      "bytes": 15
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/isolation/logs/i04-moovo-isolated-final.log",
+      "sha256": "e4672f083513b1240fe077ea651a9fdfb4b65ea6c365ac8728293b68529c33e8",
+      "bytes": 326
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-receiver/isolation/logs/i04-moovo-isolated-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ],
+  "changes": [
+    "Parent test imports no product modules and mutates no environment; owned Bun child has minimal env and --no-env-file, setting loopback issuer before dynamic product imports.",
+    "Child fetch proxy refuses every non-http or non-127.0.0.1 request; test invokes the same installed SDK and middleware/factory with three controls.",
+    "spawnSync has a 15-second timeout; child closes both HTTP servers in nested finally blocks. No product database is opened.",
+    "Final run: one test asserts three receiver controls, exactly four authority validations and two admitted fixture handlers; types passed.",
+    "Final const-only declaration lint correction follows the final runtime/type run; scoped lint passes.",
+    "Willo filtered parent command provides an explicit unused port1 DATABASE_URL for baseline module parsing, without a DB connection. Initial missing-env collection failure retained.",
+    "Candidate package provenance remains in parent proof; frontend candidate manifests may now include Services/Bloom and remain local, uncommitted. No final registry or deploy claim."
+  ]
+}
