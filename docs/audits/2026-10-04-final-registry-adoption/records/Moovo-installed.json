@@ -1,0 +1,130 @@
+{
+  "repository": "OxyHQ/Moovo",
+  "installed": true,
+  "installedMembers": [
+    {
+      "importer": "package.json",
+      "name": "@oxy.so/contracts",
+      "version": "4.9.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/contracts",
+      "files": 198,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "package.json",
+      "name": "@oxy.so/core",
+      "version": "4.2.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/core",
+      "files": 581,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "package.json",
+      "name": "@oxy.so/services",
+      "version": "11.1.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/services",
+      "files": 2418,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/backend/package.json",
+      "name": "@oxy.so/core",
+      "version": "4.2.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/core",
+      "files": 581,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/courier-app/package.json",
+      "name": "@oxy.so/contracts",
+      "version": "4.9.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/contracts",
+      "files": 198,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/courier-app/package.json",
+      "name": "@oxy.so/core",
+      "version": "4.2.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/core",
+      "files": 581,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/courier-app/package.json",
+      "name": "@oxy.so/services",
+      "version": "11.1.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/services",
+      "files": 2418,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/fleet-dashboard/package.json",
+      "name": "@oxy.so/contracts",
+      "version": "4.9.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/contracts",
+      "files": 198,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/fleet-dashboard/package.json",
+      "name": "@oxy.so/core",
+      "version": "4.2.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/core",
+      "files": 581,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/fleet-dashboard/package.json",
+      "name": "@oxy.so/services",
+      "version": "11.1.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/services",
+      "files": 2418,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/frontend/package.json",
+      "name": "@oxy.so/contracts",
+      "version": "4.9.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/contracts",
+      "files": 198,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/frontend/package.json",
+      "name": "@oxy.so/core",
+      "version": "4.2.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/core",
+      "files": 581,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/frontend/package.json",
+      "name": "@oxy.so/services",
+      "version": "11.1.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/services",
+      "files": 2418,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/tracker-app/package.json",
+      "name": "@oxy.so/core",
+      "version": "4.2.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/core",
+      "files": 581,
+      "allFilesEqual": true
+    },
+    {
+      "importer": "packages/tracker-app/package.json",
+      "name": "@oxy.so/services",
+      "version": "11.1.0",
+      "root": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/services",
+      "files": 2418,
+      "allFilesEqual": true
+    }
+  ],
+  "lockSha256": "098a6557f59d124c94bd6dda739e44c9de766b51da1ac6765bef4fe563d19c4a",
+  "explicitMaterializationRepair": true,
+  "merged": false,
+  "deployed": false
+}

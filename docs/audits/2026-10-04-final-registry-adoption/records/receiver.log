@@ -1,0 +1,87 @@
+$ vitest run -t "validates receiver identity and revocation in an isolated loopback process"
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/packages/backend[39m
+
+ [2m[90m↓[39m[22m src/services/__tests__/faircoin-rate.service.test.ts [2m([22m[2m14 tests[22m[2m | [22m[33m14 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/routes/__tests__/crowdsource-webhook.test.ts [2m([22m[2m13 tests[22m[2m | [22m[33m13 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/fedex.test.ts [2m([22m[2m14 tests[22m[2m | [22m[33m14 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/carrier-detection.test.ts [2m([22m[2m24 tests[22m[2m | [22m[33m24 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/moderation/__tests__/delivery-context.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m12 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/quote.service.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/dispatch.service.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/moderation/__tests__/enforcement-plan.test.ts [2m([22m[2m35 tests[22m[2m | [22m[33m35 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/__tests__/geo.realdb.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/__tests__/tracking-schema.realdb.test.ts [2m([22m[2m17 tests[22m[2m | [22m[33m17 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/__tests__/constraints.realdb.test.ts [2m([22m[2m25 tests[22m[2m | [22m[33m25 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/__tests__/schema.realdb.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/__tests__/deployWorkflow.test.ts [2m([22m[2m9 tests[22m[2m | [22m[33m9 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/transport/__tests__/shipment-quote.realdb.test.ts [2m([22m[2m29 tests[22m[2m | [22m[33m29 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/__tests__/harness.realdb.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/tracking-poll.realdb.test.ts [2m([22m[2m13 tests[22m[2m | [22m[33m13 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/moderation/__tests__/moderation-decision.worker.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/catalog/__tests__/catalog-reads.realdb.test.ts [2m([22m[2m20 tests[22m[2m | [22m[33m20 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/commerce/__tests__/orders.realdb.test.ts [2m([22m[2m18 tests[22m[2m | [22m[33m18 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/transport/__tests__/quote-audit-trail.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m12 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/stores/__tests__/stores.realdb.test.ts [2m([22m[2m29 tests[22m[2m | [22m[33m29 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/job-accept-scan.service.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/addresses.realdb.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/__tests__/expiry.realdb.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/moderation/__tests__/redaction.test.ts [2m([22m[2m16 tests[22m[2m | [22m[33m16 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/fleet/__tests__/fleet.realdb.test.ts [2m([22m[2m28 tests[22m[2m | [22m[33m28 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/moderation/__tests__/report-intake.service.test.ts [2m([22m[2m17 tests[22m[2m | [22m[33m17 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/middleware/__tests__/auth-middleware.test.ts [2m([22m[2m13 tests[22m[2m | [22m[33m13 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/routes/__tests__/health-ready.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/lib/__tests__/net-utils.test.ts [2m([22m[2m19 tests[22m[2m | [22m[33m19 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/catalog/__tests__/catalog-writes.realdb.test.ts [2m([22m[2m23 tests[22m[2m | [22m[33m23 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/public-facts.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/__tests__/ecosystemActivity.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/queue/__tests__/dispatch-handlers.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/tracking-cadence.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m12 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/moderation/__tests__/report-taxonomy.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/pricing.service.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+[01:41:19] [33mWARN[39m: [36mVAPID keys not set — web push notifications disabled[39m
+ [2m[90m↓[39m[22m src/config/__tests__/crowdsource-config.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/feedback.realdb.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/capability.service.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/reviews/__tests__/reviews.realdb.test.ts [2m([22m[2m17 tests[22m[2m | [22m[33m17 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/moderation/__tests__/moderation.realdb.test.ts [2m([22m[2m32 tests[22m[2m | [22m[33m32 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/utils/__tests__/job-codes.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m12 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/shipment-eligibility.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/tracking-registry.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/commerce/__tests__/cart.realdb.test.ts [2m([22m[2m14 tests[22m[2m | [22m[33m14 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/notifications.realdb.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/tracking.realdb.test.ts [2m([22m[2m20 tests[22m[2m | [22m[33m20 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/providers.realdb.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/tracking/__tests__/retention.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/routes/__tests__/tracking.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/tracking-status.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+[01:41:19] [33mWARN[39m: [36mVAPID keys not set — web push notifications disabled[39m
+[01:41:19] [33mWARN[39m: [36mVAPID keys not set — web push notifications disabled[39m
+[01:41:19] [33mWARN[39m: [36mVAPID keys not set — web push notifications disabled[39m
+ [2m[90m↓[39m[22m src/db/__tests__/expiry-wiring.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/__tests__/tracking-expiry.realdb.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/middleware/__tests__/validate-entity-id.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/transport/__tests__/job-dispatch.realdb.test.ts [2m([22m[2m46 tests[22m[2m | [22m[33m46 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/__tests__/job.service.test.ts [2m([22m[2m35 tests[22m[2m | [22m[33m35 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/job-pointer.realdb.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/middleware/__tests__/store-authz.test.ts [2m([22m[2m12 tests[22m[2m | [22m[33m12 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/tracking-carriers.realdb.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/db/sequences/__tests__/sequence-numbers.realdb.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/routes/__tests__/tracking-webhook.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+[01:41:20] [33mWARN[39m: [36mVAPID keys not set — web push notifications disabled[39m
+ [2m[90m↓[39m[22m src/db/commerce/__tests__/checkout.realdb.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+ [32m✓[39m src/__tests__/receiverSdk.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 326[2mms[22m[39m
+   [33m[2m✓[22m[39m validates receiver identity and revocation in an isolated loopback process [33m 324[2mms[22m[39m
+ [2m[90m↓[39m[22m src/queue/__tests__/handlers.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/services/moderation/__tests__/moderation-outbox.service.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+[01:41:20] [33mWARN[39m: [36mVAPID keys not set — web push notifications disabled[39m
+ [2m[90m↓[39m[22m src/services/moderation/__tests__/registry.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+[01:41:20] [33mWARN[39m: [36mVAPID keys not set — web push notifications disabled[39m
+ [2m[90m↓[39m[22m src/services/tracking/__tests__/tracking-wiring.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m src/queue/__tests__/producers.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[2m | [22m[33m68 skipped[39m[90m (69)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m871 skipped[39m[90m (872)[39m
+[2m   Start at [22m 04:41:17
+[2m   Duration [22m 3.17s[2m (transform 22.92s, setup 0ms, import 70.96s, tests 326ms, environment 7ms)[22m
+

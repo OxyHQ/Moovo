@@ -1,0 +1,36 @@
+{
+  "worktree": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003",
+  "output": "/home/nate/Oxy/.agent-evidence/i04-consumer-final-prs/registry-Moovo-20261004",
+  "receipt": "local-initial-checks.json",
+  "jobs": [
+    {
+      "name": "receiver",
+      "cwd": "packages/backend",
+      "argv": [
+        "bun",
+        "run",
+        "test",
+        "-t",
+        "validates receiver identity and revocation in an isolated loopback process"
+      ]
+    },
+    {
+      "name": "check-1",
+      "cwd": ".",
+      "argv": [
+        "bun",
+        "run",
+        "build:backend"
+      ]
+    },
+    {
+      "name": "check-6",
+      "cwd": "packages/backend",
+      "argv": [
+        "bun",
+        "run",
+        "typecheck"
+      ]
+    }
+  ]
+}

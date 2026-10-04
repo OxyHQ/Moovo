@@ -1,0 +1,46 @@
+[
+  {
+    "name": "export-0",
+    "cwd": ".",
+    "argv": [
+      "bun",
+      "run",
+      "build:frontend"
+    ],
+    "exitCode": 0,
+    "seconds": 17.415
+  },
+  {
+    "name": "export-1",
+    "cwd": ".",
+    "argv": [
+      "bun",
+      "run",
+      "build:courier"
+    ],
+    "exitCode": 0,
+    "seconds": 17.366
+  },
+  {
+    "name": "export-2",
+    "cwd": ".",
+    "argv": [
+      "bun",
+      "run",
+      "build:hub"
+    ],
+    "exitCode": 0,
+    "seconds": 16.965
+  },
+  {
+    "name": "export-3",
+    "cwd": ".",
+    "argv": [
+      "bun",
+      "run",
+      "build:tracker"
+    ],
+    "exitCode": 0,
+    "seconds": 11.095
+  }
+]

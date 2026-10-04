@@ -1,0 +1,156 @@
+{
+  "repository": "Moovo",
+  "sourceCommit": "9a4fb32622062db7e66a3c4b0f521e6acc510a3c",
+  "mainFrontendTree": "fdf88e88072eec3e592998d3da01b0979b1a4b12",
+  "runtimeSourceChanged": false,
+  "records": [
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/logs/i04-moovo-courier-app-candidate-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/logs/i04-moovo-fleet-dashboard-candidate-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/logs/i04-moovo-frontend-candidate-export.log",
+      "bytes": 9400,
+      "sha256": "e1592636a366d843cfd6666c4edd97984708817b1c99274a28d58f332986aefb"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/logs/i04-moovo-frontend-candidate-install.log",
+      "bytes": 473,
+      "sha256": "343e8c18b1fd7f03a4dc8479b2838b90e6e99b61e344abeba86e326151ad97eb"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/logs/i04-moovo-frontend-candidate-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/logs/i04-moovo-tracker-app-candidate-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/inputs/package.json",
+      "bytes": 3825,
+      "sha256": "8fd03cc5f551b90e5ae5326878e9e925289c68a881771999e156bd0554fa8882"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/inputs/bun.lock",
+      "bytes": 440180,
+      "sha256": "36e2a5e05b3a267c3d28de0de6d4f20a3edfcf02e7e2875de756303946ad100f"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/inputs/packages/frontend/package.json",
+      "bytes": 5271,
+      "sha256": "e74f8acf9566c207db04c45c55fb233a0691f9dd7da003102239bf00177687b6"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/inputs/packages/courier-app/package.json",
+      "bytes": 5306,
+      "sha256": "6b6c3f7963f4327a2b0f06b3c4e39d20900cb5dea20ce902285e8f94537ca71e"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/inputs/packages/fleet-dashboard/package.json",
+      "bytes": 5285,
+      "sha256": "c90fee4d91dc4bc1f0816bdbd2f1f4e8e29e24d02b3558e38613983c44a74dba"
+    },
+    {
+      "path": "docs/audits/2026-10-03-final-sdk-frontend/inputs/packages/tracker-app/package.json",
+      "bytes": 2950,
+      "sha256": "57a90066f65c4acc8d42d925f984183d7d94f38cbd61fef9e6e16230662e599b"
+    }
+  ],
+  "installed": [
+    {
+      "name": "@oxy.so/contracts",
+      "version": "4.9.0",
+      "path": "/home/nate/Oxy/.agent-evidence/i04-consumer-frozen-1b-packs/oxy.so-contracts-4.9.0.tgz",
+      "source": "1b50557ccfe28b382f5b219405a616b332036d42",
+      "sourceTree": "6ff8352ea7920065590dceda3fff3ca420b94b69",
+      "sha256": "6b1e6a8da92341871d2832834ad063df1a1e84a46dc367786599fdd26be6e635",
+      "published": false,
+      "resolved": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/contracts",
+      "filesByteEqual": 198,
+      "importers": [
+        "packages/frontend",
+        "packages/courier-app",
+        "packages/fleet-dashboard",
+        "packages/tracker-app"
+      ]
+    },
+    {
+      "name": "@oxy.so/protocol",
+      "version": "1.2.2",
+      "path": "/home/nate/Oxy/.agent-evidence/i04-consumer-frozen-1b-packs/oxy.so-protocol-1.2.2.tgz",
+      "source": "1b50557ccfe28b382f5b219405a616b332036d42",
+      "sourceTree": "77ed4e428f59cff076fd44daf42e18a1b39f7fdb",
+      "sha256": "325b20125f1cf5159c36ca7a75f32c83a4560cf41c55526828b1718595acc843",
+      "published": false,
+      "resolved": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/protocol",
+      "filesByteEqual": 145,
+      "importers": [
+        "packages/frontend",
+        "packages/courier-app",
+        "packages/fleet-dashboard",
+        "packages/tracker-app"
+      ]
+    },
+    {
+      "name": "@oxy.so/core",
+      "version": "4.2.0",
+      "path": "/home/nate/Oxy/.agent-evidence/i04-consumer-frozen-1b-packs/oxy.so-core-4.2.0.tgz",
+      "source": "1b50557ccfe28b382f5b219405a616b332036d42",
+      "sourceTree": "3937031b8c95a6b8feff65720905de1ad651689d",
+      "sha256": "83059583068cf96d8dc7e4335fe226126cb795f7c6cfba469f8cec4ef9c6a385",
+      "published": false,
+      "resolved": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/core",
+      "filesByteEqual": 581,
+      "importers": [
+        "packages/frontend",
+        "packages/courier-app",
+        "packages/fleet-dashboard",
+        "packages/tracker-app"
+      ]
+    },
+    {
+      "name": "@oxy.so/services",
+      "version": "11.1.0",
+      "path": "/home/nate/Oxy/.agent-evidence/i04-consumer-frozen-1b-packs/oxy.so-services-11.1.0.tgz",
+      "source": "1b50557ccfe28b382f5b219405a616b332036d42",
+      "sourceTree": "9f0c5e719c8bcea54faefb37580713eb14bacf9f",
+      "sha256": "b8d232cb04d934ac38c8be303dbbcf9819d444bec8458628c8478cbbf2155c9c",
+      "published": false,
+      "resolved": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/services",
+      "filesByteEqual": 2418,
+      "importers": [
+        "packages/frontend",
+        "packages/courier-app",
+        "packages/fleet-dashboard",
+        "packages/tracker-app"
+      ]
+    },
+    {
+      "name": "@oxy.so/bloom",
+      "version": "6.2.1",
+      "path": "/home/nate/Oxy/.agent-evidence/root-1519-20261003/bloom621-publication/oxy-so-bloom-6.2.1.tgz",
+      "sha256": "edf4cfe3d8597e4bf86f997bceacf332f7fce4a8f92c541b3cd375decbce3a0a",
+      "published": true,
+      "resolved": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@oxy.so/bloom",
+      "filesByteEqual": 20940,
+      "importers": [
+        "packages/frontend",
+        "packages/courier-app",
+        "packages/fleet-dashboard",
+        "packages/tracker-app"
+      ]
+    }
+  ],
+  "oxyRegistryAdopted": false
+}

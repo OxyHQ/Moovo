@@ -1,0 +1,132 @@
+$ bun run --filter @moovo/fleet-dashboard build
+@moovo/fleet-dashboard prebuild: $ bun scripts/generate-sitemap.ts
+@moovo/fleet-dashboard prebuild: 🗺️  Generating sitemap.xml for Moovo Hub...
+@moovo/fleet-dashboard prebuild: ✅ Sitemap generated: /home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/packages/fleet-dashboard/public/sitemap.xml
+@moovo/fleet-dashboard prebuild: 
+@moovo/fleet-dashboard prebuild: 📊 Total URLs in sitemap: 1
+@moovo/fleet-dashboard prebuild: 🎉 Sitemap generated successfully!
+@moovo/fleet-dashboard prebuild: Exited with code 0
+@moovo/fleet-dashboard build: Expo Autolinking module resolution enabled
+@moovo/fleet-dashboard build: Starting Metro Bundler
+@moovo/fleet-dashboard build: 
+@moovo/fleet-dashboard build:  WARN  Attempted to import the module "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@noble/hashes/crypto.js" which is not listed in the "exports" of "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@noble/hashes" under the requested subpath "./crypto.js". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
+@moovo/fleet-dashboard build: Web Bundled 14306ms packages/fleet-dashboard/index.web.tsx (4677 modules)
+@moovo/fleet-dashboard build: 
+@moovo/fleet-dashboard build: › Assets (32):
+@moovo/fleet-dashboard build: ../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.b06871f281fee6b241d60582ae9369b9.ttf (166KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/bloom/lib/module/fonts/assets/BlomusModernus-Bold.c8e4c906b137ccc90f9aa1fbccbe85b2.woff2 (78KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/bloom/lib/module/fonts/assets/BlomusModernus-Regular.6a898c26aeb50e6f31189d06dd2bf3e9.woff2 (78KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/bloom/lib/module/fonts/assets/InterVariable.260c81a4759baf163c025001c4f27872.woff2 (48KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/bloom/lib/module/fonts/assets/JetBrainsMono-Variable.b058178d7f309414f8f856b99fd80d9b.woff2 (40KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/services/lib/module/assets/fonts/icons/OxyServicesIonicons.48b1d8ee549a265d0c1aa67fed7fbca2.ttf (43KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/services/lib/module/assets/fonts/icons/OxyServicesMaterialCommunityIcons.88d575089a17d9d10e08c411fd7105ba.ttf (29KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/services/lib/module/assets/signIn/slide-1.b29a38b76e9e9e426cc152c3a1a56a73.jpg (102KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/services/lib/module/assets/signIn/slide-2.045f767e731a6b2801ce1ea8dbda92f5.jpg (88KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/services/lib/module/assets/signIn/slide-3.32a001447e68adf690be104bddcce0ef.jpg (59KB)
+@moovo/fleet-dashboard build: ../../node_modules/@oxy.so/services/lib/module/assets/signIn/slide-4.1de81f0781c3c99c5615d0ec8eb5dee6.jpg (47KB)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/arrow_down.017bc6ba3fc25503e5eb5e53826d48a8.png (9.5KB)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/error.d1ea1496f9057eb392d5bbf3732a61b7.png (469B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/file.19eeb73b9593a38f8e9f418337fc7d10.png (138B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/forward.d8b800c443b8972542883e0b9de2bdc6.png (188B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/pkg.ab19f4cbc543357183a20571f68380a3.png (364B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/react-navigation/elements/back-icon-mask.0a328cd9c1afd0afe8e3b1ec5165b1b4.png (653B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/react-navigation/elements/back-icon.35ba0eaec5a4f5ed12ca16fabeae451d.png (207B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/react-navigation/elements/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55.png (4 variations | 425B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/react-navigation/elements/close-icon.808e1b1b9b53114ec2838071a7e6daa7.png (4 variations | 235B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/react-navigation/elements/search-icon.286d67d3f74808a60a78d3ebf1a5fb57.png (928B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/sitemap.412dd9275b6b48ad28f5e3d81bb1f626.png (465B)
+@moovo/fleet-dashboard build: ../../node_modules/expo-router/assets/unmatched.20e71bdf79e3a97bf55fd9e164041578.png (4.8KB)
+@moovo/fleet-dashboard build: assets/fonts/Inter-Italic-VariableFont_opsz,wght.6dce17792107f0321537c2f1e9f12866.ttf (905KB)
+@moovo/fleet-dashboard build: assets/fonts/Inter-VariableFont_opsz,wght.0a77e23a8fdbe6caefd53cb04c26fabc.ttf (875KB)
+@moovo/fleet-dashboard build: assets/fonts/SpaceMono-Regular.49a79d66bdea2debf1832bf4d7aca127.ttf (93KB)
+@moovo/fleet-dashboard build: 
+@moovo/fleet-dashboard build: › web bundles (76):
+@moovo/fleet-dashboard build: _expo/static/css/global-eda6f50626575e60cdcce84207ef4d4c.css (62KB)
+@moovo/fleet-dashboard build: _expo/static/css/maplibre-gl-b079c05127f3103c60105134c1a8e0d1.css (70KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/__common-c5b9267e5ab6a49fda7730ed684dbf97.js (72KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/__expo-metro-runtime-1f8f5d3ca6b7f58204d51e14506d73fb.js (3.8KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/AccountMembersScreen-9ab44affb28359e227530974841b731a.js (10KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/AccountSettingsScreen-b302c511955336ab779b9766624d4f83.js (6KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/AccountVerificationScreen-e1d4729f539d5784d76af50e9c33f893.js (7.3KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/AppInfoScreen-a97a6eab3f23b88e49d72759435c80ec.js (12KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ar-8379f5123369fb04e5af6ddb901f60de.js (178KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ar-SA-6c7c1735ad3c0bff9c38954ca338bb44.js (35KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/AvatarCropScreen-d6574bf94f11fb4f56aee3755f96e887.js (21KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/bn-3914cb93d267c9fc6e1ea9010c3a5b10.js (173KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ca-ES-613da35e6a49c2a383ee60facb002597.js (13KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ca-f6f1c04710e4cc038e1cf975a264cd33.js (67KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ChangeAvatarScreen-3d2aa4c0cb8cda891cb31d65d9917f3c.js (4.4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ConnectedAppsScreen-aa92a5fb1a45392ea4e995a4e14d5143.js (3.1KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/CreateAccountScreen-c1562a2a2aca5be69e484f7b4d1745ce.js (7.5KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/de-60b33a13a292c403e2f689fbc3aec67e.js (66KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/de-DE-4e6ec19cb835dc69c4a03da74be01e19.js (14KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/DeleteAccountScreen-1488a04cd83fc36fd156df499ae1592a.js (352B)
+@moovo/fleet-dashboard build: _expo/static/js/web/DomainsScreen-9a88941a9ee149568c3506e04384a1d1.js (4.4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/EditProfileFieldScreen-1b7034d15d7f8d8643aaf0c041124e38.js (31KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/EditProfileScreen-6815aae040cd0139b1261bfb3200dd61.js (3.5KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/empty-module-24d3c35de3f2769d827080b95026f139.js (39B)
+@moovo/fleet-dashboard build: _expo/static/js/web/es-b7cddbd9e1e566402ce32febf34bb470.js (67KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/es-ES-2f1037acce24da9a72c85535e99c137e.js (67KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/FileManagementScreen-7429040d814720db3a4a959aaa2f9354.js (65KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/FollowersListScreen-92d65675da31bd8568702d597fa465ff.js (316B)
+@moovo/fleet-dashboard build: _expo/static/js/web/FollowingListScreen-c396fa51bee0c5881c5a5fc4256d3a1b.js (316B)
+@moovo/fleet-dashboard build: _expo/static/js/web/fr-592c6b0ceedc91dc315e8ef024c6099f.js (70KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/fr-FR-bf37aa668dd3a87f45a228823ead8087.js (14KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/HelpSupportScreen-a6a2faf77f66a176a3c1423aeffe7888.js (2.9KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/hi-00ed22834dc95f32f8e8a64b204a209e.js (168KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/HistoryViewScreen-d0c0d6aa0dc69bc2e3ce65f7ba138bac.js (4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/id-283acbd2ca2b581ab9f53a662b5d70dc.js (61KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ImagePicker-78413ff9072c94da85413afd38940862.js (8.6KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/index-1338a17c43ed27f45ab0b28cad5e604f.js (8.3MB)
+@moovo/fleet-dashboard build: _expo/static/js/web/index-530b0138aebac5e625d4808a35e9dd47.js (2.1KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/index-68c113225cc0df48e073a2a16175b362.js (12KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/index-937a14cdacf4c5367d51027ff60ca55f.js (13KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/internal-4f3f56a246c824f65aa705fd04b7d6c3.js (2.4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/it-3cde7172369f3c48f94271b19d76f957.js (65KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/it-IT-e6b8e236a1a1e1d725d4d9f082204f69.js (13KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ja-895ec67dc613a99bb33c7ae267391c4b.js (104KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ja-JP-8d449f5950201dc8703593cd5ed72c46.js (26KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ko-KR-7d62413cd677b133c7234c0962d6535a.js (21KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/LanguageSelectorScreen-d1ad9caa2a03d1ce1cf2c0174cb98f88.js (3.6KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/LearnMoreUsernamesScreen-96d06dafebd99acd44240bfe59b7ea2a.js (4.7KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/LegalDocumentsScreen-fee657a3f39eb5d5048faa13eb89c573.js (4.4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/LinkCommonsScreen-9fe366f51eb7d72830faeed4866ef4ed.js (317B)
+@moovo/fleet-dashboard build: _expo/static/js/web/ManageAccountScreen-014b12afcf4dc43f20ceb7670bff92e4.js (22KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/NotificationsScreen-6465c62a0eea6046fe7e9c909c1adc6a.js (3.2KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/OxyAccountDialogScreen-cbbd83271e868374aa8e684a56187a9e.js (43KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/PaymentGatewayScreen-ea4d118e0c2fd27366b359ff0aaec1d5.js (29KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/PreferencesScreen-5b833d0243a5af7d3428960fb0c3e2ff.js (3.4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/PrivacySettingsScreen-b90fa88ba07902c2c3a960385f46441f.js (12KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ProfileScreen-1609c7e7b59bd29bd01a511be8102049.js (8.3KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/pt-ffa5822ef3465d1aed8b07c752004cde.js (67KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/pt-PT-54bc23a90a77f90b7a94c4f3554c5bbc.js (14KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/ru-afe6632d7e4ce89f8c4b9a6c0f62e088.js (199KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/SearchSettingsScreen-99b98f10e1d4fe910bdd9af7663a5076.js (2.5KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/SecureStore-d41769074435b0d2ef15334f5e938f77.js (2.4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/SignInAuthenticatorScreen-5e1b9f32bb3f67f2bb07d4e1d070f294.js (319B)
+@moovo/fleet-dashboard build: _expo/static/js/web/SignInPasswordScreen-225ab61a9b06ccca53534c69a500e3c0.js (359B)
+@moovo/fleet-dashboard build: _expo/static/js/web/tr-ab709d2a3170f808c5fa1b3dde15692e.js (71KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/TrustAboutScreen-66f7341fdef929375063765728ede198.js (4.9KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/TrustCenterScreen-19fb024dda77356eca80b4d23ad5ab76.js (4.4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/TrustFAQScreen-f230b05a099b91d9da823fde678ccf5b.js (1.8KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/TrustLeaderboardScreen-0201ee000ca651cf03b79bbb1ac62f92.js (4.3KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/TrustRewardsScreen-92f78287e2582244fe99f163cc0c4db9.js (9.4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/TrustRulesScreen-8570686a62f0c734281d5e7bc36b4fef.js (2.2KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/UserLinksScreen-2f6b910ac0980b186bf459018b109105.js (1.1KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/WebBrowser-505410aab954a713c268febb4eb3f878.js (8.4KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/WelcomeNewUserScreen-1e9e437f3e14d21b2f533542d2c8a64d.js (8.7KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/zh-5c15077a6216d3f53a3fa3978cca0b97.js (81KB)
+@moovo/fleet-dashboard build: _expo/static/js/web/zh-CN-5d58017ed5a50567c8028b60cb5ca80d.js (18KB)
+@moovo/fleet-dashboard build: 
+@moovo/fleet-dashboard build: › Files (3):
+@moovo/fleet-dashboard build: favicon.ico (15KB)
+@moovo/fleet-dashboard build: index.html (1.8KB)
+@moovo/fleet-dashboard build: metadata.json (49B)
+@moovo/fleet-dashboard build: 
+@moovo/fleet-dashboard build: Exported: dist
+@moovo/fleet-dashboard build: $ bun build worker/index.js --target=browser --format=esm --outfile=dist/_worker.js
+@moovo/fleet-dashboard build: Bundled 4 modules in 3ms
+@moovo/fleet-dashboard build: 
+@moovo/fleet-dashboard build:   _worker.js  8.1 KB  (entry point)
+@moovo/fleet-dashboard build: 
+@moovo/fleet-dashboard build: Exited with code 0

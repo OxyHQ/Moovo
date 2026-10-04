@@ -1,0 +1,133 @@
+$ bun run --filter @moovo/courier-app build
+@moovo/courier-app prebuild: $ bun scripts/generate-sitemap.ts
+@moovo/courier-app prebuild: 🗺️  Generating sitemap.xml for Moovo Go...
+@moovo/courier-app prebuild: ✅ Sitemap generated: /home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/packages/courier-app/public/sitemap.xml
+@moovo/courier-app prebuild: 
+@moovo/courier-app prebuild: 📊 Total URLs in sitemap: 1
+@moovo/courier-app prebuild: 🎉 Sitemap generated successfully!
+@moovo/courier-app prebuild: Exited with code 0
+@moovo/courier-app build: Expo Autolinking module resolution enabled
+@moovo/courier-app build: Starting Metro Bundler
+@moovo/courier-app build: 
+@moovo/courier-app build:  WARN  Attempted to import the module "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@noble/hashes/crypto.js" which is not listed in the "exports" of "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003/node_modules/@noble/hashes" under the requested subpath "./crypto.js". Falling back to file-based resolution. Consider updating the call site or asking the package maintainer(s) to expose this API.
+@moovo/courier-app build: Web Bundled 14164ms packages/courier-app/index.web.tsx (4688 modules)
+@moovo/courier-app build: 
+@moovo/courier-app build: › Assets (32):
+@moovo/courier-app build: ../../node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.b06871f281fee6b241d60582ae9369b9.ttf (166KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/bloom/lib/module/fonts/assets/BlomusModernus-Bold.c8e4c906b137ccc90f9aa1fbccbe85b2.woff2 (78KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/bloom/lib/module/fonts/assets/BlomusModernus-Regular.6a898c26aeb50e6f31189d06dd2bf3e9.woff2 (78KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/bloom/lib/module/fonts/assets/InterVariable.260c81a4759baf163c025001c4f27872.woff2 (48KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/bloom/lib/module/fonts/assets/JetBrainsMono-Variable.b058178d7f309414f8f856b99fd80d9b.woff2 (40KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/services/lib/module/assets/fonts/icons/OxyServicesIonicons.48b1d8ee549a265d0c1aa67fed7fbca2.ttf (43KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/services/lib/module/assets/fonts/icons/OxyServicesMaterialCommunityIcons.88d575089a17d9d10e08c411fd7105ba.ttf (29KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/services/lib/module/assets/signIn/slide-1.b29a38b76e9e9e426cc152c3a1a56a73.jpg (102KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/services/lib/module/assets/signIn/slide-2.045f767e731a6b2801ce1ea8dbda92f5.jpg (88KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/services/lib/module/assets/signIn/slide-3.32a001447e68adf690be104bddcce0ef.jpg (59KB)
+@moovo/courier-app build: ../../node_modules/@oxy.so/services/lib/module/assets/signIn/slide-4.1de81f0781c3c99c5615d0ec8eb5dee6.jpg (47KB)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/arrow_down.017bc6ba3fc25503e5eb5e53826d48a8.png (9.5KB)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/error.d1ea1496f9057eb392d5bbf3732a61b7.png (469B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/file.19eeb73b9593a38f8e9f418337fc7d10.png (138B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/forward.d8b800c443b8972542883e0b9de2bdc6.png (188B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/pkg.ab19f4cbc543357183a20571f68380a3.png (364B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/react-navigation/elements/back-icon-mask.0a328cd9c1afd0afe8e3b1ec5165b1b4.png (653B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/react-navigation/elements/back-icon.35ba0eaec5a4f5ed12ca16fabeae451d.png (207B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/react-navigation/elements/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55.png (4 variations | 425B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/react-navigation/elements/close-icon.808e1b1b9b53114ec2838071a7e6daa7.png (4 variations | 235B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/react-navigation/elements/search-icon.286d67d3f74808a60a78d3ebf1a5fb57.png (928B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/sitemap.412dd9275b6b48ad28f5e3d81bb1f626.png (465B)
+@moovo/courier-app build: ../../node_modules/expo-router/assets/unmatched.20e71bdf79e3a97bf55fd9e164041578.png (4.8KB)
+@moovo/courier-app build: assets/fonts/Inter-Italic-VariableFont_opsz,wght.6dce17792107f0321537c2f1e9f12866.ttf (905KB)
+@moovo/courier-app build: assets/fonts/Inter-VariableFont_opsz,wght.0a77e23a8fdbe6caefd53cb04c26fabc.ttf (875KB)
+@moovo/courier-app build: assets/fonts/SpaceMono-Regular.49a79d66bdea2debf1832bf4d7aca127.ttf (93KB)
+@moovo/courier-app build: 
+@moovo/courier-app build: › web bundles (77):
+@moovo/courier-app build: _expo/static/css/global-a03a219686960dc935afeea6f972956f.css (62KB)
+@moovo/courier-app build: _expo/static/css/maplibre-gl-b079c05127f3103c60105134c1a8e0d1.css (70KB)
+@moovo/courier-app build: _expo/static/js/web/__common-9c93d821775672f915f0f581fbbaf036.js (72KB)
+@moovo/courier-app build: _expo/static/js/web/__expo-metro-runtime-1f8f5d3ca6b7f58204d51e14506d73fb.js (3.8KB)
+@moovo/courier-app build: _expo/static/js/web/AccountMembersScreen-f36371823d61e551268c64afc7f07772.js (10KB)
+@moovo/courier-app build: _expo/static/js/web/AccountSettingsScreen-a8b306eded0e1e26d5721d8c92ef384a.js (6KB)
+@moovo/courier-app build: _expo/static/js/web/AccountVerificationScreen-565982ab7feee5188ec4a3199cbd4a94.js (7.3KB)
+@moovo/courier-app build: _expo/static/js/web/AppInfoScreen-7546fa5b51d164c37867dc2d5f9ad57b.js (12KB)
+@moovo/courier-app build: _expo/static/js/web/ar-78b2da209738503b1495280d4bc606d9.js (178KB)
+@moovo/courier-app build: _expo/static/js/web/ar-SA-9df66a4e2b3a90fc409141ea6a9a2ee8.js (35KB)
+@moovo/courier-app build: _expo/static/js/web/AvatarCropScreen-c4a4496fb26e1904552a999644900054.js (21KB)
+@moovo/courier-app build: _expo/static/js/web/bn-411621e62dcfd197ee0a04b7b60ca607.js (173KB)
+@moovo/courier-app build: _expo/static/js/web/ca-ab3e5ad8bac094f1130c8acc3de995fb.js (67KB)
+@moovo/courier-app build: _expo/static/js/web/ca-ES-32486534dc4e573fe837be1ac35495f6.js (13KB)
+@moovo/courier-app build: _expo/static/js/web/ChangeAvatarScreen-6695be8ca22530c4ddc6702de25323fb.js (4.4KB)
+@moovo/courier-app build: _expo/static/js/web/ConnectedAppsScreen-d69f668d58271cfe984a96a798ba7de9.js (3.1KB)
+@moovo/courier-app build: _expo/static/js/web/CreateAccountScreen-138c7dccba996d3af4bb8d437202803e.js (7.5KB)
+@moovo/courier-app build: _expo/static/js/web/de-206205c860303f6176175a8d88218ae8.js (66KB)
+@moovo/courier-app build: _expo/static/js/web/de-DE-6365d471135f2214e82be3c5545c9921.js (14KB)
+@moovo/courier-app build: _expo/static/js/web/DeleteAccountScreen-feb9185ac59c0828beed9ba2019e2365.js (352B)
+@moovo/courier-app build: _expo/static/js/web/DomainsScreen-5befdf9a66dd9f30a580532766df7e4a.js (4.4KB)
+@moovo/courier-app build: _expo/static/js/web/EditProfileFieldScreen-d321701c0ae48fbfbac051357051a7e6.js (31KB)
+@moovo/courier-app build: _expo/static/js/web/EditProfileScreen-5c03e32064ee552ecc470183e11e3c6f.js (3.5KB)
+@moovo/courier-app build: _expo/static/js/web/empty-module-3360faa1a6f0b8fc143d0e46b161b2d2.js (39B)
+@moovo/courier-app build: _expo/static/js/web/es-2570fe0e53d05456de418b4b1a7cfcf2.js (67KB)
+@moovo/courier-app build: _expo/static/js/web/es-ES-28fac396a4a765c1c9da7a43df626c92.js (67KB)
+@moovo/courier-app build: _expo/static/js/web/FileManagementScreen-ce3598cbfff23d683d58950fde87f23e.js (65KB)
+@moovo/courier-app build: _expo/static/js/web/FollowersListScreen-65e7bb826d01e1ae9d6389fb9d6c782b.js (316B)
+@moovo/courier-app build: _expo/static/js/web/FollowingListScreen-83b8fb44d2ab3d863e7865397dd0cf4f.js (316B)
+@moovo/courier-app build: _expo/static/js/web/fr-f640418d45605aa536107b1b75f9c7a8.js (70KB)
+@moovo/courier-app build: _expo/static/js/web/fr-FR-4429889f15253dce535f0fc9903c622e.js (14KB)
+@moovo/courier-app build: _expo/static/js/web/HelpSupportScreen-80df63ed26a2b69c10a0522d404010de.js (2.9KB)
+@moovo/courier-app build: _expo/static/js/web/hi-2ba58d9f6ea84c08e61d73fd550f886e.js (168KB)
+@moovo/courier-app build: _expo/static/js/web/HistoryViewScreen-e22f6916392c03ad570e8d7a624a0e83.js (4KB)
+@moovo/courier-app build: _expo/static/js/web/id-d3d5b9d4728e2bc9d67d8decd0372dac.js (61KB)
+@moovo/courier-app build: _expo/static/js/web/ImagePicker-bd19722d9cde1707ddf7c6404e8cb946.js (8.6KB)
+@moovo/courier-app build: _expo/static/js/web/index-45ad2b151fd2a958167de7902eca2a06.js (8.3MB)
+@moovo/courier-app build: _expo/static/js/web/index-5ec8e1b19c201e72a41b407970f3657f.js (46KB)
+@moovo/courier-app build: _expo/static/js/web/index-6fa85881d902ad271437b5eaca7759df.js (2.1KB)
+@moovo/courier-app build: _expo/static/js/web/index-d821e45bd42402a5b4e937376880c69e.js (12KB)
+@moovo/courier-app build: _expo/static/js/web/index-f289fb4857998913334930ea80eb010e.js (13KB)
+@moovo/courier-app build: _expo/static/js/web/internal-c69dd3f7285e36c83ca029f0bae98d86.js (2.4KB)
+@moovo/courier-app build: _expo/static/js/web/it-db908a197f3dc804f63cf86c201bb1af.js (65KB)
+@moovo/courier-app build: _expo/static/js/web/it-IT-72bd297ba3f30f6fa429a8b6bab85928.js (13KB)
+@moovo/courier-app build: _expo/static/js/web/ja-2f3dfb0a21d46b1b593141e37b4535cf.js (104KB)
+@moovo/courier-app build: _expo/static/js/web/ja-JP-124e6f6bf35f48363b8fc70a05ae1ded.js (26KB)
+@moovo/courier-app build: _expo/static/js/web/ko-KR-050b5898f059e6e8400ce3569fac5dfe.js (21KB)
+@moovo/courier-app build: _expo/static/js/web/LanguageSelectorScreen-529cc05d161ce2bde6f355ed22c7fd24.js (3.6KB)
+@moovo/courier-app build: _expo/static/js/web/LearnMoreUsernamesScreen-d1800afa370e0172933f47f23f9b916e.js (4.7KB)
+@moovo/courier-app build: _expo/static/js/web/LegalDocumentsScreen-0512d3753fe713ca96e92294daf4e250.js (4.4KB)
+@moovo/courier-app build: _expo/static/js/web/LinkCommonsScreen-4841a387454668c84c5fa033501b9373.js (317B)
+@moovo/courier-app build: _expo/static/js/web/ManageAccountScreen-7273f32c8c3e62822461a88232bdee62.js (22KB)
+@moovo/courier-app build: _expo/static/js/web/NotificationsScreen-148dbbaf63c205c10d92f775f23e6268.js (3.2KB)
+@moovo/courier-app build: _expo/static/js/web/OxyAccountDialogScreen-2c4ef23fe0b06dbe868f1a528c19d504.js (43KB)
+@moovo/courier-app build: _expo/static/js/web/PaymentGatewayScreen-63729e304608a4c594363ae9a562c4bf.js (29KB)
+@moovo/courier-app build: _expo/static/js/web/PreferencesScreen-83a9172a8536294e10cc2b74b35d2a15.js (3.4KB)
+@moovo/courier-app build: _expo/static/js/web/PrivacySettingsScreen-1b89e55923b89973aef7634fbed53d67.js (12KB)
+@moovo/courier-app build: _expo/static/js/web/ProfileScreen-f7ac6f30e618a99999ecb381ba5bf329.js (8.3KB)
+@moovo/courier-app build: _expo/static/js/web/pt-59f70225778d06ad2b3f8a8c95ee3b19.js (67KB)
+@moovo/courier-app build: _expo/static/js/web/pt-PT-ed45e525e9e530ecd1a64b2a5dcb3926.js (14KB)
+@moovo/courier-app build: _expo/static/js/web/ru-cfc33ae8a470adb2b8c857aba4ca6812.js (199KB)
+@moovo/courier-app build: _expo/static/js/web/SearchSettingsScreen-e1498491d82958b7452fb557e51266b3.js (2.5KB)
+@moovo/courier-app build: _expo/static/js/web/SecureStore-5bf45c6a1ebf5c47cd156235105934bc.js (2.4KB)
+@moovo/courier-app build: _expo/static/js/web/SignInAuthenticatorScreen-86baa327d1434197a444d502f169f889.js (319B)
+@moovo/courier-app build: _expo/static/js/web/SignInPasswordScreen-7b1a6f25699f8f259d285e7b206f0230.js (359B)
+@moovo/courier-app build: _expo/static/js/web/tr-e6a4d6707807a3ac3f3540bc447b97a1.js (71KB)
+@moovo/courier-app build: _expo/static/js/web/TrustAboutScreen-8452361e024d06ecebc7e1d9dd15c7ab.js (4.9KB)
+@moovo/courier-app build: _expo/static/js/web/TrustCenterScreen-55b9634bf785178e8be7a084e4c65ba8.js (4.4KB)
+@moovo/courier-app build: _expo/static/js/web/TrustFAQScreen-e8e90c39878d164e82d85fb1392935fc.js (1.8KB)
+@moovo/courier-app build: _expo/static/js/web/TrustLeaderboardScreen-5bb5a096cffbc93e3cf890dc5ac8542d.js (4.3KB)
+@moovo/courier-app build: _expo/static/js/web/TrustRewardsScreen-cdb6c06cc3e2f250ab81f0e5c8b1c915.js (9.4KB)
+@moovo/courier-app build: _expo/static/js/web/TrustRulesScreen-4f7ebb9d8414ae808655ca8493046915.js (2.2KB)
+@moovo/courier-app build: _expo/static/js/web/UserLinksScreen-35d5d1075fc57c2d8e38540e4c492065.js (1.1KB)
+@moovo/courier-app build: _expo/static/js/web/WebBrowser-5e0874173c548702c65b6c33eed143f5.js (8.4KB)
+@moovo/courier-app build: _expo/static/js/web/WelcomeNewUserScreen-2849a5ed0f746840fbd353c30f1c8b55.js (8.7KB)
+@moovo/courier-app build: _expo/static/js/web/zh-CN-cc7b7a52cc56b19004780d27ac1a7087.js (18KB)
+@moovo/courier-app build: _expo/static/js/web/zh-e4c12e92a399759d17f6b94635dc8988.js (81KB)
+@moovo/courier-app build: 
+@moovo/courier-app build: › Files (3):
+@moovo/courier-app build: favicon.ico (15KB)
+@moovo/courier-app build: index.html (1.8KB)
+@moovo/courier-app build: metadata.json (49B)
+@moovo/courier-app build: 
+@moovo/courier-app build: Exported: dist
+@moovo/courier-app build: $ bun build worker/index.js --target=browser --format=esm --outfile=dist/_worker.js
+@moovo/courier-app build: Bundled 4 modules in 3ms
+@moovo/courier-app build: 
+@moovo/courier-app build:   _worker.js  8.1 KB  (entry point)
+@moovo/courier-app build: 
+@moovo/courier-app build: Exited with code 0
