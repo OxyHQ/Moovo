@@ -1,0 +1,8 @@
+bun install v1.3.14 (0d9b296a)
+
+$ bun run --filter @moovo/shared-types build
+@moovo/shared-types build: Exited with code 0
+
++ @oxy.so/core@4.2.0
+
+1 package installed [523.00ms]

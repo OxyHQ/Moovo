@@ -1,0 +1,43 @@
+{
+  "worktree": "/home/nate/Oxy/Moovo/.worktrees/1519-final-sdk-adoption-20261003",
+  "output": "/home/nate/Oxy/.agent-evidence/i04-consumer-final-prs/registry-Moovo-20261004",
+  "receipt": "local-export-checks.json",
+  "jobs": [
+    {
+      "name": "export-0",
+      "cwd": ".",
+      "argv": [
+        "bun",
+        "run",
+        "build:frontend"
+      ]
+    },
+    {
+      "name": "export-1",
+      "cwd": ".",
+      "argv": [
+        "bun",
+        "run",
+        "build:courier"
+      ]
+    },
+    {
+      "name": "export-2",
+      "cwd": ".",
+      "argv": [
+        "bun",
+        "run",
+        "build:hub"
+      ]
+    },
+    {
+      "name": "export-3",
+      "cwd": ".",
+      "argv": [
+        "bun",
+        "run",
+        "build:tracker"
+      ]
+    }
+  ]
+}
