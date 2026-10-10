@@ -15,7 +15,7 @@ interface SettingsHeaderProps {
 }
 
 export function SettingsHeader({ title, subtitle, showBack = false, onBack }: SettingsHeaderProps) {
-  const navigation = useNavigation<DrawerNavigationProp<any>>();
+  const navigation = useNavigation<DrawerNavigationProp<Record<string, object | undefined>>>();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 768;

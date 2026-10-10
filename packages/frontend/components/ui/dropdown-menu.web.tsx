@@ -35,10 +35,11 @@ import {
   AlertTriangle,
   Pin,
   ShieldCheck,
+  type LucideIcon,
 } from 'lucide-react-native';
 
 // Map iOS SF Symbol names to Lucide icons for web rendering
-const SF_SYMBOL_MAP: Record<string, React.ComponentType<any>> = {
+const SF_SYMBOL_MAP: Record<string, LucideIcon> = {
   star: Star,
   'star.fill': Star,
   pencil: Pencil,
@@ -316,7 +317,7 @@ DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 export const ItemIcon = React.forwardRef<
   HTMLSpanElement,
   React.HTMLProps<HTMLSpanElement> & {
-    ios?: { name?: string; [key: string]: any };
+    ios?: { name?: string; [key: string]: unknown };
     androidIconName?: string;
   }
 >(({ className, ios, androidIconName, children, ...props }, ref) => {
