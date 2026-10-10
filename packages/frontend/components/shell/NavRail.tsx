@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Pressable, Platform, type LayoutRectangle, type ViewStyle } from 'react-native';
 import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'expo-router';
-import { type LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Logo } from '@/components/Logo';
 import { useColorScheme } from '@/lib/useColorScheme';

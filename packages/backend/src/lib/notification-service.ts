@@ -11,7 +11,7 @@
 
 import Expo, { type ExpoPushMessage, type ExpoPushReceiptId } from 'expo-server-sdk';
 import { WebPushError } from 'web-push';
-import {
+import type {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_PRIORITIES,
   NOTIFICATION_STATUSES,

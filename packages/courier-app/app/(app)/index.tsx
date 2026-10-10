@@ -1,6 +1,6 @@
 import { View, ScrollView, Platform, ActivityIndicator, Pressable } from 'react-native';
 import Head from 'expo-router/head';
-import { type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOxy, openAccountDialog } from '@oxy.so/services';

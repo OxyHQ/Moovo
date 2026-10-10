@@ -33,7 +33,7 @@
 
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { FairMoney, PriceBreakdown, QuoteSource, QuoteStatus } from '@moovo/shared-types';
-import { FAIR_CURRENCY } from '@moovo/shared-types';
+import type { FAIR_CURRENCY } from '@moovo/shared-types';
 import { uuidv7 } from '@oxy.so/db';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { quotes } from '../schema/transport';
