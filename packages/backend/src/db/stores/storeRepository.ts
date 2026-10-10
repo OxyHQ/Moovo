@@ -2,7 +2,7 @@
  * Every statement the store domain issues against `stores` and `store_members`.
  *
  * Two things about this port are behaviour-relevant rather than mechanical, and
- * both are races the Mongo original could not close:
+ * both are races the source could not close:
  *
  *  - **The handle is unique by CONSTRAINT, not by a prior existence check.**
  *    The source asked `Store.exists({handle})` and then inserted, which only

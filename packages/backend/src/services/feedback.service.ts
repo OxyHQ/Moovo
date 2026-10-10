@@ -53,8 +53,8 @@ export interface CreateFeedbackInput {
 /**
  * Serialize a stored row to the wire `FeedbackDTO`.
  *
- * The `!== null` checks are the port's one real behavioural trap here. Mongo
- * OMITTED an unset optional field, so `rating` and `email` were absent from the
+ * The `!== null` checks are the port's one real behavioural trap here. The
+ * source OMITTED an unset optional field, so `rating` and `email` were absent from the
  * document and absent from the JSON. Postgres returns them as `null`, and the
  * previous `!== undefined` test passes for `null` — so a straight translation
  * would have started emitting `{"rating": null}` where the API used to emit

@@ -11,7 +11,7 @@
  * Three shape changes came with the port, and they are the same three every
  * retargeted suite in this repo sees:
  *
- *  - a repository function RESOLVES its rows, where the Mongoose call returned a
+ *  - a repository function RESOLVES its rows, where the old model call returned a
  *    chainable needing `.lean()`;
  *  - an id is `id`, never `_id`;
  *  - the seam is a named function, so a test asserts the ARGUMENTS a service

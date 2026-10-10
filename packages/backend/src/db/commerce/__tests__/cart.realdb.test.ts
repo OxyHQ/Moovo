@@ -2,7 +2,7 @@
  * The cart domain against a real PostgreSQL server.
  *
  * This file REPLACES `services/__tests__/cart.service.test.ts`, which mocked
- * the Mongoose model. The properties that decide whether this port is correct
+ * the model layer. The properties that decide whether this port is correct
  * cannot be expressed against a mock:
  *
  *  - **A cart line is now a ROW with `cart_items_cart_variant_key`**, so a

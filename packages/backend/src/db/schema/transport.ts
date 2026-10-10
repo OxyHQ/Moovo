@@ -234,8 +234,7 @@ export const quotes = pgTable(
     /**
      * Required by the expiry sweep, not merely useful: the sweep deletes with
      * `expires_at <= now() - interval`, and without a LEADING btree here that
-     * predicate is a full table scan on every run — the exact cost Mongo's TTL
-     * index hid. `@oxy.so/db`'s expiry-coverage gate fails the build if this
+     * predicate is a full table scan on every run. `@oxy.so/db`'s expiry-coverage gate fails the build if this
      * index disappears.
      */
     index('quotes_expires_at_idx').on(table.expiresAt),
@@ -438,8 +437,8 @@ export const jobStatusEvents = pgTable(
  * The courier's breadcrumb trail.
  *
  * A child table rather than the source's capped array: the cap existed to stop
- * one document growing without bound, which is a Mongo document-size concern
- * that does not exist here. Pruning is a retention decision for whoever owns
+ * one document growing without bound, a document-size concern that does not
+ * exist for rows. Pruning is a retention decision for whoever owns
  * the trail, not a property of the row.
  */
 export const jobLocationPings = pgTable(
@@ -493,8 +492,8 @@ export const jobOffers = pgTable(
      * `notifications` carried a `partialFilterExpression`, so its sweep has a
      * condition to PRESERVE and that condition became a generated column.
      * This index — `{expiresAt: 1}, {expireAfterSeconds: 0}` — carries no
-     * partial filter at all: Mongo reaps ANY offer past `expiresAt`, whatever
-     * its status.
+     * partial filter at all: the sweep reaps ANY offer past `expiresAt`,
+     * whatever its status.
      *
      * An earlier version of this schema narrowed the sweep to
      * `status <> 'offered'`, reasoning that it would protect a live offer.
@@ -502,8 +501,8 @@ export const jobOffers = pgTable(
      * and merely unflipped, and the accept path refuses it either way. And the
      * narrowing disabled the BACKSTOP in precisely the situation a backstop
      * exists for: while the semantic `offered → expired` sweep runs, both
-     * versions behave identically, and when it is wedged, Mongo still reaps
-     * the stale row while the narrowed version keeps it forever. A change
+     * versions behave identically, and when it is wedged, the flat sweep still
+     * reaps the stale row while the narrowed version keeps it forever. A change
      * invisible while everything works and absent when it does not is the
      * wrong change.
      */

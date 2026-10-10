@@ -56,8 +56,7 @@ const HTTP_NOT_FOUND = 404;
 /**
  * The notification vocabularies, derived from the schema's own tuples.
  *
- * They lived on the deleted Mongoose model, which also declared them as its
- * `enum`. The same tuples now render the table's CHECK constraints, so
+ * The same tuples render the table's CHECK constraints, so
  * deriving here keeps the TypeScript union, the column and the constraint
  * moving together instead of leaving a second copy to drift.
  */

@@ -44,7 +44,7 @@ import { subjectProviderFor } from './subjects/registry.js';
  * `CreateReportInput` types these as strings and the route validates them, but a
  * type is erased at runtime. The specific danger this guard was written for —
  * an object like `{ $ne: null }` becoming a query OPERATOR and matching an
- * unrelated row — is gone with Mongo: drizzle binds a parameter positionally
+ * unrelated row — cannot happen here: drizzle binds a parameter positionally
  * and cannot be talked into a different predicate by its value.
  *
  * The guard stays because what remains is still worth refusing HERE. A `null`

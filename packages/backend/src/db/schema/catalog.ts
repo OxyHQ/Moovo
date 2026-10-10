@@ -62,7 +62,7 @@ export const categories = pgTable(
     uniqueIndex('categories_slug_key').on(table.slug),
     index('categories_parent_position_idx').on(table.parentId, table.position),
     // The source indexes the whole `ancestorSlugs` array for "everything under
-    // this ancestor"; GIN is the array analogue of a Mongo multikey index.
+    // this ancestor"; GIN indexes every element of the array.
     index('categories_ancestor_slugs_idx').using('gin', table.ancestorSlugs),
   ],
 );
@@ -141,8 +141,8 @@ export const listings = pgTable(
      *     array_to_tsvector(ARRAY['watering'])   ->  'watering'     no match
      *     array_to_tsvector(ARRAY['garden'])     vs  'garden'       match
      *
-     * Mongo's `$text` index stemmed tag values too, so that was a functional
-     * LOSS in the port rather than a faithful translation.
+     * The source's text index stemmed tag values too, so that was a
+     * functional LOSS rather than a faithful translation.
      *
      * The third term stems the tags as well, and is what actually makes tag
      * search work — including for a CAPITALISED tag, since `array_to_tsvector`
@@ -223,7 +223,7 @@ export const listings = pgTable(
      * named sub-schema with both fields required. The port closes that hole
      * rather than reproducing it.
      *
-     * Because Mongo really did allow the shape, a BACKFILL would have had to
+     * Because the source really did allow the shape, a BACKFILL would have had to
      * audit for partial and empty locations before this constraint met them.
      *
      * **There is no backfill: SETTLED 2026-08-10.** `listings` held 0 rows at

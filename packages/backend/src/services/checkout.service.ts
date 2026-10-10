@@ -16,7 +16,7 @@
  * ## Each order commits alone, and that is the source's shape
  *
  * One order plus its lines plus its opening status event go in ONE transaction,
- * because they were ONE Mongo document. There is deliberately NO transaction
+ * because they were ONE source document. There is deliberately NO transaction
  * spanning the seller groups: `Order.create` was called per group with no
  * atomicity between them, and `rollbackReservations` is built on that. Widening
  * the boundary here would be a silent behaviour change dressed as a port.
@@ -309,9 +309,8 @@ export async function checkout(
 
   // 6-7. Build + create one order per group.
   //
-  // The group id was a Mongo ObjectId string; it is an opaque handle the client
-  // round-trips, and `validateEntityId` already accepts both id shapes, so a
-  // uuid serves the same purpose without keeping a bson dependency alive for it.
+  // The group id is an opaque handle the client round-trips, and
+  // `validateEntityId` already accepts both id shapes, so a uuid serves.
   const checkoutGroupId = randomUUID();
   const groupEntries = [...groups.entries()];
   const created: OrderRecord[] = [];
@@ -340,7 +339,7 @@ export async function checkout(
       const orderNumber = await nextOrderNumber();
 
       // One order, its lines and its opening status event in ONE transaction —
-      // they were one Mongo document. There is deliberately no transaction
+      // they were one source document. There is deliberately no transaction
       // spanning the groups; see this file's header.
       const order = await insertOrder(
         {
@@ -368,7 +367,7 @@ export async function checkout(
       // A NULL order means the idempotency key was already taken: a concurrent
       // or replayed checkout already created this group.
       //
-      // The source read this off Mongo's E11000. There is no error to catch
+      // The source read this off a duplicate-key error. There is no error to catch
       // here BY DESIGN — see `insertOrder`: a failing INSERT would
       // abort the surrounding transaction (25P02) and take the recovery read
       // with it, so the conflict is expressed as an absent row instead.

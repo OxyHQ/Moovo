@@ -12,7 +12,7 @@
  *    `DO UPDATE` resets `enabled`/`supportedCountries`/`config` on every boot,
  *    and the operator's change reverts itself hours later with nothing logged.
  *    Only a SECOND seed after an edit can tell the two apart.
- *  - **`supportedTypes` is queried by CONTAINMENT.** Mongo's
+ *  - **`supportedTypes` is queried by CONTAINMENT.** The source's
  *    `{supportedTypes: 'package'}` matches when the stored array holds that
  *    value. `eq()` compiles and matches NOTHING, so the quote fan-out would
  *    call no carrier and simply return fewer quotes — indistinguishable from

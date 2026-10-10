@@ -38,7 +38,7 @@ vi.mock('../../db/transport/jobOfferRepository.js', () => ({
 }));
 
 // `courier_profiles` is Postgres now, so the seam is the repository — and the
-// shape change matters here more than usual: the Mongo call took a FILTER
+// shape change matters here more than usual: the old call took a FILTER
 // OBJECT the test could inspect field by field, while the repository takes a
 // typed QUERY. The `$nearSphere`/`$maxDistance` pair is no longer expressible
 // as a filter to assert against; it is `ST_DWithin` plus `ORDER BY <->` inside

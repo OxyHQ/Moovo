@@ -1,7 +1,7 @@
 /**
  * The notification domain against a REAL Postgres server.
  *
- * The port's hard part here is not the queries — it is that Mongo reports
+ * The port's hard part here is not the queries — it is that the source reported
  * `modifiedCount` AND `matchedCount`, this domain's callers deliberately use
  * DIFFERENT ones, and Postgres reports only `rowCount`, which behaves like
  * `matchedCount`. So every `modifiedCount` caller needs its "did this actually

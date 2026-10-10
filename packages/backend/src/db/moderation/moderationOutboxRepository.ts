@@ -7,7 +7,7 @@
  * ## 1. The enqueue writes NOTHING when the row exists — structurally
  *
  * The source is an upsert with `$setOnInsert` only, and its comment is the
- * longest in the domain because Mongoose made that hard: `timestamps: true`
+ * longest in the domain because its ODM made that hard: `timestamps: true`
  * would either put `updatedAt` under two operators (which the server rejects,
  * aborting intake's whole transaction) or leave a `$set: { updatedAt }` that
  * turns a repeated enqueue into a real WRITE — taking a row lock the dispatcher
@@ -24,7 +24,7 @@
  *
  * ## 2. The claim is `FOR UPDATE SKIP LOCKED`, which the source could not be
  *
- * Mongo's `findOneAndUpdate` serialises every dispatcher onto one document at a
+ * The source's `findOneAndUpdate` serialised every dispatcher onto one document at a
  * time. `SKIP LOCKED` lets N tasks drain the queue concurrently without ever
  * handing two of them the same row, and an expired lease stays reclaimable, so
  * a dead worker cannot strand moderation work.
@@ -40,8 +40,8 @@
  * exactly. `complete` and `fail` always move `status` away from `processing`,
  * so the two counts coincide there — an ARGUMENT, not a construction.
  *
- * **And a test that compares two numbers cannot check that argument.** Under
- * Mongoose, `timestamps: true` meant `updatedAt` changed on every match, so
+ * **And a test that compares two numbers cannot check that argument.** In the
+ * source, `timestamps: true` meant `updatedAt` changed on every match, so
  * `modifiedCount` was 1 whenever `matchedCount` was — the two agreed for a
  * reason that had nothing to do with `status`. A suite asserting only that the
  * counts agree would therefore pass on the coincidence and stay passing if the

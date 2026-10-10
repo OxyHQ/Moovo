@@ -375,7 +375,7 @@ try {
     startTrackingPollDispatcher();
 
     /**
-     * Reaps the rows the five Mongo TTL indexes used to reap before the port.
+     * Reaps the expired rows of the five tables `db/expiry.ts` registers.
      *
      * This call is the half of the expiry work that `@oxy.so/db` cannot
      * supply and whose absence is undetectable by reading `db/expiry.ts`:

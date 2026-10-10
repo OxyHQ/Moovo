@@ -8,7 +8,7 @@
  *
  * The three worth naming, because none of them fails loudly on its own:
  *
- *  - **`null` is not absence.** Mongo OMITTED an unset optional field; Postgres
+ *  - **`null` is not absence.** The source OMITTED an unset optional field; Postgres
  *    returns `null`. The old `!== undefined` test passes for `null`, so a
  *    straight translation starts emitting `{"rating": null}` where the API
  *    emitted nothing. No error, no failing test — clients just begin receiving

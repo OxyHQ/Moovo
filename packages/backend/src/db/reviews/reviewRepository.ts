@@ -119,7 +119,7 @@ export interface ReviewPageRows {
  *
  * `desc(createdAt)` carries an explicit `nulls last`: the column is NOT NULL so
  * it cannot bite today, but Postgres orders NULLs FIRST under `DESC` where
- * Mongo puts a missing value last, and a page headed by undated rows is the
+ * the source put a missing value last, and a page headed by undated rows is the
  * failure shape this port keeps meeting.
  */
 export async function listPublishedReviewsForTarget(

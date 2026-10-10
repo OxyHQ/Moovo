@@ -310,7 +310,7 @@ describe('identifier guards', () => {
    * and it lives in the service because `createReport` is exported to callers
    * that never saw the route's validation.
    */
-  it('refuses a Mongo operator smuggled in as an identifier', async () => {
+  it('refuses a query operator smuggled in as an identifier', async () => {
     const operator = { $ne: null } as unknown as string;
     await expect(
       createReport({

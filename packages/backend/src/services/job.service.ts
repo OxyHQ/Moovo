@@ -124,7 +124,7 @@ export interface JobTransitionOptions {
  * Transition a job to `next`, enforcing the allowed-transition graph via an
  * atomic compare-and-swap guarded on the CURRENT status.
  *
- * The CAS and the audit entry commit TOGETHER. Mongo did both in one document
+ * The CAS and the audit entry commit TOGETHER. The source did both in one document
  * update, so a transition with no trail entry was unrepresentable; two
  * statements can drift, and a status that moved with nothing saying so is the
  * worse of the two failures because nothing reports it.
@@ -677,7 +677,7 @@ const TRACKABLE_STATUSES: readonly JobStatus[] = ['accepted', 'picked_up', 'in_t
  * `job:location` event so they can track the courier in real time.
  *
  * The source capped the STORED trail at `config.jobs.maxLocationPings` with a
- * `$slice` push, because an unbounded array grows one Mongo document without
+ * `$slice` push, because an unbounded array grows one document without
  * bound. A row has no such limit, so the cap moves to the READ — the response
  * carries the same most-recent N and nothing is destroyed to produce it.
  */

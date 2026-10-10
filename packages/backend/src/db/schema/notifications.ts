@@ -42,7 +42,7 @@ export const notifications = pgTable(
     priority: text().notNull().default('normal'),
     /**
      * The source declares this `{type: ObjectId, ref: 'Trigger'}` — the ONLY
-     * mongoose `ref` in the entire model set, pointing at a `Trigger`
+     * model reference in the entire source, pointing at a `Trigger`
      * collection that does not exist anywhere in this codebase.
      *
      * It is kept because `notification-service.ts` really does write it, but
@@ -80,7 +80,7 @@ export const notifications = pgTable(
     /**
      * The expiry deadline, and the reason the partial filter cannot be lost.
      *
-     * The Mongo index is `{createdAt: 1}` with `expireAfterSeconds` of ninety
+     * The source index is `{createdAt: 1}` with `expireAfterSeconds` of ninety
      * days AND `partialFilterExpression: {status: 'dismissed'}` — so only a
      * DISMISSED notification is ever reaped, and a merely-old one that is
      * still `pending`, `sent` or `read` is kept forever. (The source's comment

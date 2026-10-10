@@ -140,8 +140,8 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
       await seedListing({ title: 'newest', owner: 'u1', publishedAt: new Date('2026-03-01') });
       await seedListing({ title: 'undated', owner: 'u1', publishedAt: null });
 
-      // Postgres orders NULLs FIRST on a DESC sort; Mongo orders a missing
-      // value LAST. Without `NULLS LAST` the undated row heads the feed.
+      // Postgres orders NULLs FIRST on a DESC sort, and the feed wants undated
+      // rows LAST. Without `NULLS LAST` the undated row heads the feed.
       const page = await searchListingsOffset({ sort: 'newest' }, 1, 10);
       expect(page.listings.map((l) => l.title)).toEqual(['newest', 'older', 'undated']);
     });
@@ -260,7 +260,7 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
      * and `plainto_tsquery` stems the QUERY either way. So the query
      * `watering` became the lexeme `water`, the stored tag stayed `watering`,
      * and they did not match — a tag was findable only when it was already an
-     * English stem, where Mongo's `$text` index stemmed tag values too.
+     * English stem.
      *
      * Migration `0001` adds a THIRD term that stems the tags, keeping the
      * verbatim one, so a tag now answers to both its literal form and its
@@ -303,7 +303,7 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
     it("a listing with NO tags is not matched by another listing's tag", async () => {
       // The `$all: []` / `@> '{}'` hazard, asserted from the outside.
       //
-      // Mongo's `$all: []` matched NOTHING; Postgres' `col @> '{}'` matches
+      // `$all: []` matched NOTHING in the source; Postgres' `col @> '{}'` matches
       // EVERYTHING, so a containment-shaped tag filter would flip "no candidate
       // qualifies" into "every row qualifies" — silently, and in the permissive
       // direction. This repository has no tag filter at all (tags are reachable

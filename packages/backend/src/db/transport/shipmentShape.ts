@@ -6,9 +6,9 @@
  *
  * It would be reasonable to expect these types to have died with the
  * now-deleted `models/shipment.ts`
- * — they look like Mongoose subdocuments, and `shipments` flattens every one of
- * them into columns. They do not die, for two reasons that have nothing to do
- * with Mongo:
+ * — they look like embedded subdocuments, and `shipments` flattens every one
+ * of them into columns. They do not die, for two reasons that have nothing to
+ * do with storage:
  *
  *  - **A job freezes the endpoints and the parcel at booking**, and reads them
  *    back through these same types — see `jobShape.ts`, whose `JobRecord`

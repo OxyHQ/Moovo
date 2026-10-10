@@ -99,12 +99,12 @@ describe('applying a decision', () => {
   });
 
   it('does not write the status when enforcement throws', async () => {
-    applyEnforcementPlan.mockRejectedValue(new Error('mongo down'));
+    applyEnforcementPlan.mockRejectedValue(new Error('database down'));
     await expect(
       applyDecisionOutboxEvent(
         event({ caseId: 'case_1', decision: decision({ outcome: 'violation' }) }),
       ),
-    ).rejects.toThrow('mongo down');
+    ).rejects.toThrow('database down');
     expect(applyDecisionToReport).not.toHaveBeenCalled();
   });
 });

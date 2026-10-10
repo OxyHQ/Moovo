@@ -14,7 +14,7 @@
  *    reset every one of those on each boot, and the symptom is an operator's
  *    change reverting itself hours later with nothing in the logs.
  *  - **`supportedTypes` is an ARRAY and the source queries it by CONTAINMENT.**
- *    Mongo's `{supportedTypes: 'package'}` matches a document whose array
+ *    The source's `{supportedTypes: 'package'}` matches a document whose array
  *    contains that value; the Postgres equivalent is `= ANY(...)`, not `=`.
  *    Writing `eq()` compiles, runs, and silently matches nothing — so the quote
  *    fan-out would call no external carrier at all and simply return fewer
@@ -42,7 +42,7 @@ export interface SeedProvider {
 /**
  * Enabled providers that serve this shipment type.
  *
- * `= ANY(supported_types)` is array CONTAINMENT — the port of Mongo's
+ * `= ANY(supported_types)` is array CONTAINMENT — the port of the source's
  * `{supportedTypes: <one value>}`, which matches when the stored array holds
  * it. `eq()` would compare the whole array to a scalar and match nothing.
  */

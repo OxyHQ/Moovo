@@ -204,9 +204,8 @@ export async function insertOrder(
       .returning();
 
     // The key was already taken — a replayed or concurrent checkout. Returning
-    // null rather than throwing is load-bearing: the source read this off
-    // Mongo's E11000 and then read the prior order back, and that recovery
-    // cannot port. A failing INSERT aborts the whole transaction (25P02) and
+    // null rather than throwing is load-bearing: catching the duplicate-key
+    // error and then reading the prior order back cannot work here. A failing INSERT aborts the whole transaction (25P02) and
     // takes the recovery read with it, so the conflict has to be expressed as
     // an absent row instead of an error.
     //
@@ -406,8 +405,8 @@ export type PurchaseTarget =
  *
  * **The listing branch is NOT symmetric with the other two, and that is the
  * whole reason this lives here.** The source expressed it as
- * `{'items.listingId': targetId}`, which Mongo answers by reaching INSIDE the
- * order's embedded item array. Line items are their own table now, so the same
+ * `{'items.listingId': targetId}`, reaching INSIDE the order's embedded item
+ * array. Line items are their own table now, so the same
  * question is a join onto `order_items` — written as an EXISTS so a multi-line
  * order cannot multiply the result, and so the query stops at the first match
  * rather than materialising every line.

@@ -53,7 +53,7 @@ export interface NotificationDTO {
 /**
  * Serialize a stored row to the wire `NotificationDTO`.
  *
- * `!== null`, not `!== undefined`: Mongo OMITTED an unset optional field while
+ * `!== null`, not `!== undefined`: the source OMITTED an unset optional field while
  * Postgres returns `null`, and the old test passes for `null` — so a straight
  * translation would start emitting `{"data": null, "conversationId": null,
  * "readAt": null}` on every notification that has none of them. Nothing fails;

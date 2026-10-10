@@ -50,9 +50,8 @@ moderation, sequences — runs on it, over the 34 tables in migration `0000`.
 Schema, conventions and the migration rules are in
 `packages/backend/src/db/schema/CONVENTIONS.md`.
 
-**Mongo is GONE — no models, no `mongoose`, no `MONGODB_URI`, no rollback
-target.** The cut removed `src/models/`, `lib/db.ts`, `lib/mongo-bootstrap.ts`
-and `scripts/seed.ts`; `HANDOFF.md` §4 keeps the record.
+**PostgreSQL is the only store.** There is no second database, no ODM model
+layer and no rollback target.
 
 `DATABASE_URL` is the only store configuration, and `db/postgres.ts` REFUSES to
 open without it rather than defaulting to a local server — a default makes a
@@ -74,12 +73,10 @@ unread once the PR is merged.
 
 ### `job_location_pings` grows without bound, and nothing sweeps it — OWNER: the courier-product decision
 
-The source capped the trail at `JOB_MAX_LOCATION_PINGS` with a `$slice` push.
-That cap was a **Mongo document-size** concern: an unbounded array grows one
-document until the driver refuses it. A row has no such limit, so the port moved
-the cap from the WRITE to the READ — `hydrateJob` returns the most recent N
-ascending, byte-identical to what the array held, with nothing destroyed to
-produce it (`listRecentLocationPings`).
+`JOB_MAX_LOCATION_PINGS` caps the trail on the READ, not the WRITE: a row has
+no size limit, so nothing is trimmed at insert. `hydrateJob` returns the most
+recent N ascending, with nothing destroyed to produce it
+(`listRecentLocationPings`).
 
 That is right for the DTO and leaves the table unbounded. Rough size: a 30-minute
 delivery pinging every 10s is ~180 rows, so ~180k rows a day at a thousand
@@ -409,9 +406,9 @@ anywhere.
 **The moderation writes are tested against a REAL PostgreSQL server**
 (`services/moderation/__tests__/moderation.realdb.test.ts`), and that is not belt
 and braces: **a mocked repository accepts every statement, including ones the
-server rejects.** The Mongo-era version of this file was written after an update
-naming `updatedAt` under two operators passed a fully green mocked suite and
-failed every real write; the engine has changed and the blind spot has not. Any
+server rejects.** An update naming `updatedAt` under two operators once passed a
+fully green mocked suite and failed every real write; that blind spot is
+engine-independent. Any
 new moderation write belongs in the `.realdb.test.ts` file, not in a mocked one.
 
 **The outbox enqueue is `ON CONFLICT (id) DO NOTHING`, and a repeat writes
@@ -445,15 +442,12 @@ exactly; `complete` and `fail` coincide with it only because they always move
 test comparing two numbers cannot check that argument, so each transition is
 called TWICE and the second call is asserted on `updated_at` and `xmin`.
 
-**`decisionRevision` started working at the cutover, and had never held before.**
-`ReportSchema` declared no such path, so Mongoose's strict mode stripped it from
-every `$set`: the column was never stored and the `{decisionRevision: {$lt: n}}`
-arm of the guard could never match, so every late delivery of an EARLIER revision
-was applied — a retried suspension could overwrite an accepted appeal's
-`dismissed` with `resolved`, and the report would say the courier was found in
-violation of something they had been cleared of. Storing the column makes the
-refusal real. That is a behaviour CHANGE, not a faithful port, and both
-directions are pinned in the realdb suite.
+**`reports.decision_revision` is what refuses a late, EARLIER revision.**
+Without it every late delivery of an earlier revision would be applied — a
+retried suspension could overwrite an accepted appeal's `dismissed` with
+`resolved`, and the report would say the courier was found in violation of
+something they had been cleared of. Both directions are pinned in the realdb
+suite.
 
 **Moovo holds no CrowdSource key and no Oxy service key.** The client is
 `crowdSourceForOxyService()` from `@crowdsource.you/core`, which presents the Oxy

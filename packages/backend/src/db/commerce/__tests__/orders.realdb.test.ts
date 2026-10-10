@@ -455,7 +455,7 @@ describeIfPostgres('the order repository on a real server', () => {
    * It matters because `insertOrder` wraps its INSERT in `db.transaction`: a
    * raised `23505` aborts the transaction with `25P02`, and every later
    * statement inside it — including the read that recovers the prior order —
-   * fails too. That is the Mongo E11000-then-read-back recovery failing to
+   * fails too. That is a catch-duplicate-then-read-back recovery failing to
    * port, and it surfaces as checkout 500ing on a replay rather than
    * converging.
    */

@@ -11,7 +11,7 @@
  * The verification codes are the only values here that are not merely private
  * but a CREDENTIAL: the dropoff code is what proves to a courier that the person
  * accepting a parcel is the intended recipient, and a juror who learned one
- * could collect somebody else's delivery. The Mongo original seeded them onto a
+ * could collect somebody else's delivery. The original suite seeded them onto a
  * mock document and asserted they could not travel.
  *
  * They cannot be seeded here any more: `JobModerationFacts` has no member for a
