@@ -196,7 +196,9 @@ jobs:
         uses: crazy-max/ghaction-github-runtime@v4
 
       - name: Build and push (linux/arm64)
+        id: build
         run: |
+          set -euo pipefail
           IMG=$ECR_REGISTRY/oxy/$APP
           docker buildx build \
             --platform linux/arm64 \
@@ -205,12 +207,21 @@ jobs:
             -f "$DOCKERFILE" \
             -t "$IMG:${{ github.sha }}" \
             -t "$IMG:latest" \
+            --metadata-file "$RUNNER_TEMP/build-metadata.json" \
             --push \
             .
 
+          DIGEST=$(jq -r '.["containerimage.digest"] // empty' "$RUNNER_TEMP/build-metadata.json")
+          if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::buildx produced no usable image digest"
+            exit 1
+          fi
+          echo "image_uri=$IMG@$DIGEST" >> "$GITHUB_OUTPUT"
+
       # Everything the migration tasks and the rollout need, read ONCE from the
-      # live service. The migration one-shot runs on the service's OWN task
-      # definition (overriding only the command), so it inherits exactly the
+      # live service. The migration one-shot runs on a revision of the
+      # service's OWN task definition that differs only in its image (and
+      # overrides only the command), so it inherits exactly the
       # secrets, role and network the service has — there is no second place
       # where DATABASE_URL could be configured differently for migrations than
       # for the code those migrations are for.
@@ -219,6 +230,7 @@ jobs:
         env:
           # Absent on a `push` trigger, where only the default is ever right.
           REQUESTED_PHASE: ${{ github.event.inputs.migration_phase }}
+          IMAGE_URI: ${{ steps.build.outputs.image_uri }}
         run: |
           echo "phase_mode=${REQUESTED_PHASE:-pre-post}" >> "$GITHUB_OUTPUT"
           STATUS=$(aws ecs describe-services --cluster "$CLUSTER" --services "$APP" --query 'services[0].status' --output text 2>/dev/null || echo NONE)
@@ -227,9 +239,21 @@ jobs:
             echo "ECS service $APP not created yet — nothing to migrate or deploy against"
             exit 0
           fi
-          TD=$(aws ecs describe-services --cluster "$CLUSTER" --services "$APP" --query 'services[0].taskDefinition' --output text)
+          LIVE_TD=$(aws ecs describe-services --cluster "$CLUSTER" --services "$APP" --query 'services[0].taskDefinition' --output text)
           NET=$(aws ecs describe-services --cluster "$CLUSTER" --services "$APP" --query 'services[0].networkConfiguration' --output json)
-          CONTAINER=$(aws ecs describe-task-definition --task-definition "$TD" --query 'taskDefinition.containerDefinitions[0].name' --output text)
+          CONTAINER=$(aws ecs describe-task-definition --task-definition "$LIVE_TD" --query 'taskDefinition.containerDefinitions[0].name' --output text)
+          # A revision of the live definition with only the image swapped for
+          # the digest just pushed. The live definition pins its image by
+          # digest, so `--force-new-deployment` alone restarted the OLD image
+          # and reported success.
+          RENDERED="$RUNNER_TEMP/task-definition.json"
+          aws ecs describe-task-definition --task-definition "$LIVE_TD" --query taskDefinition --output json \
+            | jq --arg container "$CONTAINER" --arg image "$IMAGE_URI" '
+                .containerDefinitions |= map(if .name == $container then .image = $image else . end)
+                | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities,
+                      .registeredAt, .registeredBy, .deregisteredAt)' > "$RENDERED"
+          TD=$(aws ecs register-task-definition --cli-input-json "file://$RENDERED" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
           echo "task_definition=$TD" >> "$GITHUB_OUTPUT"
           echo "container=$CONTAINER" >> "$GITHUB_OUTPUT"
           # JSON on one line: a GITHUB_OUTPUT value cannot span lines unhelped.
@@ -286,9 +310,10 @@ jobs:
         # keeps it from becoming one when somebody later reaches for an input.
         env:
           SERVICE_STATUS: ${{ steps.ecs.outputs.status }}
+          TASK_DEFINITION: ${{ steps.ecs.outputs.task_definition }}
         run: |
           if [ "$SERVICE_STATUS" = "ACTIVE" ]; then
-            aws ecs update-service --cluster "$CLUSTER" --service "$APP" --force-new-deployment >/dev/null
+            aws ecs update-service --cluster "$CLUSTER" --service "$APP" --task-definition "$TASK_DEFINITION" >/dev/null
             aws ecs wait services-stable --cluster "$CLUSTER" --services "$APP"
             echo "deployed $APP"
           else
