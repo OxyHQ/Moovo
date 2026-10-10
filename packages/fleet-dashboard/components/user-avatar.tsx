@@ -1,6 +1,6 @@
-import { View, Text } from "react-native";
-import { Image } from "expo-image";
-import { useOxy } from "@oxy.so/services";
+import { View, Text } from 'react-native';
+import { Image } from 'expo-image';
+import { useOxy } from '@oxy.so/services';
 
 interface UserAvatarProps {
   size?: number;
@@ -9,13 +9,9 @@ interface UserAvatarProps {
 export function UserAvatar({ size = 24 }: UserAvatarProps) {
   const { user, oxyServices } = useOxy();
 
-  const initial = (
-    user?.name?.first?.[0] || user?.username?.[0] || "U"
-  ).toUpperCase();
+  const initial = (user?.name?.first?.[0] || user?.username?.[0] || 'U').toUpperCase();
 
-  const avatarUrl = user?.avatar
-    ? oxyServices.assets.publicUrl(user.avatar, "thumb")
-    : null;
+  const avatarUrl = user?.avatar ? oxyServices.assets.publicUrl(user.avatar, 'thumb') : null;
 
   return (
     <View
@@ -30,10 +26,7 @@ export function UserAvatar({ size = 24 }: UserAvatarProps) {
           transition={150}
         />
       ) : (
-        <Text
-          className="font-bold text-foreground"
-          style={{ fontSize: size * 0.4 }}
-        >
+        <Text className="font-bold text-foreground" style={{ fontSize: size * 0.4 }}>
           {initial}
         </Text>
       )}

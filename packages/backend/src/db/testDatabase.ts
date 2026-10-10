@@ -88,10 +88,10 @@ export async function createSuiteDatabase(): Promise<SuiteDatabase> {
       // sides of a rolling deploy, and a database created a moment ago has no
       // previous image to stay compatible with.
       const name = new URL(url).pathname.slice(1);
-      await runMigrateEntrypoint(
-        [`--target-database=${name}`, '--phase=all'],
-        { ...process.env, DATABASE_URL: url },
-      );
+      await runMigrateEntrypoint([`--target-database=${name}`, '--phase=all'], {
+        ...process.env,
+        DATABASE_URL: url,
+      });
     },
   });
 

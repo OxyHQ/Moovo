@@ -12,10 +12,7 @@
 import type { ProviderQuote, FairMoney } from '@moovo/shared-types';
 import type { ShipmentRecord } from '../../../db/transport/shipmentShape.js';
 import type { QuoteRecord } from '../../../db/transport/quoteRepository.js';
-import type {
-  ProviderAdapter,
-  ProviderBooking,
-} from '../provider-adapter.js';
+import type { ProviderAdapter, ProviderBooking } from '../provider-adapter.js';
 import { distanceMetersBetween } from '../../../utils/geo.js';
 import { log } from '../../../lib/logger.js';
 

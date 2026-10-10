@@ -64,12 +64,10 @@ export default function HomeScreen() {
             )}
           </View>
 
-          <Text className="mt-10 text-3xl font-bold text-foreground">
-            Rastrea tu paquete
-          </Text>
+          <Text className="mt-10 text-3xl font-bold text-foreground">Rastrea tu paquete</Text>
           <Text className="mt-2 text-base text-muted-foreground">
-            Pega el número de seguimiento. Identificamos el transportista y te llevamos
-            directo al estado de tu envío, sin buscar en cada web.
+            Pega el número de seguimiento. Identificamos el transportista y te llevamos directo al
+            estado de tu envío, sin buscar en cada web.
           </Text>
 
           <View className="mt-6">
@@ -85,7 +83,9 @@ export default function HomeScreen() {
                     key={recent.trackingNumber}
                     accessibilityRole="button"
                     accessibilityLabel={`Ver ${recent.trackingNumber} de ${recent.carrierName}`}
-                    onPress={() => router.push(`/track/${encodeURIComponent(recent.trackingNumber)}`)}
+                    onPress={() =>
+                      router.push(`/track/${encodeURIComponent(recent.trackingNumber)}`)
+                    }
                     className="rounded-2xl border border-border bg-card p-4 active:opacity-70"
                   >
                     <Text className="text-sm font-semibold text-foreground">
@@ -109,8 +109,8 @@ export default function HomeScreen() {
                 ¿Sigues varios paquetes?
               </Text>
               <Text className="mt-1 text-sm text-muted-foreground">
-                Con una cuenta de Oxy los tienes todos en una sola lista. Rastrear sigue
-                siendo gratis y sin cuenta.
+                Con una cuenta de Oxy los tienes todos en una sola lista. Rastrear sigue siendo
+                gratis y sin cuenta.
               </Text>
               <Pressable
                 accessibilityRole="button"

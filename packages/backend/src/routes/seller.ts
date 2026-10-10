@@ -51,10 +51,20 @@ router.patch(
   validateBody(updateListingSchema),
   updateMyListing,
 );
-router.delete('/listings/:id', makeRateLimiter('listings'), validateEntityId('id'), deleteMyListing);
+router.delete(
+  '/listings/:id',
+  makeRateLimiter('listings'),
+  validateEntityId('id'),
+  deleteMyListing,
+);
 
 // Seller orders (incoming P2P orders + fulfilment).
-router.get('/orders', makeRateLimiter('orders'), validateQuery(orderListQuerySchema), listSellerOrders);
+router.get(
+  '/orders',
+  makeRateLimiter('orders'),
+  validateQuery(orderListQuerySchema),
+  listSellerOrders,
+);
 router.patch(
   '/orders/:id/fulfill',
   makeRateLimiter('orders'),

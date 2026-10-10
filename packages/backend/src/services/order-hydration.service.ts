@@ -61,7 +61,7 @@ function toSeller(
     oxyUserId,
     displayName: oxyProfile?.displayName ?? oxyUserId,
     username: oxyProfile?.username ?? oxyUserId,
-    avatar: oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : oxyProfile?.avatar ?? null,
+    avatar: oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : (oxyProfile?.avatar ?? null),
     isVerified: profile?.isVerified ?? false,
   };
   if (profile && profile.reviewCount > 0) {

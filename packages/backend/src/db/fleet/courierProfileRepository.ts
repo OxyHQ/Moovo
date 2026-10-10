@@ -259,10 +259,7 @@ export async function suspendCourier(
     .update(courierProfiles)
     .set({ status: 'suspended', onlineStatus: 'offline' })
     .where(
-      and(
-        eq(courierProfiles.oxyUserId, oxyUserId),
-        not(eq(courierProfiles.status, 'suspended')),
-      ),
+      and(eq(courierProfiles.oxyUserId, oxyUserId), not(eq(courierProfiles.status, 'suspended'))),
     );
   return (result.count ?? 0) > 0;
 }
@@ -281,9 +278,7 @@ export async function reinstateCourier(
   const result = await db
     .update(courierProfiles)
     .set({ status: 'active' })
-    .where(
-      and(eq(courierProfiles.oxyUserId, oxyUserId), eq(courierProfiles.status, 'suspended')),
-    );
+    .where(and(eq(courierProfiles.oxyUserId, oxyUserId), eq(courierProfiles.status, 'suspended')));
   return (result.count ?? 0) > 0;
 }
 

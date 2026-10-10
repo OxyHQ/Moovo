@@ -87,7 +87,7 @@ describeIfPostgres('the store domain on a real server', () => {
   });
 
   describe('tenant isolation — the property the authorization boundary rests on', () => {
-    it('does not return another store owner\'s stores', async () => {
+    it("does not return another store owner's stores", async () => {
       await seedStore('alpha-store', 'owner-a');
       await seedStore('beta-store', 'owner-b');
 
@@ -156,8 +156,12 @@ describeIfPostgres('the store domain on a real server', () => {
   describe('membership is unique per (store, user)', () => {
     it('refuses a duplicate member', async () => {
       const store = await seedStore('dup-member', 'owner-a');
-      expect(await insertMember(store.id, { oxyUserId: 'staff-1', role: 'staff', permissions: [] })).not.toBeNull();
-      expect(await insertMember(store.id, { oxyUserId: 'staff-1', role: 'staff', permissions: [] })).toBeNull();
+      expect(
+        await insertMember(store.id, { oxyUserId: 'staff-1', role: 'staff', permissions: [] }),
+      ).not.toBeNull();
+      expect(
+        await insertMember(store.id, { oxyUserId: 'staff-1', role: 'staff', permissions: [] }),
+      ).toBeNull();
       const reread = await findStoreById(store.id);
       expect(reread?.members).toHaveLength(2);
     });
@@ -165,8 +169,12 @@ describeIfPostgres('the store domain on a real server', () => {
     it('permits the same person in two different stores', async () => {
       const alpha = await seedStore('alpha-both', 'owner-a');
       const beta = await seedStore('beta-both', 'owner-b');
-      expect(await insertMember(alpha.id, { oxyUserId: 'both', role: 'staff', permissions: [] })).not.toBeNull();
-      expect(await insertMember(beta.id, { oxyUserId: 'both', role: 'staff', permissions: [] })).not.toBeNull();
+      expect(
+        await insertMember(alpha.id, { oxyUserId: 'both', role: 'staff', permissions: [] }),
+      ).not.toBeNull();
+      expect(
+        await insertMember(beta.id, { oxyUserId: 'both', role: 'staff', permissions: [] }),
+      ).not.toBeNull();
       expect(await listStoresForMember('both')).toHaveLength(2);
     });
   });
@@ -221,7 +229,7 @@ describeIfPostgres('the store domain on a real server', () => {
   });
 
   describe('store reads and updates', () => {
-    it('finds a store by its public handle and not by another\'s', async () => {
+    it("finds a store by its public handle and not by another's", async () => {
       await seedStore('public-alpha', 'owner-a');
       await seedStore('public-beta', 'owner-b');
       expect((await findStoreByHandle('public-alpha'))?.handle).toBe('public-alpha');
@@ -230,7 +238,10 @@ describeIfPostgres('the store domain on a real server', () => {
 
     it('applies a patch and leaves an empty patch as a read', async () => {
       const store = await seedStore('patch-store', 'owner-a');
-      const updated = await updateStoreRow(store.id, { name: 'Renamed', policyReturnWindowDays: 14 });
+      const updated = await updateStoreRow(store.id, {
+        name: 'Renamed',
+        policyReturnWindowDays: 14,
+      });
       expect(updated?.name).toBe('Renamed');
       expect(updated?.policies.returnWindowDays).toBe(14);
 
@@ -256,7 +267,7 @@ describeIfPostgres('the store domain on a real server', () => {
       expect(second.createdAt.getTime()).toBe(first.createdAt.getTime());
     });
 
-    it('keeps two sellers\' profiles apart', async () => {
+    it("keeps two sellers' profiles apart", async () => {
       const a = await ensureSellerProfile('seller-a');
       const b = await ensureSellerProfile('seller-b');
       expect(a.id).not.toBe(b.id);

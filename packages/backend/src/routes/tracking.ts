@@ -73,12 +73,7 @@ router.post(
 
 router.get('/parcels', makeRateLimiter('tracking'), listMyParcels);
 
-router.post(
-  '/parcels',
-  makeRateLimiter('tracking'),
-  validateBody(trackParcelSchema),
-  addParcel,
-);
+router.post('/parcels', makeRateLimiter('tracking'), validateBody(trackParcelSchema), addParcel);
 
 router.get('/parcels/:id', makeRateLimiter('tracking'), validateEntityId('id'), getParcel);
 

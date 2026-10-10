@@ -75,14 +75,11 @@ describe('planEnforcement — a reported courier', () => {
 });
 
 describe('planEnforcement — a customer or a delivery', () => {
-  it.each(['customer', 'delivery'] as const)(
-    'refuses to suspend anything for a %s',
-    (target) => {
-      // There is no schema field anywhere that stops a customer booking, and a
-      // collected parcel cannot be un-collected.
-      expect(actionsFor(['remove', 'suspend_user'], target)).toEqual(['manual_review']);
-    },
-  );
+  it.each(['customer', 'delivery'] as const)('refuses to suspend anything for a %s', (target) => {
+    // There is no schema field anywhere that stops a customer booking, and a
+    // collected parcel cannot be un-collected.
+    expect(actionsFor(['remove', 'suspend_user'], target)).toEqual(['manual_review']);
+  });
 
   it.each(['allow', 'no_action', 'no_global_effect'] as const)(
     'still maps %s to none',

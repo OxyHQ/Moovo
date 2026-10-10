@@ -65,9 +65,7 @@ export function createCrowdSourceWebhookRoutes(): Router {
      * deployment 404s here, which is indistinguishable from not having the
      * feature — which is exactly what it is.
      */
-    log.moderation.info(
-      '[CrowdSource] webhook route not mounted: no CROWDSOURCE_WEBHOOK_SECRET',
-    );
+    log.moderation.info('[CrowdSource] webhook route not mounted: no CROWDSOURCE_WEBHOOK_SECRET');
     return router;
   }
 

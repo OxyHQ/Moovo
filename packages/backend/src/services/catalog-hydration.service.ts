@@ -42,7 +42,10 @@ import {
   type ListingRecord,
   type ProductVariantRecord,
 } from '../db/catalog/catalogShape.js';
-import { findSellerProfilesByUserIds, type SellerProfileRecord } from '../db/stores/sellerProfileRepository.js';
+import {
+  findSellerProfilesByUserIds,
+  type SellerProfileRecord,
+} from '../db/stores/sellerProfileRepository.js';
 import { findStoresByIds } from '../db/stores/storeRepository.js';
 import { config } from '../config/index.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
@@ -112,7 +115,7 @@ function toSeller(
     oxyUserId,
     displayName: oxyProfile?.displayName ?? oxyUserId,
     username: oxyProfile?.username ?? oxyUserId,
-    avatar: oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : oxyProfile?.avatar ?? null,
+    avatar: oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : (oxyProfile?.avatar ?? null),
     isVerified: profile?.isVerified ?? false,
   };
   if (profile && profile.reviewCount > 0) {
@@ -312,7 +315,11 @@ export async function hydrateListings(
 
     if (listing.ownerType === 'user' && listing.oxyUserId !== undefined) {
       const oxyUserId = listing.oxyUserId;
-      dto.seller = toSeller(oxyUserId, sellerProfileByUser.get(oxyUserId), oxyProfiles.get(oxyUserId));
+      dto.seller = toSeller(
+        oxyUserId,
+        sellerProfileByUser.get(oxyUserId),
+        oxyProfiles.get(oxyUserId),
+      );
     } else if (listing.ownerType === 'store' && listing.storeId !== undefined) {
       const store = storeById.get(listing.storeId);
       if (store) {

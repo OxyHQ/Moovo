@@ -179,10 +179,12 @@ function buildItems(group: SellerGroup): Omit<NewOrderItem, 'orderId'>[] {
       title: listing.title,
       variantTitle: variant.title,
       imageUrl: firstImageUrl(listing) ?? null,
-      optionValues: ((variant.optionValues ?? []) as { name: string; value: string }[]).map((o) => ({
-        name: o.name,
-        value: o.value,
-      })),
+      optionValues: ((variant.optionValues ?? []) as { name: string; value: string }[]).map(
+        (o) => ({
+          name: o.name,
+          value: o.value,
+        }),
+      ),
       unitPriceAmount: unitPrice.amount,
       unitPriceCurrency: unitPrice.currency,
       quantity: cartItem.quantity,
@@ -210,7 +212,9 @@ export async function checkout(
 ): Promise<CheckoutResult> {
   // 1. Redis idempotency fast-path (best-effort; never breaks checkout).
   const redis = idempotencyKey ? getRedisClient() : null;
-  const redisKey = idempotencyKey ? `${IDEMPOTENCY_KEY_PREFIX}${oxyUserId}:${idempotencyKey}` : null;
+  const redisKey = idempotencyKey
+    ? `${IDEMPOTENCY_KEY_PREFIX}${oxyUserId}:${idempotencyKey}`
+    : null;
   let holdsRedisClaim = false;
 
   if (redis && redisKey) {

@@ -1,27 +1,33 @@
-import React from "react";
-import { View, Pressable } from "react-native";
-import { vars } from "nativewind";
-import { Text } from "@/components/ui/text";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { useTranslation } from "@/hooks/useTranslation";
-import { LanguageSelector } from "@/components/language-selector";
+import React from 'react';
+import { View, Pressable } from 'react-native';
+import { vars } from 'nativewind';
+import { Text } from '@/components/ui/text';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { useTranslation } from '@/hooks/useTranslation';
+import { LanguageSelector } from '@/components/language-selector';
 import {
   APP_COLOR_PRESETS,
   APP_COLOR_NAMES,
   useBloomTheme,
   type AppColorName,
-} from "@oxy.so/bloom/theme";
-import { getPresetVars } from "@oxy.so/bloom/design-tokens";
-import { cn } from "@/lib/utils";
+} from '@oxy.so/bloom/theme';
+import { getPresetVars } from '@oxy.so/bloom/design-tokens';
+import { cn } from '@/lib/utils';
 
 /** Miniature app layout using real theme tokens via NativeWind vars() */
-const AppMiniature = React.memo(function AppMiniature({ variant, colorName }: { variant: "light" | "dark"; colorName: AppColorName }) {
+const AppMiniature = React.memo(function AppMiniature({
+  variant,
+  colorName,
+}: {
+  variant: 'light' | 'dark';
+  colorName: AppColorName;
+}) {
   const themeVars = vars(getPresetVars(colorName, variant));
 
   return (
     <View className="flex-row flex-1 rounded overflow-hidden" style={themeVars}>
       {/* Sidebar */}
-      <View className="bg-sidebar p-1 gap-0.5 justify-between" style={{ width: "27%" }}>
+      <View className="bg-sidebar p-1 gap-0.5 justify-between" style={{ width: '27%' }}>
         <View className="gap-0.5">
           <View className="h-1.5 rounded-sm bg-primary" />
           <View className="h-[1px] w-3/4 rounded-full mt-0.5 bg-sidebar-border" />
@@ -83,31 +89,31 @@ export function GeneralSection() {
       {/* Appearance */}
       <View className="gap-2">
         <Text className="text-[11px] font-semibold text-muted-foreground tracking-wider uppercase">
-          {t("settings.appearance.title")}
+          {t('settings.appearance.title')}
         </Text>
 
         <View className="flex-row gap-2">
           {/* Light */}
-          <Pressable onPress={() => setColorScheme("light")} className="flex-1">
+          <Pressable onPress={() => setColorScheme('light')} className="flex-1">
             <View
               className={`rounded-lg p-1.5 ${
-                mode === "light" ? "border-2 border-primary" : "border border-border"
+                mode === 'light' ? 'border-2 border-primary' : 'border border-border'
               }`}
             >
               <View className="mb-1.5 aspect-[5/3]">
                 <AppMiniature variant="light" colorName={appColor} />
               </View>
               <Text className="text-center text-xs font-medium text-foreground">
-                {t("settings.appearance.light")}
+                {t('settings.appearance.light')}
               </Text>
             </View>
           </Pressable>
 
           {/* Follow System */}
-          <Pressable onPress={() => setColorScheme("system")} className="flex-1">
+          <Pressable onPress={() => setColorScheme('system')} className="flex-1">
             <View
               className={`rounded-lg p-1.5 ${
-                mode === "system" ? "border-2 border-primary" : "border border-border"
+                mode === 'system' ? 'border-2 border-primary' : 'border border-border'
               }`}
             >
               <View className="rounded overflow-hidden mb-1.5 aspect-[5/3]">
@@ -121,23 +127,23 @@ export function GeneralSection() {
                 </View>
               </View>
               <Text className="text-center text-xs font-medium text-foreground">
-                {t("settings.appearance.system")}
+                {t('settings.appearance.system')}
               </Text>
             </View>
           </Pressable>
 
           {/* Dark */}
-          <Pressable onPress={() => setColorScheme("dark")} className="flex-1">
+          <Pressable onPress={() => setColorScheme('dark')} className="flex-1">
             <View
               className={`rounded-lg p-1.5 ${
-                mode === "dark" ? "border-2 border-primary" : "border border-border"
+                mode === 'dark' ? 'border-2 border-primary' : 'border border-border'
               }`}
             >
               <View className="mb-1.5 aspect-[5/3]">
                 <AppMiniature variant="dark" colorName={appColor} />
               </View>
               <Text className="text-center text-xs font-medium text-foreground">
-                {t("settings.appearance.dark")}
+                {t('settings.appearance.dark')}
               </Text>
             </View>
           </Pressable>
@@ -147,7 +153,7 @@ export function GeneralSection() {
       {/* App Color */}
       <View className="gap-2">
         <Text className="text-[11px] font-semibold text-muted-foreground tracking-wider uppercase">
-          {t("settings.accentColor.title")}
+          {t('settings.accentColor.title')}
         </Text>
 
         <View className="flex-row gap-3 flex-wrap">
@@ -162,16 +168,16 @@ export function GeneralSection() {
               >
                 <View
                   className={cn(
-                    "w-8 h-8 rounded-full border-2 overflow-hidden",
-                    isSelected ? "border-foreground scale-110" : "border-transparent"
+                    'w-8 h-8 rounded-full border-2 overflow-hidden',
+                    isSelected ? 'border-foreground scale-110' : 'border-transparent',
                   )}
                 >
                   <View style={{ backgroundColor: p.hex, flex: 1 }} />
                 </View>
                 <Text
                   className={cn(
-                    "text-[10px]",
-                    isSelected ? "text-foreground font-medium" : "text-muted-foreground"
+                    'text-[10px]',
+                    isSelected ? 'text-foreground font-medium' : 'text-muted-foreground',
                   )}
                 >
                   {t(`settings.accentColor.${key}`)}

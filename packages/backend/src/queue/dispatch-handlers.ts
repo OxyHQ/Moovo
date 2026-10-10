@@ -21,10 +21,7 @@
  * Best-effort throughout: a per-job failure is logged and the sweep continues.
  */
 
-import {
-  findJobById,
-  listJobsAwaitingCourier,
-} from '../db/transport/jobRepository.js';
+import { findJobById, listJobsAwaitingCourier } from '../db/transport/jobRepository.js';
 import type { JobRecord } from '../db/transport/jobShape.js';
 import {
   expireLapsedOffers,

@@ -4,8 +4,8 @@ import type {
   JobStatus,
   PaginatedResponse,
   ApiResponse,
-} from "@moovo/shared-types";
-import apiClient from "./client";
+} from '@moovo/shared-types';
+import apiClient from './client';
 
 /**
  * Jobs API client (the operator's own jobs).
@@ -25,26 +25,24 @@ import apiClient from "./client";
 /** Unwrap an `ApiResponse<T>` payload or throw the API's error message. */
 function unwrap<T>(res: ApiResponse<T>): T {
   if (!res.success || res.data === undefined) {
-    throw new Error(res.message ?? res.error ?? "Request failed");
+    throw new Error(res.message ?? res.error ?? 'Request failed');
   }
   return res.data;
 }
 
 /** Query parameters accepted by the jobs list endpoint. */
 export interface JobsQuery {
-  role?: "sender" | "courier";
+  role?: 'sender' | 'courier';
   status?: JobStatus;
   page?: number;
   limit?: number;
 }
 
 /** `GET /jobs` — the operator's jobs (role-scoped), paginated. */
-export async function fetchJobs(
-  query: JobsQuery = {},
-): Promise<PaginatedResponse<JobSummary>> {
-  const { data } = await apiClient.get<PaginatedResponse<JobSummary>>("/jobs", {
+export async function fetchJobs(query: JobsQuery = {}): Promise<PaginatedResponse<JobSummary>> {
+  const { data } = await apiClient.get<PaginatedResponse<JobSummary>>('/jobs', {
     params: {
-      role: query.role ?? "sender",
+      role: query.role ?? 'sender',
       ...(query.status ? { status: query.status } : {}),
       ...(query.page ? { page: query.page } : {}),
       ...(query.limit ? { limit: query.limit } : {}),

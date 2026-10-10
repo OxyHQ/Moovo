@@ -36,7 +36,10 @@ const raw = fs.readFileSync(file, 'utf8');
 const markup = raw.replace(/<!--[\s\S]*?-->/g, '');
 
 const checks = [
-  ['the Spanish <title> (%WEB_TITLE% substituted)', () => /<title>Rastrear paquete[^<]*<\/title>/.test(markup)],
+  [
+    'the Spanish <title> (%WEB_TITLE% substituted)',
+    () => /<title>Rastrear paquete[^<]*<\/title>/.test(markup),
+  ],
   ['lang="es" (%LANG_ISO_CODE% substituted)', () => /<html lang="es"/.test(markup)],
   ['a stylesheet <link> as real markup', () => /rel="stylesheet"/.test(markup)],
   ['the bundle <script> tags as real markup', () => /<script src="\/_expo\//.test(markup)],
@@ -56,4 +59,6 @@ if (failed.length > 0) {
   process.exit(1);
 }
 
-console.log('verify-web-shell: title, lang, stylesheet, scripts and description all present as markup');
+console.log(
+  'verify-web-shell: title, lang, stylesheet, scripts and description all present as markup',
+);

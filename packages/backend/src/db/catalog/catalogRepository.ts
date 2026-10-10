@@ -97,9 +97,7 @@ function buildConditions(query: ListingQuery): SQL[] {
       sql`st_dwithin(${listings.location}, st_makepoint(${query.near.lng}, ${query.near.lat})::geography, ${query.near.radiusM})`,
     );
   } else if (query.q && query.q.trim().length > 0) {
-    conditions.push(
-      sql`${listings.searchVector} @@ plainto_tsquery('english', ${query.q.trim()})`,
-    );
+    conditions.push(sql`${listings.searchVector} @@ plainto_tsquery('english', ${query.q.trim()})`);
   }
 
   return conditions;

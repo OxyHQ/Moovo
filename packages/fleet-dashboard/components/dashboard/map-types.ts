@@ -16,7 +16,7 @@ export interface MapMarker {
   /** Latitude. */
   lat: number;
   /** Marker kind — drives the pin color/shape. */
-  kind: "courier" | "pickup" | "dropoff";
+  kind: 'courier' | 'pickup' | 'dropoff';
   /** Optional label shown on hover/press. */
   label?: string;
 }

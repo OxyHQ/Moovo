@@ -113,9 +113,9 @@ beforeEach(() => {
     .mockImplementation((docs: Record<string, unknown>[]) =>
       Promise.resolve(docs.map((d, i) => ({ ...d, id: `quote-${i}` }))),
     );
-  transaction.mockReset().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
-    cb({ tx: true }),
-  );
+  transaction
+    .mockReset()
+    .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({ tx: true }));
   providerFind.mockReset();
   getAdapter.mockReset();
 });

@@ -56,7 +56,9 @@ export async function subscribeIfAbsent(
 
   const existing = await findSubscriptionByParcel(input.oxyUserId, input.parcelId, db);
   if (!existing) {
-    throw new Error(`subscription for ${input.oxyUserId}/${input.parcelId} vanished after conflict`);
+    throw new Error(
+      `subscription for ${input.oxyUserId}/${input.parcelId} vanished after conflict`,
+    );
   }
   return { subscription: existing, created: false };
 }

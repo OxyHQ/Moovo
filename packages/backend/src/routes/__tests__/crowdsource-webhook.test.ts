@@ -204,10 +204,12 @@ describe('the webhook mounted AFTER express.json (the mutation)', () => {
      * integration passing for the wrong reason.
      */
     let refusal: unknown;
-    app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      refusal = err;
-      res.status(500).json({ error: 'configuration' });
-    });
+    app.use(
+      (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        refusal = err;
+        res.status(500).json({ error: 'configuration' });
+      },
+    );
 
     const base = await listen(app);
     const rawBody = JSON.stringify(envelope());

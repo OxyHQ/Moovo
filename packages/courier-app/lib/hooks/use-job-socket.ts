@@ -1,24 +1,24 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useOxy } from "@oxy.so/services";
-import type { JobOfferView, JobView } from "@moovo/shared-types";
-import { connectSocket } from "@/lib/socket";
-import { queryKeys } from "@/lib/hooks/query-keys";
-import type { JobLocationEvent } from "@/lib/api/types";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useOxy } from '@oxy.so/services';
+import type { JobOfferView, JobView } from '@moovo/shared-types';
+import { connectSocket } from '@/lib/socket';
+import { queryKeys } from '@/lib/hooks/query-keys';
+import type { JobLocationEvent } from '@/lib/api/types';
 
 /**
  * Backend Socket.IO event names (mirrors `packages/backend/src/lib/socket-events.ts`).
  * Kept as a const map so no raw event strings are scattered across the hook.
  */
 const EVENTS = {
-  JOB_OFFER: "job:offer",
-  JOB_OFFER_TAKEN: "job:offer_taken",
-  JOB_ACCEPTED: "job:accepted",
-  JOB_LOCATION: "job:location",
-  JOB_PICKED_UP: "job:picked_up",
-  JOB_IN_TRANSIT: "job:in_transit",
-  JOB_DELIVERED: "job:delivered",
-  JOB_CANCELLED: "job:cancelled",
+  JOB_OFFER: 'job:offer',
+  JOB_OFFER_TAKEN: 'job:offer_taken',
+  JOB_ACCEPTED: 'job:accepted',
+  JOB_LOCATION: 'job:location',
+  JOB_PICKED_UP: 'job:picked_up',
+  JOB_IN_TRANSIT: 'job:in_transit',
+  JOB_DELIVERED: 'job:delivered',
+  JOB_CANCELLED: 'job:cancelled',
 } as const;
 
 /** Payload shape the backend sends with `job:offer_taken` (the superseded offer). */
@@ -103,8 +103,8 @@ export function useJobSocket(): JobSocketState {
     };
 
     setConnected(socket.connected);
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
     socket.on(EVENTS.JOB_OFFER, onOffer);
     socket.on(EVENTS.JOB_OFFER_TAKEN, onOfferTaken);
     socket.on(EVENTS.JOB_ACCEPTED, onAccepted);
@@ -115,8 +115,8 @@ export function useJobSocket(): JobSocketState {
     socket.on(EVENTS.JOB_LOCATION, onLocation);
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
       socket.off(EVENTS.JOB_OFFER, onOffer);
       socket.off(EVENTS.JOB_OFFER_TAKEN, onOfferTaken);
       socket.off(EVENTS.JOB_ACCEPTED, onAccepted);

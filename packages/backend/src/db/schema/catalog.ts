@@ -319,10 +319,7 @@ export const productVariants = pgTable(
       sql`(${table.compareAtAmount} is null) = (${table.compareAtCurrency} is null)`,
     ),
     index('product_variants_listing_position_idx').on(table.listingId, table.position),
-    index('product_variants_listing_available_idx').on(
-      table.listingId,
-      table.inventoryAvailable,
-    ),
+    index('product_variants_listing_available_idx').on(table.listingId, table.inventoryAvailable),
     /**
      * `{sku: 1}, {sparse: true}` — NOT unique in the source, and it is not made
      * unique here. Two sellers may legitimately use the same SKU string.

@@ -27,10 +27,10 @@ export function CourierInfo({ courierOxyUserId }: { courierOxyUserId: string }) 
   // Render `name.displayName` when present; fall back to the normalized handle
   // (username) when the profile omits it. A generic placeholder shows only while
   // the courier profile is still loading.
-  const displayName = courier ? courier.name.displayName?.trim() || courier.username : 'Your courier';
-  const avatarUrl = courier?.avatar
-    ? oxyServices.assets.publicUrl(courier.avatar, 'thumb')
-    : null;
+  const displayName = courier
+    ? courier.name.displayName?.trim() || courier.username
+    : 'Your courier';
+  const avatarUrl = courier?.avatar ? oxyServices.assets.publicUrl(courier.avatar, 'thumb') : null;
   const initial = displayName.charAt(0).toUpperCase();
 
   return (

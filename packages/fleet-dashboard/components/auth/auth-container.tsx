@@ -1,7 +1,7 @@
-import * as React from "react";
-import { View } from "react-native";
-import { KeyboardAwareScrollView } from "@/lib/keyboard";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { View } from 'react-native';
+import { KeyboardAwareScrollView } from '@/lib/keyboard';
+import { cn } from '@/lib/utils';
 
 export interface AuthContainerProps {
   children: React.ReactNode;
@@ -17,9 +17,7 @@ export function AuthContainer({ children, className }: AuthContainerProps) {
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <View className={cn("max-w-sm w-full mx-auto", className)}>
-        {children}
-      </View>
+      <View className={cn('max-w-sm w-full mx-auto', className)}>{children}</View>
     </KeyboardAwareScrollView>
   );
 }

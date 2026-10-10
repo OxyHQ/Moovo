@@ -1,10 +1,4 @@
-import {
-  Home,
-  ClipboardList,
-  Truck,
-  Settings,
-  type LucideIcon,
-} from "lucide-react-native";
+import { Home, ClipboardList, Truck, Settings, type LucideIcon } from 'lucide-react-native';
 
 /**
  * Canonical navigation model for the Shop-style shell, shared by the desktop
@@ -29,26 +23,26 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { key: "home", label: "Home", icon: Home, href: "/", available: true },
+  { key: 'home', label: 'Home', icon: Home, href: '/', available: true },
   {
-    key: "jobs",
-    label: "Jobs",
+    key: 'jobs',
+    label: 'Jobs',
     icon: ClipboardList,
-    href: "/jobs",
+    href: '/jobs',
     available: true,
   },
   {
-    key: "vehicles",
-    label: "Vehicles",
+    key: 'vehicles',
+    label: 'Vehicles',
     icon: Truck,
-    href: "/vehicles",
+    href: '/vehicles',
     available: true,
   },
   {
-    key: "settings",
-    label: "Settings",
+    key: 'settings',
+    label: 'Settings',
     icon: Settings,
-    href: "/settings",
+    href: '/settings',
     available: true,
   },
 ] as const;
@@ -58,11 +52,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
  * given nav item as active. Home matches the root / group-index variants.
  */
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
-  if (item.key === "home") {
+  if (item.key === 'home') {
     return (
-      pathname === "/" ||
-      pathname === "/(app)" ||
-      (pathname.startsWith("/(app)") && pathname.replace("/(app)", "") === "")
+      pathname === '/' ||
+      pathname === '/(app)' ||
+      (pathname.startsWith('/(app)') && pathname.replace('/(app)', '') === '')
     );
   }
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -75,5 +69,5 @@ export function isNavItemActive(item: NavItem, pathname: string): boolean {
  * lives in the nav model alongside {@link isNavItemActive}, not in the bar.
  */
 export function isAuthTabActive(pathname: string): boolean {
-  return pathname.startsWith("/@");
+  return pathname.startsWith('/@');
 }

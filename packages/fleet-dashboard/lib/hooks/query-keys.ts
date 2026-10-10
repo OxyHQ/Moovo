@@ -1,4 +1,4 @@
-import type { JobStatus } from "@moovo/shared-types";
+import type { JobStatus } from '@moovo/shared-types';
 
 /**
  * Centralized TanStack Query cache keys for the Moovo Hub fleet dashboard.
@@ -9,19 +9,18 @@ import type { JobStatus } from "@moovo/shared-types";
  */
 export const queryKeys = {
   notifications: {
-    all: ["notifications"] as const,
+    all: ['notifications'] as const,
   },
   companies: {
-    all: ["companies"] as const,
-    detail: (companyId: string) => ["companies", companyId] as const,
-    members: (companyId: string) => ["companies", companyId, "members"] as const,
-    vehicles: (companyId: string) =>
-      ["companies", companyId, "vehicles"] as const,
+    all: ['companies'] as const,
+    detail: (companyId: string) => ['companies', companyId] as const,
+    members: (companyId: string) => ['companies', companyId, 'members'] as const,
+    vehicles: (companyId: string) => ['companies', companyId, 'vehicles'] as const,
   },
   jobs: {
-    all: ["jobs"] as const,
+    all: ['jobs'] as const,
     /** The operator's jobs as a sender or assigned courier (role-scoped). */
-    list: (role: "sender" | "courier", status?: JobStatus) =>
-      ["jobs", "list", role, status ?? "all"] as const,
+    list: (role: 'sender' | 'courier', status?: JobStatus) =>
+      ['jobs', 'list', role, status ?? 'all'] as const,
   },
 } as const;

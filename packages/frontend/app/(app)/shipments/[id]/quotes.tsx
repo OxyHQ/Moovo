@@ -43,7 +43,7 @@ function QuoteCard({
   const { colors } = useColorScheme();
   const isMoovo = quote.source === 'moovo_courier';
   const SourceIcon = isMoovo ? Truck : Building2;
-  const sourceLabel = isMoovo ? 'Moovo courier' : quote.providerName ?? 'External provider';
+  const sourceLabel = isMoovo ? 'Moovo courier' : (quote.providerName ?? 'External provider');
   const pickupEta = formatEta(quote.etaPickupMin);
   const deliveryEta = formatEta(quote.etaDeliveryMin);
 
@@ -155,10 +155,7 @@ export default function QuotesScreen() {
                 {typeMeta.label}
               </Text>
             ) : null}
-            <RouteSummary
-              from={shipment.pickup.address.city}
-              to={shipment.dropoff.address.city}
-            />
+            <RouteSummary from={shipment.pickup.address.city} to={shipment.dropoff.address.city} />
           </View>
         ) : null}
       </View>

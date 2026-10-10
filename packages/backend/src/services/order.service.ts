@@ -11,12 +11,7 @@
  * loads the right records and delegates serialization.
  */
 
-import type {
-  Money,
-  Order as OrderDTO,
-  OrderStatus,
-  OrderSummary,
-} from '@moovo/shared-types';
+import type { Money, Order as OrderDTO, OrderStatus, OrderSummary } from '@moovo/shared-types';
 import {
   countStoreOrdersByStatus,
   findScopedOrder,
@@ -212,12 +207,7 @@ async function summarizeScoped(
   scope: OrderScope,
   { page, limit, status }: ListParams,
 ): Promise<OrderPage> {
-  const result = await listScopedOrders(
-    scope,
-    status ? { status } : {},
-    page,
-    limit,
-  );
+  const result = await listScopedOrders(scope, status ? { status } : {}, page, limit);
   const records: OrderRecord[] = result.orders.map((order) => ({
     order,
     items: result.items.get(order.id) ?? [],
@@ -390,8 +380,7 @@ export async function storeStats(storeId: string): Promise<StoreStats> {
     [...revenueByCurrency.keys()][0] ??
     'USD') as Money['currency'];
   const total = revenueByCurrency.get(currency);
-  const revenue: Money =
-    total === undefined ? zeroMoney(currency) : { amount: total, currency };
+  const revenue: Money = total === undefined ? zeroMoney(currency) : { amount: total, currency };
 
   return { counts, revenue, lowStockVariantCount };
 }

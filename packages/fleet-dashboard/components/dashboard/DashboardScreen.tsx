@@ -1,12 +1,12 @@
-import type { ReactNode } from "react";
-import { View, ScrollView, Platform, ActivityIndicator } from "react-native";
-import Head from "expo-router/head";
-import { useOxy, openAccountDialog } from "@oxy.so/services";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { MoovoWordmark } from "@/components/ui/moovo-wordmark";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { useTranslation } from "@/hooks/useTranslation";
+import type { ReactNode } from 'react';
+import { View, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import Head from 'expo-router/head';
+import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { MoovoWordmark } from '@/components/ui/moovo-wordmark';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { useTranslation } from '@/hooks/useTranslation';
 
 /** Spread (px) of the gutter-color mask around the rounded desktop frame. */
 const GUTTER_MASK_SPREAD = 40;
@@ -31,15 +31,11 @@ interface DashboardScreenProps {
  * auth/session gate (neutral loader while undetermined, branded sign-in prompt
  * when signed out) so every company-scoped screen shares one consistent shell.
  */
-export function DashboardScreen({
-  title,
-  children,
-  gate = true,
-}: DashboardScreenProps) {
+export function DashboardScreen({ title, children, gate = true }: DashboardScreenProps) {
   const { colors } = useColorScheme();
   const { t } = useTranslation();
   const { isAuthenticated, isAuthResolved } = useOxy();
-  const isWeb = Platform.OS === "web";
+  const isWeb = Platform.OS === 'web';
 
   let body: ReactNode = children;
 
@@ -54,14 +50,14 @@ export function DashboardScreen({
       <View className="min-h-[60vh] items-center justify-center gap-4 px-8 py-24">
         <MoovoWordmark width={180} />
         <Text className="text-center text-xl font-semibold text-foreground">
-          {t("companies.signInTitle")}
+          {t('companies.signInTitle')}
         </Text>
         <Text className="max-w-md text-center text-base text-muted-foreground">
-          {t("companies.signInSubtitle")}
+          {t('companies.signInSubtitle')}
         </Text>
         <Button onPress={() => openAccountDialog()} className="mt-2">
           <Text className="text-sm font-medium text-primary-foreground">
-            {t("companies.signInButton")}
+            {t('companies.signInButton')}
           </Text>
         </Button>
       </View>
@@ -86,9 +82,7 @@ export function DashboardScreen({
           }}
         />
         <View className="relative w-full bg-card pb-24 web:min-h-screen web:overflow-x-clip md:rounded-3xl">
-          <View className="web:mx-auto web:w-full web:max-w-[2000px]">
-            {body}
-          </View>
+          <View className="web:mx-auto web:w-full web:max-w-[2000px]">{body}</View>
         </View>
       </>
     );

@@ -1,33 +1,29 @@
-import { useState } from "react";
-import { View, ActivityIndicator } from "react-native";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type {
-  Company,
-  UpdateCompanyInput,
-  CurrencyCode,
-} from "@moovo/shared-types";
-import { Text } from "@/components/ui/text";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { ColorPicker } from "@/components/ui/color-picker";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { FormScreen, Field } from "@/components/dashboard/FormScreen";
-import { PermissionDenied } from "@/components/dashboard/CompanyHeader";
+import { useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { Company, UpdateCompanyInput, CurrencyCode } from '@moovo/shared-types';
+import { Text } from '@/components/ui/text';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { ColorPicker } from '@/components/ui/color-picker';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { FormScreen, Field } from '@/components/dashboard/FormScreen';
+import { PermissionDenied } from '@/components/dashboard/CompanyHeader';
 import { toast } from '@oxy.so/bloom/toast';
-import { updateCompany } from "@/lib/api/companies";
-import { queryKeys } from "@/lib/hooks/query-keys";
-import { useCompanyContext } from "@/lib/hooks/use-company-context";
-import { useTranslation } from "@/hooks/useTranslation";
+import { updateCompany } from '@/lib/api/companies';
+import { queryKeys } from '@/lib/hooks/query-keys';
+import { useCompanyContext } from '@/lib/hooks/use-company-context';
+import { useTranslation } from '@/hooks/useTranslation';
 
-const CURRENCIES: CurrencyCode[] = ["USD", "EUR", "GBP"];
-const STATUSES: Company["status"][] = ["active", "suspended", "closed"];
+const CURRENCIES: CurrencyCode[] = ['USD', 'EUR', 'GBP'];
+const STATUSES: Company['status'][] = ['active', 'suspended', 'closed'];
 
 /** Extract a human message from an axios/API error. */
 function errorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === "object" && "response" in err) {
-    const data = (err as { response?: { data?: { message?: string; error?: string } } })
-      .response?.data;
+  if (err && typeof err === 'object' && 'response' in err) {
+    const data = (err as { response?: { data?: { message?: string; error?: string } } }).response
+      ?.data;
     if (data?.message) return data.message;
     if (data?.error) return data.error;
   }
@@ -44,17 +40,17 @@ function SettingsForm({ company }: { company: Company }) {
   const [description, setDescription] = useState(company.description);
   const [brandColor, setBrandColor] = useState(company.brandColor);
   const [currency, setCurrency] = useState<CurrencyCode>(company.defaultCurrency);
-  const [status, setStatus] = useState<Company["status"]>(company.status);
+  const [status, setStatus] = useState<Company['status']>(company.status);
 
   const mutation = useMutation({
     mutationFn: (input: UpdateCompanyInput) => updateCompany(company.id, input),
     onSuccess: (updated) => {
       queryClient.setQueryData(queryKeys.companies.detail(company.id), updated);
       void queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
-      toast.success(t("companyForm.saved"));
+      toast.success(t('companyForm.saved'));
     },
     onError: (err) => {
-      toast.error(errorMessage(err, t("companyForm.saveFailed")));
+      toast.error(errorMessage(err, t('companyForm.saveFailed')));
     },
   });
 
@@ -64,8 +60,7 @@ function SettingsForm({ company }: { company: Company }) {
     const trimmedName = name.trim();
     const trimmedDescription = description.trim();
     if (trimmedName && trimmedName !== company.name) patch.name = trimmedName;
-    if (trimmedDescription !== company.description)
-      patch.description = trimmedDescription;
+    if (trimmedDescription !== company.description) patch.description = trimmedDescription;
     if (brandColor !== company.brandColor) patch.brandColor = brandColor;
     if (currency !== company.defaultCurrency) patch.defaultCurrency = currency;
     if (status !== company.status) patch.status = status;
@@ -78,37 +73,37 @@ function SettingsForm({ company }: { company: Company }) {
 
   return (
     <>
-      <Field label={t("companyForm.name")}>
+      <Field label={t('companyForm.name')}>
         <Input
           value={name}
           onChangeText={setName}
-          placeholder={t("companyForm.namePlaceholder")}
+          placeholder={t('companyForm.namePlaceholder')}
           maxLength={120}
           autoCapitalize="words"
         />
       </Field>
 
-      <Field label={t("companyForm.description")}>
+      <Field label={t('companyForm.description')}>
         <Textarea
           value={description}
           onChangeText={setDescription}
-          placeholder={t("companyForm.descriptionPlaceholder")}
+          placeholder={t('companyForm.descriptionPlaceholder')}
           maxLength={5000}
         />
       </Field>
 
       <ColorPicker
-        label={t("companyForm.brandColor")}
+        label={t('companyForm.brandColor')}
         selected={brandColor}
         onSelect={setBrandColor}
       />
 
-      <Field label={t("companyForm.currency")}>
+      <Field label={t('companyForm.currency')}>
         <ToggleGroup
           type="single"
           value={currency}
           onValueChange={(v) => {
-            if (typeof v === "string" && v) setCurrency(v as CurrencyCode);
+            if (typeof v === 'string' && v) setCurrency(v as CurrencyCode);
           }}
         >
           <View className="flex-row gap-2">
@@ -121,12 +116,12 @@ function SettingsForm({ company }: { company: Company }) {
         </ToggleGroup>
       </Field>
 
-      <Field label={t("companyForm.status")}>
+      <Field label={t('companyForm.status')}>
         <ToggleGroup
           type="single"
           value={status}
           onValueChange={(v) => {
-            if (typeof v === "string" && v) setStatus(v as Company["status"]);
+            if (typeof v === 'string' && v) setStatus(v as Company['status']);
           }}
         >
           <View className="flex-row gap-2">
@@ -145,9 +140,7 @@ function SettingsForm({ company }: { company: Company }) {
         isLoading={mutation.isPending}
         className="mt-2"
       >
-        <Text className="text-sm font-medium text-primary-foreground">
-          {t("common.save")}
-        </Text>
+        <Text className="text-sm font-medium text-primary-foreground">{t('common.save')}</Text>
       </Button>
     </>
   );
@@ -167,14 +160,14 @@ export default function CompanySettingsScreen() {
   } else if (!ctx.company) {
     body = (
       <Text className="py-16 text-center text-sm text-muted-foreground">
-        {t("companies.loadError")}
+        {t('companies.loadError')}
       </Text>
     );
-  } else if (!ctx.can("company:manage")) {
-    body = <PermissionDenied message={t("companyForm.manageDenied")} />;
+  } else if (!ctx.can('company:manage')) {
+    body = <PermissionDenied message={t('companyForm.manageDenied')} />;
   } else {
     body = <SettingsForm company={ctx.company} />;
   }
 
-  return <FormScreen title={t("companyForm.settingsTitle")}>{body}</FormScreen>;
+  return <FormScreen title={t('companyForm.settingsTitle')}>{body}</FormScreen>;
 }

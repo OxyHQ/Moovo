@@ -1,10 +1,7 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
-import {
-  preventNativeSplashAutoHide,
-  useHideNativeSplashWhenReady,
-} from '@oxy.so/expo-splash';
+import { preventNativeSplashAutoHide, useHideNativeSplashWhenReady } from '@oxy.so/expo-splash';
 import { useCallback, useEffect, useState } from 'react';
 import { OxyProvider, useOxy } from '@oxy.so/services';
 import { BloomThemeProvider } from '@oxy.so/bloom/theme';
@@ -55,14 +52,10 @@ function AuthSetup({ children }: { children: React.ReactNode }) {
       const url = oxyServices.assets.publicUrl(fileId, variant ?? 'thumb');
       return url && url.startsWith('http') ? url : undefined;
     },
-    [oxyServices]
+    [oxyServices],
   );
 
-  return (
-    <ImageResolverProvider value={resolveImageSource}>
-      {children}
-    </ImageResolverProvider>
-  );
+  return <ImageResolverProvider value={resolveImageSource}>{children}</ImageResolverProvider>;
 }
 
 function AppContent() {
@@ -85,8 +78,8 @@ function AppContent() {
           <Stack.Screen
             name="n/[id]"
             options={{
-              presentation: "transparentModal",
-              animation: "fade",
+              presentation: 'transparentModal',
+              animation: 'fade',
               headerShown: false,
               // Override the global opaque contentStyle so the modal screen's
               // content container does NOT paint a solid background. Without this
@@ -96,7 +89,7 @@ function AppContent() {
               // transparent and (b) keeps the previous (app) screen mounted and
               // displayed because the next screen is a transparent presentation,
               // so the grid + sidebar stay visible behind the dim backdrop.
-              contentStyle: { backgroundColor: "transparent" },
+              contentStyle: { backgroundColor: 'transparent' },
             }}
           />
         </Stack>

@@ -75,7 +75,10 @@ export async function findOrderById(
 ): Promise<OrderRecord | null> {
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
   if (order === undefined) return null;
-  const [items, statusHistory] = await Promise.all([itemsOf(order.id, db), historyOf(order.id, db)]);
+  const [items, statusHistory] = await Promise.all([
+    itemsOf(order.id, db),
+    historyOf(order.id, db),
+  ]);
   return { order, items, statusHistory };
 }
 
@@ -98,10 +101,7 @@ function scopePredicate(scope: OrderScope): SQL {
     case 'buyer':
       return eq(orders.buyerOxyUserId, scope.oxyUserId);
     case 'seller':
-      return and(
-        eq(orders.sellerType, 'user'),
-        eq(orders.sellerOxyUserId, scope.oxyUserId),
-      ) as SQL;
+      return and(eq(orders.sellerType, 'user'), eq(orders.sellerOxyUserId, scope.oxyUserId)) as SQL;
     case 'store':
       return eq(orders.storeId, scope.storeId);
   }
@@ -119,7 +119,10 @@ export async function findScopedOrder(
     .where(and(eq(orders.id, orderId), scopePredicate(scope)))
     .limit(1);
   if (order === undefined) return null;
-  const [items, statusHistory] = await Promise.all([itemsOf(order.id, db), historyOf(order.id, db)]);
+  const [items, statusHistory] = await Promise.all([
+    itemsOf(order.id, db),
+    historyOf(order.id, db),
+  ]);
   return { order, items, statusHistory };
 }
 
@@ -248,14 +251,14 @@ export async function findOrderByIdempotencyKey(
     .select()
     .from(orders)
     .where(
-      and(
-        eq(orders.idempotencyKey, idempotencyKey),
-        eq(orders.buyerOxyUserId, buyerOxyUserId),
-      ),
+      and(eq(orders.idempotencyKey, idempotencyKey), eq(orders.buyerOxyUserId, buyerOxyUserId)),
     )
     .limit(1);
   if (order === undefined) return null;
-  const [items, statusHistory] = await Promise.all([itemsOf(order.id, db), historyOf(order.id, db)]);
+  const [items, statusHistory] = await Promise.all([
+    itemsOf(order.id, db),
+    historyOf(order.id, db),
+  ]);
   return { order, items, statusHistory };
 }
 
@@ -269,10 +272,7 @@ export async function listOrdersByCheckoutGroup(
     .select()
     .from(orders)
     .where(
-      and(
-        eq(orders.checkoutGroupId, checkoutGroupId),
-        eq(orders.buyerOxyUserId, buyerOxyUserId),
-      ),
+      and(eq(orders.checkoutGroupId, checkoutGroupId), eq(orders.buyerOxyUserId, buyerOxyUserId)),
     )
     .orderBy(asc(orders.createdAt), asc(orders.id));
   if (rows.length === 0) return [];

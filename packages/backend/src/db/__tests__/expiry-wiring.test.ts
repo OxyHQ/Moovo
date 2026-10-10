@@ -82,9 +82,7 @@ describe('the expiry sweep is wired into the server entrypoint', () => {
  * behind its own exemption while appearing to be handled.
  */
 describe('a growing table is in exactly one of the two lists', () => {
-  const sweptTables = new Set(
-    EXPIRY_TARGETS.map((target) => getTableName(target.table)),
-  );
+  const sweptTables = new Set(EXPIRY_TARGETS.map((target) => getTableName(target.table)));
   const unsweptTables = new Set(UNSWEPT_GROWING_TABLES.map((entry) => entry.table));
 
   it('names tables that really exist in the schema', () => {

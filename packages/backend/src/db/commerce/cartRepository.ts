@@ -100,11 +100,7 @@ export async function ensureCart(
     .returning();
   if (inserted.length > 0) return inserted[0];
 
-  const [existing] = await db
-    .select()
-    .from(carts)
-    .where(eq(carts.oxyUserId, oxyUserId))
-    .limit(1);
+  const [existing] = await db.select().from(carts).where(eq(carts.oxyUserId, oxyUserId)).limit(1);
   return existing;
 }
 

@@ -1,14 +1,14 @@
-import MapView, { Marker, UrlTile, PROVIDER_DEFAULT } from "react-native-maps";
-import type { Region } from "react-native-maps";
-import { View } from "react-native";
-import { OSM_TILE_URL } from "@/lib/config";
-import type { FleetMapProps, MapMarker } from "./map-types";
+import MapView, { Marker, UrlTile, PROVIDER_DEFAULT } from 'react-native-maps';
+import type { Region } from 'react-native-maps';
+import { View } from 'react-native';
+import { OSM_TILE_URL } from '@/lib/config';
+import type { FleetMapProps, MapMarker } from './map-types';
 
 /** Pin tint per marker kind. */
-const KIND_COLOR: Record<MapMarker["kind"], string> = {
-  courier: "#2563eb",
-  pickup: "#16a34a",
-  dropoff: "#f59e0b",
+const KIND_COLOR: Record<MapMarker['kind'], string> = {
+  courier: '#2563eb',
+  pickup: '#16a34a',
+  dropoff: '#f59e0b',
 };
 
 /** Default region — a broad view used until markers recenter the map. */
@@ -44,12 +44,8 @@ export function FleetMap({ markers, initialCenter, height = 320 }: FleetMapProps
         : DEFAULT_REGION;
 
   return (
-    <View style={{ height, width: "100%", borderRadius: 16, overflow: "hidden" }}>
-      <MapView
-        provider={PROVIDER_DEFAULT}
-        style={{ flex: 1 }}
-        initialRegion={region}
-      >
+    <View style={{ height, width: '100%', borderRadius: 16, overflow: 'hidden' }}>
+      <MapView provider={PROVIDER_DEFAULT} style={{ flex: 1 }} initialRegion={region}>
         <UrlTile urlTemplate={OSM_TILE_URL} maximumZ={19} flipY={false} />
         {markers.map((m) => (
           <Marker
@@ -64,4 +60,4 @@ export function FleetMap({ markers, initialCenter, height = 320 }: FleetMapProps
   );
 }
 
-export type { FleetMapProps } from "./map-types";
+export type { FleetMapProps } from './map-types';

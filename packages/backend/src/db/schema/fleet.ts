@@ -240,11 +240,7 @@ export const courierProfiles = pgTable(
   (table) => [
     closedSet('courier_profiles_status_check', table.status, COURIER_STATUSES),
     closedSet('courier_profiles_online_status_check', table.onlineStatus, ONLINE_STATUSES),
-    closedSetArray(
-      'courier_profiles_eligible_job_types_check',
-      table.eligibleJobTypes,
-      JOB_TYPES,
-    ),
+    closedSetArray('courier_profiles_eligible_job_types_check', table.eligibleJobTypes, JOB_TYPES),
     closedSet('courier_profiles_max_size_class_check', table.maxSizeClass, SIZE_CLASSES),
     closedSet('courier_profiles_payout_provider_check', table.payoutProvider, PAYMENT_PROVIDERS),
     check(
@@ -260,10 +256,7 @@ export const courierProfiles = pgTable(
     index('courier_profiles_location_idx')
       .using('gist', table.location)
       .where(sql`${table.location} is not null`),
-    index('courier_profiles_online_status_last_ping_idx').on(
-      table.onlineStatus,
-      table.lastPingAt,
-    ),
+    index('courier_profiles_online_status_last_ping_idx').on(table.onlineStatus, table.lastPingAt),
   ],
 );
 

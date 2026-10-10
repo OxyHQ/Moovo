@@ -259,7 +259,12 @@ describe('fallback path', () => {
   it('falls back when the Explorer responds with a non-OK status', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: false, status: 503, statusText: 'Service Unavailable', json: async () => ({}) }),
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        json: async () => ({}),
+      }),
     );
     const svc = await loadService({ FAIRCOIN_FALLBACK_USD_PER_FAIR: '0.5' });
 

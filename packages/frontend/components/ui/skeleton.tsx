@@ -1,20 +1,28 @@
-import { useEffect, useRef } from "react";
-import { Animated, Platform, type ViewStyle } from "react-native";
+import { useEffect, useRef } from 'react';
+import { Animated, Platform, type ViewStyle } from 'react-native';
 
 interface SkeletonProps {
   className?: string;
   style?: ViewStyle;
 }
 
-export function Skeleton({ className = "", style }: SkeletonProps) {
+export function Skeleton({ className = '', style }: SkeletonProps) {
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.7, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
-      ])
+        Animated.timing(opacity, {
+          toValue: 0.7,
+          duration: 800,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.3,
+          duration: 800,
+          useNativeDriver: Platform.OS !== 'web',
+        }),
+      ]),
     );
     anim.start();
     return () => anim.stop();

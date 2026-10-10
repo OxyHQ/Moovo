@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, type ReactNode } from 'react';
 import {
   Platform,
   Pressable,
@@ -7,10 +7,10 @@ import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-} from "react-native";
-import { ChevronLeft, ChevronRight } from "lucide-react-native";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { cn } from "@/lib/utils";
+} from 'react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { cn } from '@/lib/utils';
 
 /** Horizontal padding applied to the scroll content. */
 const DEFAULT_CONTENT_PADDING = 16;
@@ -71,7 +71,7 @@ export function Carousel<T>({
   // so the carousel never crashes on `.map`.
   const safeItems = items ?? [];
 
-  const arrowsEnabled = showArrows ?? Platform.OS === "web";
+  const arrowsEnabled = showArrows ?? Platform.OS === 'web';
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     scrollX.current = event.nativeEvent.contentOffset.x;
@@ -106,7 +106,7 @@ export function Carousel<T>({
         contentContainerStyle={{ paddingHorizontal: contentPadding }}
       >
         {safeItems.map((item) => (
-          <View key={keyExtractor(item)} className={cn("shrink-0", slotClassName)}>
+          <View key={keyExtractor(item)} className={cn('shrink-0', slotClassName)}>
             {renderItem(item)}
           </View>
         ))}

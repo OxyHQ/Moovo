@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Pressable,
@@ -6,30 +6,21 @@ import {
   StyleSheet,
   type LayoutChangeEvent,
   type ViewStyle,
-} from "react-native";
-import { useRouter, usePathname } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
-import { BlurView } from "expo-blur";
-import { LogIn, type LucideIcon } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
+} from 'react-native';
+import { useRouter, usePathname } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
+import { LogIn, type LucideIcon } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 
-import { UserAvatar } from "@/components/user-avatar";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { useTranslation } from "@/hooks/useTranslation";
-import { useTheme } from "@oxy.so/bloom/theme";
-import { useOxy, openAccountDialog } from "@oxy.so/services";
-import { AccountMenu } from "./AccountMenu";
-import {
-  NAV_ITEMS,
-  isNavItemActive,
-  isAuthTabActive,
-  type NavItem,
-} from "./nav-items";
+import { UserAvatar } from '@/components/user-avatar';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { useTranslation } from '@/hooks/useTranslation';
+import { useTheme } from '@oxy.so/bloom/theme';
+import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { AccountMenu } from './AccountMenu';
+import { NAV_ITEMS, isNavItemActive, isAuthTabActive, type NavItem } from './nav-items';
 
 /**
  * Floating-pill bottom tab bar — a faithful port of Mention's `BottomBar`
@@ -41,7 +32,7 @@ import {
  */
 
 /** Subtle frosted-glass blur radius for the web bar (medium, not extreme). */
-const WEB_BLUR_RADIUS = "12px";
+const WEB_BLUR_RADIUS = '12px';
 
 /**
  * Web-only style extension. React Native's `ViewStyle` does not declare the CSS
@@ -80,14 +71,14 @@ const INACTIVE_ICON_OPACITY = 0.5;
 
 const tabStyle = {
   flex: 1,
-  alignItems: "center" as const,
-  justifyContent: "center" as const,
-  height: "100%" as const,
-  ...(Platform.OS === "web" ? { cursor: "pointer" as const } : {}),
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+  height: '100%' as const,
+  ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
 };
 
 function triggerHaptic() {
-  if (Platform.OS === "web") return;
+  if (Platform.OS === 'web') return;
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 }
 
@@ -124,7 +115,7 @@ function AuthTab({ isActive }: AuthTabProps) {
   const { t } = useTranslation();
   const { isAuthenticated } = useOxy();
 
-  const label = isAuthenticated ? t("account.menuLabel") : t("companies.signInButton");
+  const label = isAuthenticated ? t('account.menuLabel') : t('companies.signInButton');
 
   // Signed in: the avatar tab is the account-menu trigger (Settings /
   // Notifications). Signed out: pressing opens the Oxy sign-in modal.
@@ -175,15 +166,9 @@ export function BottomTabBar() {
 
   // Active slot: the last index belongs to the auth tab, which is "active" on
   // any /@profile route (mirrors Mention); otherwise the matching nav item.
-  const navActiveIndex = NAV_ITEMS.findIndex((item) =>
-    isNavItemActive(item, pathname),
-  );
+  const navActiveIndex = NAV_ITEMS.findIndex((item) => isNavItemActive(item, pathname));
   const activeIndex =
-    navActiveIndex >= 0
-      ? navActiveIndex
-      : isAuthTabActive(pathname)
-        ? AUTH_TAB_INDEX
-        : -1;
+    navActiveIndex >= 0 ? navActiveIndex : isAuthTabActive(pathname) ? AUTH_TAB_INDEX : -1;
 
   const prevActiveIndexRef = useRef(activeIndex);
 
@@ -192,10 +177,7 @@ export function BottomTabBar() {
       const width = e.nativeEvent.layout.width;
       tabWidth.value = width / TAB_COUNT;
       if (activeIndex >= 0) {
-        indicatorX.value = withSpring(
-          (width / TAB_COUNT) * activeIndex,
-          SPRING_CONFIG,
-        );
+        indicatorX.value = withSpring((width / TAB_COUNT) * activeIndex, SPRING_CONFIG);
       }
     },
     [activeIndex, indicatorX, tabWidth],
@@ -214,7 +196,7 @@ export function BottomTabBar() {
   // applied via the `bg-primary/10` NativeWind class on the indicator view so
   // it stays reactive to the Bloom preset/mode.
   const indicatorStyle = useAnimatedStyle(() => ({
-    position: "absolute" as const,
+    position: 'absolute' as const,
     top: INDICATOR_INSET,
     bottom: INDICATOR_INSET,
     width: tabWidth.value ? tabWidth.value - INDICATOR_INSET * 2 : 0,
@@ -227,8 +209,7 @@ export function BottomTabBar() {
   const handlePress = useCallback(
     (item: NavItem) => {
       triggerHaptic();
-      if (item.available)
-        router.push(item.href as Parameters<typeof router.push>[0]);
+      if (item.available) router.push(item.href as Parameters<typeof router.push>[0]);
     },
     [router],
   );
@@ -241,18 +222,18 @@ export function BottomTabBar() {
   // bottom safe-area inset into its `bottom` offset.
   const containerStyle = useMemo<ViewStyle>(
     () => ({
-      position: "absolute",
+      position: 'absolute',
       bottom: BAR_BOTTOM + insets.bottom,
       left: BAR_INSET,
       right: BAR_INSET,
       height: BAR_HEIGHT,
       borderRadius: BAR_RADIUS,
-      overflow: "hidden",
+      overflow: 'hidden',
       zIndex: 1000,
-      ...(Platform.OS === "web"
+      ...(Platform.OS === 'web'
         ? { boxShadow: `0 2px 16px ${theme.colors.shadow}` }
         : {
-            shadowColor: "#000",
+            shadowColor: '#000',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.15,
             shadowRadius: 12,
@@ -274,10 +255,7 @@ export function BottomTabBar() {
           accessibilityLabel={item.label}
           accessibilityState={{ selected: isNavItemActive(item, pathname) }}
         >
-          <TabIcon
-            icon={item.icon}
-            isActive={isNavItemActive(item, pathname)}
-          />
+          <TabIcon icon={item.icon} isActive={isNavItemActive(item, pathname)} />
         </Pressable>
       ))}
       <AuthTab isActive={activeIndex === AUTH_TAB_INDEX} />
@@ -293,13 +271,13 @@ export function BottomTabBar() {
       ...containerStyle,
       backdropFilter: `blur(${WEB_BLUR_RADIUS})`,
       WebkitBackdropFilter: `blur(${WEB_BLUR_RADIUS})`,
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: 'row',
+      alignItems: 'center',
     }),
     [containerStyle],
   );
 
-  if (Platform.OS === "web") {
+  if (Platform.OS === 'web') {
     return (
       <View
         className="border border-border bg-card/80"
@@ -312,14 +290,10 @@ export function BottomTabBar() {
   }
 
   return (
-    <View
-      className="border border-border"
-      style={containerStyle}
-      onLayout={onBarLayout}
-    >
+    <View className="border border-border" style={containerStyle} onLayout={onBarLayout}>
       <BlurView
         intensity={80}
-        tint={theme.isDark ? "dark" : "light"}
+        tint={theme.isDark ? 'dark' : 'light'}
         experimentalBlurMethod="dimezisBlurView"
         style={styles.blurContent}
       >
@@ -332,7 +306,7 @@ export function BottomTabBar() {
 const styles = StyleSheet.create({
   blurContent: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

@@ -37,7 +37,13 @@ import {
   syncListingFacets,
   updateListing,
 } from '../../../services/catalog-write.service';
-import { commit, release, reserve, restock, setAvailable } from '../../../services/inventory.service';
+import {
+  commit,
+  release,
+  reserve,
+  restock,
+  setAvailable,
+} from '../../../services/inventory.service';
 import { isMoovoError } from '../../../lib/errors/error-codes';
 import { ErrorCodes } from '../../../utils/api-response';
 
@@ -226,10 +232,7 @@ describeIfPostgres('the catalogue write paths on a real server', () => {
     });
 
     it('throws NOT_FOUND for a variant that does not exist', async () => {
-      await expectCode(
-        reserve('00000000-0000-0000-0000-0000000000ff', 1),
-        ErrorCodes.NOT_FOUND,
-      );
+      await expectCode(reserve('00000000-0000-0000-0000-0000000000ff', 1), ErrorCodes.NOT_FOUND);
     });
   });
 

@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { useOxy } from "@oxy.so/services";
-import type { User } from "@oxy.so/core";
+import { useQuery } from '@tanstack/react-query';
+import { useOxy } from '@oxy.so/services';
+import type { User } from '@oxy.so/core';
 
 /**
  * Resolve an Oxy user profile by id, cached by TanStack Query.
@@ -15,7 +15,7 @@ export function useUserProfile(oxyUserId: string | undefined) {
   const { oxyServices, canUsePrivateApi } = useOxy();
 
   return useQuery<User>({
-    queryKey: ["oxy-profile", oxyUserId],
+    queryKey: ['oxy-profile', oxyUserId],
     queryFn: () => oxyServices.users.get(oxyUserId as string),
     enabled: canUsePrivateApi && !!oxyUserId,
     staleTime: 5 * 60 * 1000,

@@ -1,15 +1,11 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useOxy } from "@oxy.so/services";
-import type {
-  Company,
-  CompanyMember,
-  CompanyPermission,
-} from "@moovo/shared-types";
-import { fetchCompanies, fetchCompany } from "@/lib/api/companies";
-import { queryKeys } from "@/lib/hooks/query-keys";
-import { useCompanyStore } from "@/lib/stores/company-store";
-import { findMembership, hasPermission } from "@/lib/permissions";
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useOxy } from '@oxy.so/services';
+import type { Company, CompanyMember, CompanyPermission } from '@moovo/shared-types';
+import { fetchCompanies, fetchCompany } from '@/lib/api/companies';
+import { queryKeys } from '@/lib/hooks/query-keys';
+import { useCompanyStore } from '@/lib/stores/company-store';
+import { findMembership, hasPermission } from '@/lib/permissions';
 
 /**
  * The dashboard-wide company context.
@@ -69,15 +65,14 @@ export function useCompanyContext(): CompanyContext {
   const effectiveCompanyId = useMemo<string | null>(() => {
     if (companies.length === 0) return null;
     const stillExists =
-      selectedCompanyId !== null &&
-      companies.some((c) => c.id === selectedCompanyId);
+      selectedCompanyId !== null && companies.some((c) => c.id === selectedCompanyId);
     return stillExists ? selectedCompanyId : (companies[0]?.id ?? null);
   }, [companies, selectedCompanyId]);
 
   const companyQuery = useQuery({
     queryKey: effectiveCompanyId
       ? queryKeys.companies.detail(effectiveCompanyId)
-      : ["companies", "none"],
+      : ['companies', 'none'],
     queryFn: () => fetchCompany(effectiveCompanyId as string),
     enabled: canUsePrivateApi && effectiveCompanyId !== null,
   });
@@ -85,14 +80,9 @@ export function useCompanyContext(): CompanyContext {
   // Prefer the freshly-fetched detail; fall back to the list entry so the UI has
   // a company to render while the detail query is still in flight.
   const company =
-    companyQuery.data ??
-    companies.find((c) => c.id === effectiveCompanyId) ??
-    undefined;
+    companyQuery.data ?? companies.find((c) => c.id === effectiveCompanyId) ?? undefined;
 
-  const membership = useMemo(
-    () => findMembership(company, user?.id),
-    [company, user?.id],
-  );
+  const membership = useMemo(() => findMembership(company, user?.id), [company, user?.id]);
 
   const can = useMemo(
     () => (perm: CompanyPermission) => hasPermission(membership, perm),

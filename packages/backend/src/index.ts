@@ -1,4 +1,8 @@
-import { startEcosystemActivity, stopEcosystemActivity, ecosystemActivityMiddleware } from './ecosystemActivity';
+import {
+  startEcosystemActivity,
+  stopEcosystemActivity,
+  ecosystemActivityMiddleware,
+} from './ecosystemActivity';
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
@@ -46,16 +50,19 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '../.env') });
 
 const app = express();
-  app.use(ecosystemActivityMiddleware);
+app.use(ecosystemActivityMiddleware);
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Create HTTP server with optimized settings
-const server = http.createServer({
-  // Increase max header size for long authentication tokens
-  maxHeaderSize: 16384,
-  keepAlive: true,
-  keepAliveTimeout: 65000, // Slightly higher than default
-}, app);
+const server = http.createServer(
+  {
+    // Increase max header size for long authentication tokens
+    maxHeaderSize: 16384,
+    keepAlive: true,
+    keepAliveTimeout: 65000, // Slightly higher than default
+  },
+  app,
+);
 
 // Handle HTTP server errors (e.g. EADDRINUSE)
 server.on('error', (error: NodeJS.ErrnoException) => {
@@ -112,7 +119,22 @@ app.use((req, res, next) => {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'X-Service-Name', 'X-Timestamp', 'X-Signature', 'X-Session-Id', 'X-Device-Info', 'X-Oxy-User-Id', 'X-Workspace-Id', 'X-Oxy-Edge-Region', 'X-Oxy-Activity-Id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Requested-With',
+      'Accept',
+      'Origin',
+      'X-Service-Name',
+      'X-Timestamp',
+      'X-Signature',
+      'X-Session-Id',
+      'X-Device-Info',
+      'X-Oxy-User-Id',
+      'X-Workspace-Id',
+      'X-Oxy-Edge-Region',
+      'X-Oxy-Activity-Id',
+    ],
     optionsSuccessStatus: 200,
   })(req, res, next);
 });
@@ -217,17 +239,19 @@ app.get('/', (_req, res) => {
       '/reports',
       '/tracking',
       '/admin',
-    ]
+    ],
   });
 });
 
 // Error handler
-app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  log.general.error({ err }, 'Unhandled Express error');
-  if (!res.headersSent) {
-    res.status(500).json({ error: 'Something went wrong!' });
-  }
-});
+app.use(
+  (err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    log.general.error({ err }, 'Unhandled Express error');
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Something went wrong!' });
+    }
+  },
+);
 
 // Process-level error handlers — prevent crashes from taking down all users.
 process.on('unhandledRejection', (reason) => {
@@ -248,7 +272,10 @@ process.on('unhandledRejection', (reason) => {
   }
 
   // Everything else: log as error but keep running
-  log.general.error({ reason: reason instanceof Error ? reason : String(reason) }, '[Process] Unhandled promise rejection');
+  log.general.error(
+    { reason: reason instanceof Error ? reason : String(reason) },
+    '[Process] Unhandled promise rejection',
+  );
 });
 
 process.on('uncaughtException', (error) => {
@@ -286,27 +313,40 @@ try {
   server.listen(PORT, '0.0.0.0', () => {
     log.general.info({ port: PORT }, `API Server running on http://0.0.0.0:${PORT}`);
     // Verify Redis connectivity (non-blocking)
-    import('./lib/redis.js').then(({ getRedisClient }) => {
-      const redis = getRedisClient();
-      if (redis) {
-        redis.ping()
-          .then(() => log.general.info('Redis readiness check passed'))
-          .catch((err) => log.general.warn({ err }, 'Redis readiness check failed — rate limiting will fail-open'));
-      } else {
-        log.general.info('Redis not configured (REDIS_URL not set) — rate limiting disabled');
-      }
-    }).catch((err) => log.general.error({ err }, 'Redis readiness import failed'));
+    import('./lib/redis.js')
+      .then(({ getRedisClient }) => {
+        const redis = getRedisClient();
+        if (redis) {
+          redis
+            .ping()
+            .then(() => log.general.info('Redis readiness check passed'))
+            .catch((err) =>
+              log.general.warn(
+                { err },
+                'Redis readiness check failed — rate limiting will fail-open',
+              ),
+            );
+        } else {
+          log.general.info('Redis not configured (REDIS_URL not set) — rate limiting disabled');
+        }
+      })
+      .catch((err) => log.general.error({ err }, 'Redis readiness import failed'));
 
     // Start marketplace queue workers when Redis is configured; otherwise
     // async jobs run inline via the producers.
-    import('./queue/connection.js').then(({ isQueueEnabled }) => {
-      if (isQueueEnabled()) {
-        import('./queue/workers.js').then(({ startWorkers }) => startWorkers())
-          .catch((err) => log.general.error({ err }, 'startWorkers import failed'));
-      } else {
-        log.general.info('Marketplace queue disabled (REDIS_URL not set) — async jobs run inline');
-      }
-    }).catch((err) => log.general.error({ err }, 'Queue connection import failed'));
+    import('./queue/connection.js')
+      .then(({ isQueueEnabled }) => {
+        if (isQueueEnabled()) {
+          import('./queue/workers.js')
+            .then(({ startWorkers }) => startWorkers())
+            .catch((err) => log.general.error({ err }, 'startWorkers import failed'));
+        } else {
+          log.general.info(
+            'Marketplace queue disabled (REDIS_URL not set) — async jobs run inline',
+          );
+        }
+      })
+      .catch((err) => log.general.error({ err }, 'Queue connection import failed'));
 
     /**
      * Drains the moderation outbox on EVERY task, not on a leader.
@@ -429,7 +469,7 @@ try {
 
       clearTimeout(forceTimeout);
       await stopEcosystemActivity();
-        log.general.info('Graceful shutdown complete');
+      log.general.info('Graceful shutdown complete');
       process.exit(0);
     } catch (error) {
       log.general.error({ err: error }, 'Error during shutdown');

@@ -86,7 +86,10 @@ export interface SendNotificationOptions {
  * If explicit channels are provided, use those. Otherwise, default to in_app
  * plus any connected messaging accounts the user has.
  */
-async function resolveChannels(userId: string, explicit?: NotificationChannel[]): Promise<NotificationChannel[]> {
+async function resolveChannels(
+  userId: string,
+  explicit?: NotificationChannel[],
+): Promise<NotificationChannel[]> {
   if (explicit && explicit.length > 0) {
     return explicit;
   }
@@ -175,7 +178,8 @@ async function deliverPush(userId: string, notification: NotificationRow): Promi
         ...payloadData(notification.data),
       },
       sound: 'default',
-      priority: notification.priority === 'urgent' || notification.priority === 'high' ? 'high' : 'normal',
+      priority:
+        notification.priority === 'urgent' || notification.priority === 'high' ? 'high' : 'normal',
       channelId: 'default',
     });
   }
@@ -227,7 +231,7 @@ async function deliverPush(userId: string, notification: NotificationRow): Promi
 
   // Update lastUsedAt for active tokens
   if (anySucceeded) {
-    await touchPushTokens(tokens.filter(t => Expo.isExpoPushToken(t.token)).map(t => t.id));
+    await touchPushTokens(tokens.filter((t) => Expo.isExpoPushToken(t.token)).map((t) => t.id));
   }
 
   return anySucceeded;
@@ -248,13 +252,19 @@ async function checkPushReceipts(receiptIds: ExpoPushReceiptId[]): Promise<void>
       for (const [receiptId, receipt] of Object.entries(receipts)) {
         if (receipt.status === 'error') {
           const { message, details } = receipt;
-          log.general.warn({ receiptId, message, error: details?.error }, 'Expo push receipt error');
+          log.general.warn(
+            { receiptId, message, error: details?.error },
+            'Expo push receipt error',
+          );
 
           // Deactivate invalid device tokens
           if (details?.error === 'DeviceNotRegistered') {
             // We can't directly map receiptId -> token, but Expo will stop delivering
             // to unregistered devices. The token gets deactivated on the next send attempt.
-            log.general.info({ receiptId }, 'Device not registered — token will be deactivated on next send');
+            log.general.info(
+              { receiptId },
+              'Device not registered — token will be deactivated on next send',
+            );
           }
         }
       }
@@ -303,16 +313,22 @@ async function deliverWebPush(userId: string, notification: NotificationRow): Pr
         if (isGone) {
           // Subscription expired or invalid — deactivate
           await deactivateWebPushSubscriptionById(sub.id);
-          log.general.info({ userId, endpoint: sub.endpoint }, 'Web push subscription expired, deactivated');
+          log.general.info(
+            { userId, endpoint: sub.endpoint },
+            'Web push subscription expired, deactivated',
+          );
         } else {
-          log.general.warn({ err: error, userId, endpoint: sub.endpoint }, 'Web push delivery failed');
+          log.general.warn(
+            { err: error, userId, endpoint: sub.endpoint },
+            'Web push delivery failed',
+          );
         }
         throw error; // Re-throw so Promise.allSettled marks as rejected
       }
     }),
   );
 
-  return results.some(r => r.status === 'fulfilled');
+  return results.some((r) => r.status === 'fulfilled');
 }
 
 // ── Main send function ─────────────────────────────────────────────
@@ -336,9 +352,7 @@ export async function sendNotification(options: SendNotificationOptions): Promis
   const channels = await resolveChannels(userId, options.channels);
 
   // Persist the notification
-  const deliveryStatus: DeliveryStatus = Object.fromEntries(
-    channels.map((ch) => [ch, 'pending']),
-  );
+  const deliveryStatus: DeliveryStatus = Object.fromEntries(channels.map((ch) => [ch, 'pending']));
   const notification = await insertNotification({
     oxyUserId: userId,
     type,
@@ -393,10 +407,7 @@ export async function sendNotification(options: SendNotificationOptions): Promis
   // a stale copy of the rest of it.
   await updateDeliveryStatus(notification.id, deliveryStatus);
 
-  log.general.info(
-    { type, userId, channels, title: title.slice(0, 50) },
-    'Notification sent',
-  );
+  log.general.info({ type, userId, channels, title: title.slice(0, 50) }, 'Notification sent');
 
   return notification;
 }
@@ -415,6 +426,9 @@ export async function markAllAsRead(userId: string): Promise<number> {
   return await markAllNotificationsRead(userId);
 }
 
-export async function dismissNotification(notificationId: string, userId: string): Promise<boolean> {
+export async function dismissNotification(
+  notificationId: string,
+  userId: string,
+): Promise<boolean> {
   return await dismissNotificationById(notificationId, userId);
 }

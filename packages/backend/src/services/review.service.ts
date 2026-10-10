@@ -93,9 +93,7 @@ function orderMatchesTarget(
     case 'store':
       return record.order.sellerType === 'store' && record.order.storeId === targetId;
     case 'seller':
-      return (
-        record.order.sellerType === 'user' && record.order.sellerOxyUserId === targetId
-      );
+      return record.order.sellerType === 'user' && record.order.sellerOxyUserId === targetId;
   }
 }
 
@@ -258,7 +256,10 @@ async function notifyTargetOwner(
       });
     }
   } catch (err) {
-    log.general.warn({ err, targetType: input.targetType }, 'review_received notification failed (best-effort)');
+    log.general.warn(
+      { err, targetType: input.targetType },
+      'review_received notification failed (best-effort)',
+    );
   }
 }
 
@@ -306,7 +307,10 @@ export async function createReview(
   try {
     await enqueueRecomputeAggregate({ targetType: input.targetType, targetId });
   } catch (err) {
-    log.general.warn({ err, targetType: input.targetType, targetId }, 'Failed to enqueue aggregate recompute');
+    log.general.warn(
+      { err, targetType: input.targetType, targetId },
+      'Failed to enqueue aggregate recompute',
+    );
   }
 
   await notifyTargetOwner(doc, input, targetId, authorOxyUserId);

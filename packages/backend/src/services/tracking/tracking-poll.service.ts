@@ -25,12 +25,7 @@ import {
 import { ingestCheckpoints } from '../../db/tracking/trackingCheckpointRepository.js';
 import type { TrackingCarrierRow } from '../../db/tracking/trackingCarrierRepository.js';
 import { getTrackingAdapter } from './tracking-registry.js';
-import {
-  failureBackoffMs,
-  isStale,
-  nextPollAt,
-  shouldExpireNotFound,
-} from './tracking-cadence.js';
+import { failureBackoffMs, isStale, nextPollAt, shouldExpireNotFound } from './tracking-cadence.js';
 import { spendBudget } from './carrier-budget.js';
 import type { TrackingPollMode, TrackingStatus } from '@moovo/shared-types';
 import type { TrackingSnapshot } from './tracking-adapter.js';

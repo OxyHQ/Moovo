@@ -1,4 +1,4 @@
-import type { GeoPoint } from "@moovo/shared-types";
+import type { GeoPoint } from '@moovo/shared-types';
 
 /**
  * Geo helpers (PURE — no I/O).
@@ -30,8 +30,7 @@ export function distanceMeters(a: GeoPoint, b: GeoPoint): number {
   const sinLat = Math.sin(dLat / 2);
   const sinLng = Math.sin(dLng / 2);
   const h =
-    sinLat * sinLat +
-    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * sinLng * sinLng;
+    sinLat * sinLat + Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * sinLng * sinLng;
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 

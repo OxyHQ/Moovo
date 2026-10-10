@@ -1,10 +1,10 @@
-import { Pressable, StyleSheet, View } from "react-native";
-import { Image } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
-import { Star } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { formatReviewCount } from "./types";
-import type { MerchantSummary } from "@moovo/shared-types";
+import { Pressable, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Star } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { formatReviewCount } from './types';
+import type { MerchantSummary } from '@moovo/shared-types';
 
 /** Fixed card height (px) — the carousel sizes the slot width, the card the height. */
 const CARD_HEIGHT = 397;
@@ -21,13 +21,13 @@ const THUMB_SIZE = 92;
 const THUMB_RADIUS = 16;
 
 /** Fixed gold star fill (documented allowed constant). */
-const STAR_COLOR = "#FFB800";
+const STAR_COLOR = '#FFB800';
 /** Documented dark cover overlay constant (~20%). */
-const COVER_DARK_OVERLAY = "rgba(0,0,0,0.20)";
+const COVER_DARK_OVERLAY = 'rgba(0,0,0,0.20)';
 /** Light text tone over a merchant cover (documented data-driven exception). */
-const TONE_LIGHT = "#FFFFFF";
+const TONE_LIGHT = '#FFFFFF';
 /** Dark text tone over a merchant cover (documented data-driven exception). */
-const TONE_DARK = "#111111";
+const TONE_DARK = '#111111';
 /**
  * Bottom brand-color gradient stops: opaque brand color at the bottom (0.2)
  * fading to transparent ~80% up, so the wordmark/rating/thumbnails sit over a
@@ -53,17 +53,17 @@ export interface MerchantCardProps {
  * thumbnail is its own SIBLING link (never nested inside the store link), so
  * web renders no `<button>`/`<a>` inside another.
  */
-export function MerchantCard({
-  merchant,
-  onPressMerchant,
-  onPressProduct,
-}: MerchantCardProps) {
-  const toneColor = merchant.textTone === "light" ? TONE_LIGHT : TONE_DARK;
+export function MerchantCard({ merchant, onPressMerchant, onPressProduct }: MerchantCardProps) {
+  const toneColor = merchant.textTone === 'light' ? TONE_LIGHT : TONE_DARK;
 
   return (
     <View
       className="group w-full overflow-hidden web:shadow-lg"
-      style={{ height: CARD_HEIGHT, borderRadius: CARD_RADIUS, backgroundColor: merchant.brandColor }}
+      style={{
+        height: CARD_HEIGHT,
+        borderRadius: CARD_RADIUS,
+        backgroundColor: merchant.brandColor,
+      }}
     >
       {/* Layer 1 — cover image, bleeds the whole card (the visual anchor). */}
       <Image
@@ -83,7 +83,7 @@ export function MerchantCard({
       {/* Layer 3 — bottom brand-color gradient: opaque brand at the bottom → transparent ~80% up. */}
       <LinearGradient
         pointerEvents="none"
-        colors={[merchant.brandColor, "transparent"]}
+        colors={[merchant.brandColor, 'transparent']}
         locations={GRADIENT_LOCATIONS}
         start={{ x: 0, y: 1 }}
         end={{ x: 0, y: 0 }}
@@ -105,7 +105,7 @@ export function MerchantCard({
               <Image
                 source={{ uri: merchant.logoUrl }}
                 contentFit="contain"
-                style={{ maxHeight: 74, maxWidth: 195, width: "70%", height: 74 }}
+                style={{ maxHeight: 74, maxWidth: 195, width: '70%', height: 74 }}
               />
             ) : (
               <Text
@@ -120,11 +120,7 @@ export function MerchantCard({
 
           {/* Name + rating, bottom-left of the store zone. */}
           <View className="absolute bottom-0 left-0">
-            <Text
-              numberOfLines={1}
-              className="text-sm font-bold"
-              style={{ color: toneColor }}
-            >
+            <Text numberOfLines={1} className="text-sm font-bold" style={{ color: toneColor }}>
               {merchant.name}
             </Text>
             <View className="mt-0.5 flex-row items-center gap-1">

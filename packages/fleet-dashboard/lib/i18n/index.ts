@@ -10,11 +10,11 @@ export const SUPPORTED_LOCALES = ['en-US', 'en-GB', 'es-ES', 'es-MX'] as const;
 // Create i18n instance with translations
 // Using BCP 47 locale codes (en-US, es-ES) with fallback to language codes (en, es)
 const i18n = new I18n({
-  'en': en,
+  en: en,
   'en-US': en,
   'en-GB': en,
   'en-CA': en,
-  'es': es,
+  es: es,
   'es-ES': es,
   'es-MX': es,
   'es-AR': es,

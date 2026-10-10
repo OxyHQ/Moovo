@@ -74,8 +74,8 @@ describeIfPostgres('the expiry sweep', () => {
       )
     `;
     for (const [id, expiresAt] of [
-      ['q-lapsed', 'now() - interval \'1 hour\''],
-      ['q-live', 'now() + interval \'1 hour\''],
+      ['q-lapsed', "now() - interval '1 hour'"],
+      ['q-live', "now() + interval '1 hour'"],
     ] as const) {
       await suite!.client.unsafe(`
         INSERT INTO quotes (

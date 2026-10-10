@@ -1,21 +1,32 @@
-import { View, ScrollView, Pressable, Platform } from "react-native";
-import { Switch } from "@/components/ui/switch";
-import { Text } from "@/components/ui/text";
-import { useRouter } from "expo-router";
-import { ArrowLeft, Bell, BellOff, CheckCheck, Zap, Clock, Eye, AlertTriangle, MessageSquare, X } from "lucide-react-native";
-import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@oxy.so/services";
-import * as ExpoNotifications from "expo-notifications";
-import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
+import { View, ScrollView, Pressable, Platform } from 'react-native';
+import { Switch } from '@/components/ui/switch';
+import { Text } from '@/components/ui/text';
+import { useRouter } from 'expo-router';
+import {
+  ArrowLeft,
+  Bell,
+  BellOff,
+  CheckCheck,
+  Zap,
+  Clock,
+  Eye,
+  AlertTriangle,
+  MessageSquare,
+  X,
+} from 'lucide-react-native';
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@oxy.so/services';
+import * as ExpoNotifications from 'expo-notifications';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { useTranslation } from "@/hooks/useTranslation";
+import { useTranslation } from '@/hooks/useTranslation';
 import {
   useNotifications,
   useMarkAsRead,
   useMarkAllAsRead,
   useDismissNotification,
   type Notification,
-} from "@/lib/hooks/use-notifications";
+} from '@/lib/hooks/use-notifications';
 
 const TYPE_ICONS: Record<string, typeof Zap> = {
   trigger_result: Zap,
@@ -62,7 +73,7 @@ export default function NotificationsScreen() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.replace("/(app)");
+      router.replace('/(app)');
     }
   }, [isAuthenticated]);
 
@@ -79,9 +90,9 @@ export default function NotificationsScreen() {
     try {
       const { status } = await ExpoNotifications.getPermissionsAsync();
       setPermissionStatus(status);
-      setPushEnabled(status === "granted");
+      setPushEnabled(status === 'granted');
     } catch {
-      setPermissionStatus("unavailable");
+      setPermissionStatus('unavailable');
     } finally {
       setPushLoading(false);
     }
@@ -92,21 +103,24 @@ export default function NotificationsScreen() {
     if (value) {
       const { status } = await ExpoNotifications.requestPermissionsAsync();
       setPermissionStatus(status);
-      setPushEnabled(status === "granted");
+      setPushEnabled(status === 'granted');
     } else {
       setPushEnabled(false);
     }
   };
 
-  const handleNotificationPress = useCallback((notification: Notification) => {
-    if (notification.status !== 'read') {
-      markAsRead.mutate(notification._id);
-    }
-    // If the notification carries an in-app route, deep-link to it.
-    if (notification.route) {
-      router.push(notification.route as Parameters<typeof router.push>[0]);
-    }
-  }, [markAsRead, router]);
+  const handleNotificationPress = useCallback(
+    (notification: Notification) => {
+      if (notification.status !== 'read') {
+        markAsRead.mutate(notification._id);
+      }
+      // If the notification carries an in-app route, deep-link to it.
+      if (notification.route) {
+        router.push(notification.route as Parameters<typeof router.push>[0]);
+      }
+    },
+    [markAsRead, router],
+  );
 
   const notifications = data?.notifications || [];
   const unreadCount = data?.unreadCount || 0;
@@ -122,17 +136,17 @@ export default function NotificationsScreen() {
             <ArrowLeft size={16} className="text-muted-foreground mr-2" />
             <Text className="text-sm text-muted-foreground">{t('common.back')}</Text>
           </Pressable>
-          <Pressable onPress={() => setShowSettings(s => !s)} className="p-2">
+          <Pressable onPress={() => setShowSettings((s) => !s)} className="p-2">
             <Bell size={18} className="text-muted-foreground" />
           </Pressable>
         </View>
         <View className="flex-row items-center justify-between">
           <View>
-            <Text className="text-2xl font-semibold text-foreground">{t('notifications.title')}</Text>
+            <Text className="text-2xl font-semibold text-foreground">
+              {t('notifications.title')}
+            </Text>
             {unreadCount > 0 && (
-              <Text className="text-sm text-muted-foreground mt-1">
-                {unreadCount} unread
-              </Text>
+              <Text className="text-sm text-muted-foreground mt-1">{unreadCount} unread</Text>
             )}
           </View>
           {unreadCount > 0 && (
@@ -155,19 +169,17 @@ export default function NotificationsScreen() {
               <View className="flex-row items-center gap-3 flex-1">
                 <StatusIcon size={20} className="text-muted-foreground" />
                 <View className="flex-1">
-                  <Text className="text-sm font-medium text-foreground">{t('notifications.pushNotifications')}</Text>
+                  <Text className="text-sm font-medium text-foreground">
+                    {t('notifications.pushNotifications')}
+                  </Text>
                   <Text className="text-xs text-muted-foreground mt-0.5">
                     {t('notifications.pushDescription')}
                   </Text>
                 </View>
               </View>
-              <Switch
-                value={pushEnabled}
-                onValueChange={handleTogglePush}
-                disabled={pushLoading}
-              />
+              <Switch value={pushEnabled} onValueChange={handleTogglePush} disabled={pushLoading} />
             </View>
-            {permissionStatus === "denied" && (
+            {permissionStatus === 'denied' && (
               <View className="mt-3 p-3 rounded-lg bg-muted">
                 <Text className="text-xs text-muted-foreground">
                   {t('notifications.permissionDenied')}
@@ -187,9 +199,7 @@ export default function NotificationsScreen() {
         <View className="items-center justify-center py-16 px-6">
           <Bell size={32} className="text-muted-foreground mb-3" />
           <Text className="text-base font-medium text-foreground mb-1">No notifications yet</Text>
-          <Text className="text-sm text-muted-foreground text-center">
-            You're all caught up.
-          </Text>
+          <Text className="text-sm text-muted-foreground text-center">You're all caught up.</Text>
         </View>
       ) : (
         <View className="py-2">
@@ -210,7 +220,10 @@ export default function NotificationsScreen() {
                   </View>
                   <View className="flex-1">
                     <View className="flex-row items-center justify-between mb-1">
-                      <Text className={`text-sm ${isUnread ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`} numberOfLines={1}>
+                      <Text
+                        className={`text-sm ${isUnread ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}
+                        numberOfLines={1}
+                      >
                         {notification.title}
                       </Text>
                       <View className="flex-row items-center gap-2">

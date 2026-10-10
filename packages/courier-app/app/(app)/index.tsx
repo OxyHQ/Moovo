@@ -1,30 +1,26 @@
-import { View, ScrollView, Platform, ActivityIndicator, Pressable } from "react-native";
-import Head from "expo-router/head";
-import { type ReactNode } from "react";
-import { useRouter } from "expo-router";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { useOxy, openAccountDialog } from "@oxy.so/services";
-import type { JobSummary } from "@moovo/shared-types";
-import { ChevronRight } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { MoovoWordmark } from "@/components/ui/moovo-wordmark";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { queryKeys } from "@/lib/hooks/query-keys";
-import { fetchCourierMe, goOnline, goOffline } from "@/lib/api/courier";
-import { acceptJob } from "@/lib/api/jobs";
-import { fetchCourierJobs } from "@/lib/api/jobs";
-import { formatDisplayMoney } from "@/lib/money";
-import { VehicleSelector } from "@/components/courier/VehicleSelector";
-import { OfferSheet } from "@/components/courier/OfferSheet";
-import { useJobSocket } from "@/lib/hooks/use-job-socket";
-import { isApiConflict, errorMessage } from "@/lib/api/errors";
+import { View, ScrollView, Platform, ActivityIndicator, Pressable } from 'react-native';
+import Head from 'expo-router/head';
+import { type ReactNode } from 'react';
+import { useRouter } from 'expo-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOxy, openAccountDialog } from '@oxy.so/services';
+import type { JobSummary } from '@moovo/shared-types';
+import { ChevronRight } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { MoovoWordmark } from '@/components/ui/moovo-wordmark';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { queryKeys } from '@/lib/hooks/query-keys';
+import { fetchCourierMe, goOnline, goOffline } from '@/lib/api/courier';
+import { acceptJob } from '@/lib/api/jobs';
+import { fetchCourierJobs } from '@/lib/api/jobs';
+import { formatDisplayMoney } from '@/lib/money';
+import { VehicleSelector } from '@/components/courier/VehicleSelector';
+import { OfferSheet } from '@/components/courier/OfferSheet';
+import { useJobSocket } from '@/lib/hooks/use-job-socket';
+import { isApiConflict, errorMessage } from '@/lib/api/errors';
 
 /** Spread (px) of the gutter-color mask around the rounded frame. Paints a ring
  *  of the gutter color over any content bleeding into the thin gutter + corners. */
@@ -50,9 +46,7 @@ function SignedOutPrompt() {
         Go online, accept jobs, get paid. Sign in to start driving.
       </Text>
       <Button onPress={() => openAccountDialog()} size="lg">
-        <Text className="text-base font-semibold text-primary-foreground">
-          Sign in
-        </Text>
+        <Text className="text-base font-semibold text-primary-foreground">Sign in</Text>
       </Button>
     </View>
   );
@@ -67,7 +61,7 @@ function AvailabilityToggle({ canUsePrivateApi }: { canUsePrivateApi: boolean })
     enabled: canUsePrivateApi,
   });
 
-  const isOnline = courierQuery.data?.data?.onlineStatus === "online";
+  const isOnline = courierQuery.data?.data?.onlineStatus === 'online';
 
   const toggleMutation = useMutation({
     mutationFn: () => (isOnline ? goOffline() : goOnline()),
@@ -76,8 +70,7 @@ function AvailabilityToggle({ canUsePrivateApi }: { canUsePrivateApi: boolean })
     },
   });
 
-  const isPending =
-    !canUsePrivateApi || courierQuery.isLoading || toggleMutation.isPending;
+  const isPending = !canUsePrivateApi || courierQuery.isLoading || toggleMutation.isPending;
 
   return (
     <Card>
@@ -87,18 +80,13 @@ function AvailabilityToggle({ canUsePrivateApi }: { canUsePrivateApi: boolean })
             {isOnline ? "You're online" : "You're offline"}
           </Text>
           <Text className="text-sm text-muted-foreground">
-            {isOnline
-              ? "Accepting jobs near you."
-              : "Go online to start receiving jobs."}
+            {isOnline ? 'Accepting jobs near you.' : 'Go online to start receiving jobs.'}
           </Text>
         </View>
         {isPending ? (
           <ActivityIndicator />
         ) : (
-          <Switch
-            value={isOnline}
-            onValueChange={() => toggleMutation.mutate()}
-          />
+          <Switch value={isOnline} onValueChange={() => toggleMutation.mutate()} />
         )}
       </CardContent>
     </Card>
@@ -124,21 +112,15 @@ function JobCard({ job }: { job: JobSummary }) {
               <Text className="text-base font-semibold text-surface-foreground">
                 {job.jobNumber}
               </Text>
-              <Text className="text-base font-semibold text-surface-foreground">
-                {totalLabel}
-              </Text>
+              <Text className="text-base font-semibold text-surface-foreground">{totalLabel}</Text>
             </View>
             <View className="flex-row items-center gap-2">
-              <Text className="text-sm capitalize text-muted-foreground">
-                {job.type}
-              </Text>
+              <Text className="text-sm capitalize text-muted-foreground">{job.type}</Text>
+              <Text className="text-sm text-muted-foreground">·</Text>
+              <Text className="text-sm capitalize text-muted-foreground">{job.sizeClass}</Text>
               <Text className="text-sm text-muted-foreground">·</Text>
               <Text className="text-sm capitalize text-muted-foreground">
-                {job.sizeClass}
-              </Text>
-              <Text className="text-sm text-muted-foreground">·</Text>
-              <Text className="text-sm capitalize text-muted-foreground">
-                {job.status.replace("_", " ")}
+                {job.status.replace('_', ' ')}
               </Text>
             </View>
           </View>
@@ -169,15 +151,11 @@ function JobsList({ canUsePrivateApi }: { canUsePrivateApi: boolean }) {
   } else if (jobsQuery.isError) {
     body = (
       <Text className="py-10 text-center text-sm text-muted-foreground">
-        {errorMessage(jobsQuery.error, "Could not load jobs")}
+        {errorMessage(jobsQuery.error, 'Could not load jobs')}
       </Text>
     );
   } else if (jobs.length === 0) {
-    body = (
-      <Text className="py-10 text-center text-sm text-muted-foreground">
-        No jobs yet
-      </Text>
-    );
+    body = <Text className="py-10 text-center text-sm text-muted-foreground">No jobs yet</Text>;
   } else {
     body = (
       <View className="gap-3">
@@ -254,12 +232,15 @@ function HomeBody() {
 
 export default function HomeScreen() {
   const { colors } = useColorScheme();
-  const isWeb = Platform.OS === "web";
+  const isWeb = Platform.OS === 'web';
 
   const head = (
     <Head>
       <title>Moovo Go</title>
-      <meta name="description" content="Moovo Go — the courier app. Go online, accept jobs, get paid." />
+      <meta
+        name="description"
+        content="Moovo Go — the courier app. Go online, accept jobs, get paid."
+      />
     </Head>
   );
 

@@ -123,7 +123,9 @@ export function EndpointPicker({
           <Input
             value={value.address.country ?? ''}
             onChangeText={(country) =>
-              onChange({ address: { ...value.address, country: country.toUpperCase().slice(0, 2) } })
+              onChange({
+                address: { ...value.address, country: country.toUpperCase().slice(0, 2) },
+              })
             }
             placeholder="Country (ISO, e.g. ES)"
             autoCapitalize="characters"

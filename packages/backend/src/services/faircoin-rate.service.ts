@@ -34,11 +34,7 @@
 
 import { config } from '../config/index.js';
 import { createLogger } from '../lib/logger.js';
-import {
-  FAIR_MINOR_UNITS,
-  type FairRate,
-  type FiatCurrency,
-} from '@moovo/shared-types';
+import { FAIR_MINOR_UNITS, type FairRate, type FiatCurrency } from '@moovo/shared-types';
 
 const log = createLogger('faircoin-rate');
 
@@ -228,7 +224,9 @@ export function fiatToFair(amount: number, rate: FairRate): number {
     throw new Error(`Fiat amount must be a non-negative finite number, received ${amount}`);
   }
   if (!Number.isFinite(rate.fiatPerFair) || rate.fiatPerFair <= 0) {
-    throw new Error(`Rate fiatPerFair must be a positive finite number, received ${rate.fiatPerFair}`);
+    throw new Error(
+      `Rate fiatPerFair must be a positive finite number, received ${rate.fiatPerFair}`,
+    );
   }
   const fairMajor = amount / rate.fiatPerFair;
   return Math.round(fairMajor * FAIR_MINOR_UNITS);
@@ -247,7 +245,9 @@ export function fairToFiat(fairMinor: number, rate: FairRate): number {
     throw new Error(`fairMinor must be a non-negative integer, received ${fairMinor}`);
   }
   if (!Number.isFinite(rate.fiatPerFair) || rate.fiatPerFair <= 0) {
-    throw new Error(`Rate fiatPerFair must be a positive finite number, received ${rate.fiatPerFair}`);
+    throw new Error(
+      `Rate fiatPerFair must be a positive finite number, received ${rate.fiatPerFair}`,
+    );
   }
   const fiat = (fairMinor / FAIR_MINOR_UNITS) * rate.fiatPerFair;
   return Math.round(fiat * 100) / 100;

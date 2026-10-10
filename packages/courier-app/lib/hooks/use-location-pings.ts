@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import * as Location from "expo-location";
-import { pingJobLocation } from "@/lib/api/jobs";
+import { useEffect, useRef, useState } from 'react';
+import * as Location from 'expo-location';
+import { pingJobLocation } from '@/lib/api/jobs';
 
 /**
  * Stream the courier's GPS position to the backend while a job is active.

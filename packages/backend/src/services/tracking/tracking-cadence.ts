@@ -146,7 +146,11 @@ export function shouldExpireNotFound(input: {
 }
 
 /** Whether a parcel has gone quiet long enough to be called `expired`. */
-export function isStale(input: { lastCheckpointAt: Date | null; createdAt: Date; now: Date }): boolean {
+export function isStale(input: {
+  lastCheckpointAt: Date | null;
+  createdAt: Date;
+  now: Date;
+}): boolean {
   const reference = input.lastCheckpointAt ?? input.createdAt;
   return input.now.getTime() - reference.getTime() >= config.tracking.staleAfterMs;
 }

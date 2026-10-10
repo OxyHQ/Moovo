@@ -1,29 +1,29 @@
-import { useMemo } from "react";
-import { View, ActivityIndicator } from "react-native";
-import { Link } from "expo-router";
-import { useQueries, useQuery } from "@tanstack/react-query";
-import { Info, Wifi, WifiOff } from "lucide-react-native";
-import type { JobSummary, JobView } from "@moovo/shared-types";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { DashboardScreen } from "@/components/dashboard/DashboardScreen";
+import { useMemo } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { Link } from 'expo-router';
+import { useQueries, useQuery } from '@tanstack/react-query';
+import { Info, Wifi, WifiOff } from 'lucide-react-native';
+import type { JobSummary, JobView } from '@moovo/shared-types';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
   CompanyHeader,
   NoCompaniesState,
   PermissionDenied,
-} from "@/components/dashboard/CompanyHeader";
-import { StatusChip } from "@/components/dashboard/StatusChip";
-import { FleetMap } from "@/components/dashboard/Map";
-import type { MapMarker } from "@/components/dashboard/map-types";
-import { fetchJobs, fetchJob } from "@/lib/api/jobs";
-import { queryKeys } from "@/lib/hooks/query-keys";
-import { useCompanyContext } from "@/lib/hooks/use-company-context";
-import { useJobSocket } from "@/lib/hooks/use-job-socket";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { useTranslation } from "@/hooks/useTranslation";
-import { formatMoney, formatTime, isActiveJob, jobTypeKey } from "@/lib/format";
-import { useI18nStore } from "@/lib/stores/i18n-store";
+} from '@/components/dashboard/CompanyHeader';
+import { StatusChip } from '@/components/dashboard/StatusChip';
+import { FleetMap } from '@/components/dashboard/Map';
+import type { MapMarker } from '@/components/dashboard/map-types';
+import { fetchJobs, fetchJob } from '@/lib/api/jobs';
+import { queryKeys } from '@/lib/hooks/query-keys';
+import { useCompanyContext } from '@/lib/hooks/use-company-context';
+import { useJobSocket } from '@/lib/hooks/use-job-socket';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { useTranslation } from '@/hooks/useTranslation';
+import { formatMoney, formatTime, isActiveJob, jobTypeKey } from '@/lib/format';
+import { useI18nStore } from '@/lib/stores/i18n-store';
 
 /** Max active jobs we fetch full detail for (to plot pickups on the map). */
 const MAX_DETAIL_FETCH = 20;
@@ -37,7 +37,7 @@ function DispatchRow({ job, detail }: { job: JobSummary; detail?: JobView }) {
     : t(jobTypeKey(job.type));
 
   return (
-    <Link href={{ pathname: "/jobs/[id]", params: { id: job.id } }} asChild>
+    <Link href={{ pathname: '/jobs/[id]', params: { id: job.id } }} asChild>
       <View className="flex-row items-center gap-3 border-b border-border py-3 web:cursor-pointer web:hover:bg-accent/40">
         <View className="min-w-0 flex-1">
           <Text className="text-sm font-semibold text-surface-foreground" numberOfLines={1}>
@@ -68,13 +68,9 @@ function LiveIndicator({ connected }: { connected: boolean }) {
         <WifiOff size={14} color={colors.mutedForeground} />
       )}
       <Text
-        className={
-          connected
-            ? "text-xs font-medium text-primary"
-            : "text-xs text-muted-foreground"
-        }
+        className={connected ? 'text-xs font-medium text-primary' : 'text-xs text-muted-foreground'}
       >
-        {connected ? t("dispatch.live") : t("dispatch.offline")}
+        {connected ? t('dispatch.live') : t('dispatch.offline')}
       </Text>
     </View>
   );
@@ -86,27 +82,24 @@ function DispatchBody() {
   const { colors } = useColorScheme();
 
   const companyId = ctx.selectedCompanyId;
-  const canRead = ctx.can("jobs:read");
+  const canRead = ctx.can('jobs:read');
   const enabled = ctx.canUsePrivateApi && companyId !== null && canRead;
 
   const socket = useJobSocket(enabled);
 
   const jobsQuery = useQuery({
-    queryKey: queryKeys.jobs.list("sender"),
-    queryFn: () => fetchJobs({ role: "sender", limit: 50 }),
+    queryKey: queryKeys.jobs.list('sender'),
+    queryFn: () => fetchJobs({ role: 'sender', limit: 50 }),
     enabled,
   });
 
   const jobs = jobsQuery.data?.data ?? [];
-  const activeJobs = useMemo(
-    () => jobs.filter((j) => isActiveJob(j.status)),
-    [jobs],
-  );
+  const activeJobs = useMemo(() => jobs.filter((j) => isActiveJob(j.status)), [jobs]);
 
   // Fetch full detail for active jobs so pickups/dropoffs can be mapped.
   const detailQueries = useQueries({
     queries: activeJobs.slice(0, MAX_DETAIL_FETCH).map((job) => ({
-      queryKey: ["jobs", "detail", job.id],
+      queryKey: ['jobs', 'detail', job.id],
       queryFn: () => fetchJob(job.id),
       enabled,
       staleTime: 30 * 1000,
@@ -132,7 +125,7 @@ function DispatchBody() {
           id: `pickup-${job.id}`,
           lng: pLng,
           lat: pLat,
-          kind: "pickup",
+          kind: 'pickup',
           label: `${job.jobNumber} · ${detail.pickupSnapshot.address.city}`,
         });
         const [dLng, dLat] = detail.dropoffSnapshot.location.coordinates;
@@ -140,7 +133,7 @@ function DispatchBody() {
           id: `dropoff-${job.id}`,
           lng: dLng,
           lat: dLat,
-          kind: "dropoff",
+          kind: 'dropoff',
           label: `${job.jobNumber} · ${detail.dropoffSnapshot.address.city}`,
         });
       }
@@ -152,8 +145,8 @@ function DispatchBody() {
         id: `courier-${live.jobId}`,
         lng,
         lat,
-        kind: "courier",
-        label: t("dispatch.courierHere"),
+        kind: 'courier',
+        label: t('dispatch.courierHere'),
       });
     }
     return result;
@@ -171,7 +164,7 @@ function DispatchBody() {
   return (
     <View className="gap-6 px-5 py-8 md:px-8">
       <CompanyHeader
-        title={t("nav.dispatch")}
+        title={t('nav.dispatch')}
         companies={ctx.companies}
         selectedCompanyId={ctx.selectedCompanyId}
         onSelect={ctx.selectCompany}
@@ -179,7 +172,7 @@ function DispatchBody() {
       />
 
       {!canRead ? (
-        <PermissionDenied message={t("dispatch.readDenied")} />
+        <PermissionDenied message={t('dispatch.readDenied')} />
       ) : (
         <>
           {/* Honest disclosure of the backend scope limitation: the jobs API is
@@ -190,11 +183,9 @@ function DispatchBody() {
             <Info size={18} color={colors.primary} />
             <View className="min-w-0 flex-1">
               <Text className="text-sm font-semibold text-surface-foreground">
-                {t("dispatch.scopeNoticeTitle")}
+                {t('dispatch.scopeNoticeTitle')}
               </Text>
-              <Text className="text-xs text-muted-foreground">
-                {t("dispatch.scopeNoticeBody")}
-              </Text>
+              <Text className="text-xs text-muted-foreground">{t('dispatch.scopeNoticeBody')}</Text>
             </View>
           </Card>
 
@@ -205,7 +196,7 @@ function DispatchBody() {
           <Card className="p-4">
             <View className="flex-row items-center justify-between pb-1">
               <Text className="text-base font-semibold text-surface-foreground">
-                {t("dispatch.activeTitle", { count: activeJobs.length })}
+                {t('dispatch.activeTitle', { count: activeJobs.length })}
               </Text>
               {jobsQuery.isFetching ? <ActivityIndicator size="small" /> : null}
             </View>
@@ -216,25 +207,21 @@ function DispatchBody() {
             ) : jobsQuery.isError ? (
               <View className="items-center gap-3 py-10">
                 <Text className="text-center text-sm text-muted-foreground">
-                  {t("dispatch.loadError")}
+                  {t('dispatch.loadError')}
                 </Text>
                 <Button variant="outline" onPress={() => jobsQuery.refetch()}>
                   <Text className="text-sm font-medium text-foreground">
-                    {t("common.tryAgain")}
+                    {t('common.tryAgain')}
                   </Text>
                 </Button>
               </View>
             ) : activeJobs.length === 0 ? (
               <Text className="py-8 text-center text-sm text-muted-foreground">
-                {t("dispatch.noActiveJobs")}
+                {t('dispatch.noActiveJobs')}
               </Text>
             ) : (
               activeJobs.map((job) => (
-                <DispatchRow
-                  key={job.id}
-                  job={job}
-                  detail={detailById.get(job.id)}
-                />
+                <DispatchRow key={job.id} job={job} detail={detailById.get(job.id)} />
               ))
             )}
           </Card>
@@ -243,7 +230,7 @@ function DispatchBody() {
           {jobs.length > activeJobs.length ? (
             <Card className="p-4">
               <Text className="pb-1 text-base font-semibold text-surface-foreground">
-                {t("dispatch.recentTitle")}
+                {t('dispatch.recentTitle')}
               </Text>
               {jobs
                 .filter((j) => !isActiveJob(j.status))

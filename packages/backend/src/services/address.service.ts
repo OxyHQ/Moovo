@@ -81,10 +81,7 @@ export async function list(oxyUserId: string): Promise<AddressDTO[]> {
  * Recording it rather than half-fixing it: a transaction here reads like the
  * race is handled, and it is not.
  */
-export async function create(
-  oxyUserId: string,
-  input: CreateAddressInput,
-): Promise<AddressDTO> {
+export async function create(oxyUserId: string, input: CreateAddressInput): Promise<AddressDTO> {
   const row = await getDb().transaction(async (tx) => {
     const isDefault = !(await userHasAnyAddress(oxyUserId, tx));
     return await insertAddress(

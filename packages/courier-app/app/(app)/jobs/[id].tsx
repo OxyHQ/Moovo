@@ -1,33 +1,27 @@
-import { useState } from "react";
-import { View, ScrollView, ActivityIndicator, Pressable } from "react-native";
-import Head from "expo-router/head";
-import { useLocalSearchParams } from "expo-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOxy, openAccountDialog } from "@oxy.so/services";
-import type { JobView, ScanInput, ShipmentEndpoint } from "@moovo/shared-types";
-import { MapPin, Flag, Navigation, Package, Phone } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScreenHeader } from "@/components/courier/ScreenHeader";
-import JobMap from "@/components/map/Map";
-import type { MapMarker, LngLat } from "@/components/map/Map.types";
-import { QrScanner } from "@/components/QrScanner";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { queryKeys } from "@/lib/hooks/query-keys";
-import { fetchJob, scanJob, startTransit } from "@/lib/api/jobs";
-import { formatDisplayMoney } from "@/lib/money";
-import { distanceMeters, formatDistance } from "@/lib/geo";
-import { openInMaps } from "@/lib/maps-link";
-import { errorMessage } from "@/lib/api/errors";
-import { useLocationPings } from "@/lib/hooks/use-location-pings";
-import {
-  actionForStatus,
-  navTarget,
-  isActiveLeg,
-  isTerminal,
-  statusLabel,
-} from "@/lib/job-flow";
+import { useState } from 'react';
+import { View, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import Head from 'expo-router/head';
+import { useLocalSearchParams } from 'expo-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOxy, openAccountDialog } from '@oxy.so/services';
+import type { JobView, ScanInput, ShipmentEndpoint } from '@moovo/shared-types';
+import { MapPin, Flag, Navigation, Package, Phone } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ScreenHeader } from '@/components/courier/ScreenHeader';
+import JobMap from '@/components/map/Map';
+import type { MapMarker, LngLat } from '@/components/map/Map.types';
+import { QrScanner } from '@/components/QrScanner';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { queryKeys } from '@/lib/hooks/query-keys';
+import { fetchJob, scanJob, startTransit } from '@/lib/api/jobs';
+import { formatDisplayMoney } from '@/lib/money';
+import { distanceMeters, formatDistance } from '@/lib/geo';
+import { openInMaps } from '@/lib/maps-link';
+import { errorMessage } from '@/lib/api/errors';
+import { useLocationPings } from '@/lib/hooks/use-location-pings';
+import { actionForStatus, navTarget, isActiveLeg, isTerminal, statusLabel } from '@/lib/job-flow';
 
 /** Build the map markers + straight-line route for a job + optional courier fix. */
 function buildMapData(
@@ -37,11 +31,11 @@ function buildMapData(
   const pickup = job.pickupSnapshot.location.coordinates;
   const dropoff = job.dropoffSnapshot.location.coordinates;
   const markers: MapMarker[] = [
-    { id: "pickup", coordinate: pickup, kind: "pickup", label: "Pickup" },
-    { id: "dropoff", coordinate: dropoff, kind: "dropoff", label: "Dropoff" },
+    { id: 'pickup', coordinate: pickup, kind: 'pickup', label: 'Pickup' },
+    { id: 'dropoff', coordinate: dropoff, kind: 'dropoff', label: 'Dropoff' },
   ];
   if (courierFix) {
-    markers.push({ id: "courier", coordinate: courierFix, kind: "courier", label: "You" });
+    markers.push({ id: 'courier', coordinate: courierFix, kind: 'courier', label: 'You' });
   }
   // v1 straight-line route: courier (when known) → pickup → dropoff.
   const route: LngLat[] = courierFix ? [courierFix, pickup, dropoff] : [pickup, dropoff];
@@ -68,11 +62,11 @@ function EndpointBlock({
         </Text>
         <Text className="text-sm font-medium text-surface-foreground">
           {address.line1}
-          {address.line2 ? `, ${address.line2}` : ""}
+          {address.line2 ? `, ${address.line2}` : ''}
         </Text>
         <Text className="text-sm text-muted-foreground">
           {address.city}
-          {address.postalCode ? ` ${address.postalCode}` : ""}
+          {address.postalCode ? ` ${address.postalCode}` : ''}
         </Text>
         <View className="mt-1 flex-row items-center gap-2">
           <Phone size={13} className="text-muted-foreground" />
@@ -81,9 +75,7 @@ function EndpointBlock({
           </Text>
         </View>
         {endpoint.notes ? (
-          <Text className="mt-1 text-sm italic text-muted-foreground">
-            “{endpoint.notes}”
-          </Text>
+          <Text className="mt-1 text-sm italic text-muted-foreground">“{endpoint.notes}”</Text>
         ) : null}
       </View>
     </View>
@@ -122,9 +114,7 @@ function JobDetail({ job }: { job: JobView }) {
 
   const transitMutation = useMutation({
     mutationFn: () => {
-      const ping = courierFix
-        ? { lng: courierFix[0], lat: courierFix[1] }
-        : {};
+      const ping = courierFix ? { lng: courierFix[0], lat: courierFix[1] } : {};
       return startTransit(job.id, ping);
     },
     onSuccess: invalidate,
@@ -134,7 +124,7 @@ function JobDetail({ job }: { job: JobView }) {
   const fare = formatDisplayMoney(job.totals.total);
 
   const handleScanned = (code: string) => {
-    if (action.kind !== "scan") return;
+    if (action.kind !== 'scan') return;
     const input: ScanInput = { leg: action.leg, code };
     scanMutation.mutate(input);
   };
@@ -157,9 +147,7 @@ function JobDetail({ job }: { job: JobView }) {
               </Text>
             </View>
             <View className="rounded-full bg-primary/10 px-3 py-1">
-              <Text className="text-xs font-semibold text-primary">
-                {statusLabel(job.status)}
-              </Text>
+              <Text className="text-xs font-semibold text-primary">{statusLabel(job.status)}</Text>
             </View>
           </View>
           <View className="flex-row items-center justify-between">
@@ -200,7 +188,7 @@ function JobDetail({ job }: { job: JobView }) {
         <Card className="border-destructive">
           <CardContent className="pt-5">
             <Text className="text-sm text-destructive">
-              {errorMessage(scanMutation.error, "Scan failed — try again")}
+              {errorMessage(scanMutation.error, 'Scan failed — try again')}
             </Text>
           </CardContent>
         </Card>
@@ -209,7 +197,7 @@ function JobDetail({ job }: { job: JobView }) {
         <Card className="border-destructive">
           <CardContent className="pt-5">
             <Text className="text-sm text-destructive">
-              {errorMessage(transitMutation.error, "Could not start delivery")}
+              {errorMessage(transitMutation.error, 'Could not start delivery')}
             </Text>
           </CardContent>
         </Card>
@@ -220,12 +208,12 @@ function JobDetail({ job }: { job: JobView }) {
         <Card>
           <CardContent className="items-center gap-1 py-8">
             <Text className="text-base font-semibold text-surface-foreground">
-              {job.status === "delivered" ? "Delivered" : "Cancelled"}
+              {job.status === 'delivered' ? 'Delivered' : 'Cancelled'}
             </Text>
             <Text className="text-sm text-muted-foreground">
-              {job.status === "delivered"
-                ? "This job is complete."
-                : "This job is no longer active."}
+              {job.status === 'delivered'
+                ? 'This job is complete.'
+                : 'This job is no longer active.'}
             </Text>
           </CardContent>
         </Card>
@@ -236,22 +224,19 @@ function JobDetail({ job }: { job: JobView }) {
               variant="outline"
               size="lg"
               onPress={() =>
-                openInMaps(
-                  target.location,
-                  action.kind === "scan" ? action.navLabel : undefined,
-                )
+                openInMaps(target.location, action.kind === 'scan' ? action.navLabel : undefined)
               }
             >
               <View className="flex-row items-center gap-2">
                 <Navigation size={18} color={colors.foreground} />
                 <Text className="text-base font-semibold text-foreground">
-                  {action.kind === "scan" ? action.navLabel : "Open in Maps"}
+                  {action.kind === 'scan' ? action.navLabel : 'Open in Maps'}
                 </Text>
               </View>
             </Button>
           ) : null}
 
-          {action.kind === "scan" ? (
+          {action.kind === 'scan' ? (
             <Button size="lg" disabled={busy} onPress={() => setScannerOpen(true)}>
               <Text className="text-base font-semibold text-primary-foreground">
                 {action.label}
@@ -259,7 +244,7 @@ function JobDetail({ job }: { job: JobView }) {
             </Button>
           ) : null}
 
-          {action.kind === "transition" ? (
+          {action.kind === 'transition' ? (
             <Button size="lg" disabled={busy} onPress={() => transitMutation.mutate()}>
               {transitMutation.isPending ? (
                 <ActivityIndicator color={colors.primaryForeground} />
@@ -273,7 +258,7 @@ function JobDetail({ job }: { job: JobView }) {
         </View>
       )}
 
-      {action.kind === "scan" ? (
+      {action.kind === 'scan' ? (
         <QrScanner
           visible={scannerOpen}
           jobId={job.id}
@@ -324,7 +309,7 @@ export default function JobScreen() {
   } else if (jobQuery.isError || !jobQuery.data?.data) {
     body = (
       <Text className="px-8 py-24 text-center text-sm text-muted-foreground">
-        {errorMessage(jobQuery.error, "Could not load this job")}
+        {errorMessage(jobQuery.error, 'Could not load this job')}
       </Text>
     );
   } else {
@@ -337,10 +322,7 @@ export default function JobScreen() {
         <title>Job · Moovo Go</title>
       </Head>
       <ScreenHeader title="Active job" />
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="pb-24 mx-auto w-full max-w-2xl"
-      >
+      <ScrollView className="flex-1" contentContainerClassName="pb-24 mx-auto w-full max-w-2xl">
         {body}
       </ScrollView>
     </View>

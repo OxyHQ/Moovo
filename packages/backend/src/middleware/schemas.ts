@@ -580,9 +580,7 @@ export const shipmentListQuerySchema = z
   .object({
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().optional(),
-    status: z
-      .enum(['draft', 'quoting', 'quoted', 'booked', 'cancelled', 'expired'])
-      .optional(),
+    status: z.enum(['draft', 'quoting', 'quoted', 'booked', 'cancelled', 'expired']).optional(),
     type: shipmentTypeSchema.optional(),
   })
   .passthrough();
@@ -599,7 +597,15 @@ export const jobListQuerySchema = z
     page: z.coerce.number().int().positive().optional(),
     limit: z.coerce.number().int().positive().optional(),
     status: z
-      .enum(['requested', 'offered', 'accepted', 'picked_up', 'in_transit', 'delivered', 'cancelled'])
+      .enum([
+        'requested',
+        'offered',
+        'accepted',
+        'picked_up',
+        'in_transit',
+        'delivered',
+        'cancelled',
+      ])
       .optional(),
     role: z.enum(['sender', 'courier']).optional(),
   })

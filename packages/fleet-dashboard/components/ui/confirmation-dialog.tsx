@@ -1,6 +1,6 @@
-import { View } from "react-native";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
+import { View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,8 +8,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { useTranslation } from "@/hooks/useTranslation";
+} from '@/components/ui/dialog';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface ConfirmationDialogProps {
   open: boolean;
@@ -18,7 +18,7 @@ interface ConfirmationDialogProps {
   description: string;
   confirmText?: string;
   cancelText?: string;
-  confirmVariant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  confirmVariant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   onConfirm: () => void | Promise<void>;
   loading?: boolean;
 }
@@ -30,7 +30,7 @@ export function ConfirmationDialog({
   description,
   confirmText,
   cancelText,
-  confirmVariant = "default",
+  confirmVariant = 'default',
   onConfirm,
   loading = false,
 }: ConfirmationDialogProps) {
@@ -66,7 +66,9 @@ export function ConfirmationDialog({
             onPress={handleConfirm}
             disabled={loading}
           >
-            <Text className="text-sm">{loading ? t('common.processing') : (confirmText || t('common.confirm'))}</Text>
+            <Text className="text-sm">
+              {loading ? t('common.processing') : confirmText || t('common.confirm')}
+            </Text>
           </Button>
         </DialogFooter>
       </DialogContent>

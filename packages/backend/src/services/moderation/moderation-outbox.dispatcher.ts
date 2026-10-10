@@ -15,9 +15,7 @@ import { config } from '../../config/index.js';
 import { log } from '../../lib/logger.js';
 import { applyDecisionOutboxEvent } from './moderation-decision.worker.js';
 import { deliverReportOutboxEvent } from './moderation-delivery.worker.js';
-import {
-  dispatchModerationOutbox,
-} from './moderation-outbox.service.js';
+import { dispatchModerationOutbox } from './moderation-outbox.service.js';
 import type { ModerationOutboxEvent } from '../../db/moderation/moderationOutboxRepository.js';
 
 let timer: NodeJS.Timeout | null = null;

@@ -41,7 +41,11 @@ beforeEach(() => {
 
 describe('handleExpireReservations', () => {
   it('cancels each stale pending_payment order via transition', async () => {
-    const stale = { order: { id: 'order-old-1', status: 'pending_payment' }, items: [], statusHistory: [] };
+    const stale = {
+      order: { id: 'order-old-1', status: 'pending_payment' },
+      items: [],
+      statusHistory: [],
+    };
     findStaleUnpaidOrders.mockResolvedValue([stale]);
 
     await handleExpireReservations();

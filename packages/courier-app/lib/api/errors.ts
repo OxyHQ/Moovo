@@ -1,5 +1,5 @@
-import axios, { type AxiosError } from "axios";
-import type { ApiResponse } from "@moovo/shared-types";
+import axios, { type AxiosError } from 'axios';
+import type { ApiResponse } from '@moovo/shared-types';
 
 /**
  * Typed helpers for reading the Moovo API error envelope off an axios error.
@@ -22,7 +22,7 @@ function asApiError(error: unknown): AxiosError<ApiErrorBody> | null {
 export function isApiConflict(error: unknown): boolean {
   const apiError = asApiError(error);
   if (!apiError) return false;
-  return apiError.response?.status === 409 || apiError.response?.data?.error === "CONFLICT";
+  return apiError.response?.status === 409 || apiError.response?.data?.error === 'CONFLICT';
 }
 
 /**
@@ -32,7 +32,7 @@ export function isApiConflict(error: unknown): boolean {
 export function errorMessage(error: unknown, fallback: string): string {
   const apiError = asApiError(error);
   const apiMessage = apiError?.response?.data?.message;
-  if (typeof apiMessage === "string" && apiMessage.length > 0) {
+  if (typeof apiMessage === 'string' && apiMessage.length > 0) {
     return apiMessage;
   }
   if (error instanceof Error && error.message.length > 0) {

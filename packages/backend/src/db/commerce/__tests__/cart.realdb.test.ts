@@ -103,11 +103,15 @@ describeIfPostgres('the cart domain on a real server', () => {
   });
 
   describe('a cart belongs to exactly one buyer', () => {
-    it('does not return another buyer\'s lines', async () => {
+    it("does not return another buyer's lines", async () => {
       await seedCategory();
       const product = await seedProduct('seller-a', 5);
 
-      await addItem('buyer-a', { listingId: product.listingId, variantId: product.variantId, quantity: 2 });
+      await addItem('buyer-a', {
+        listingId: product.listingId,
+        variantId: product.variantId,
+        quantity: 2,
+      });
 
       const mine = await getCart('buyer-a');
       const theirs = await getCart('buyer-b');
@@ -153,11 +157,15 @@ describeIfPostgres('the cart domain on a real server', () => {
   });
 
   describe('quantities are clamped to live availability', () => {
-    it('clamps an add to the variant\'s available stock', async () => {
+    it("clamps an add to the variant's available stock", async () => {
       await seedCategory();
       const product = await seedProduct('seller-a', 3);
 
-      await addItem('buyer-a', { listingId: product.listingId, variantId: product.variantId, quantity: 10 });
+      await addItem('buyer-a', {
+        listingId: product.listingId,
+        variantId: product.variantId,
+        quantity: 10,
+      });
 
       expect((await getCart('buyer-a')).items[0].quantity).toBe(3);
     });
@@ -167,7 +175,11 @@ describeIfPostgres('the cart domain on a real server', () => {
       const product = await seedProduct('seller-a', 0);
 
       await expectCode(
-        addItem('buyer-a', { listingId: product.listingId, variantId: product.variantId, quantity: 1 }),
+        addItem('buyer-a', {
+          listingId: product.listingId,
+          variantId: product.variantId,
+          quantity: 1,
+        }),
         ErrorCodes.CONFLICT,
       );
     });
@@ -188,7 +200,11 @@ describeIfPostgres('the cart domain on a real server', () => {
     it('flags a line whose listing stopped being active', async () => {
       await seedCategory();
       const product = await seedProduct('seller-a', 5);
-      await addItem('buyer-a', { listingId: product.listingId, variantId: product.variantId, quantity: 1 });
+      await addItem('buyer-a', {
+        listingId: product.listingId,
+        variantId: product.variantId,
+        quantity: 1,
+      });
 
       await updateListing(product.listingId, { status: 'draft' });
 
@@ -198,7 +214,11 @@ describeIfPostgres('the cart domain on a real server', () => {
     it('does NOT flag a healthy line (negative control)', async () => {
       await seedCategory();
       const product = await seedProduct('seller-a', 5);
-      await addItem('buyer-a', { listingId: product.listingId, variantId: product.variantId, quantity: 1 });
+      await addItem('buyer-a', {
+        listingId: product.listingId,
+        variantId: product.variantId,
+        quantity: 1,
+      });
 
       // Without this, "everything is stale" would satisfy the case above.
       expect((await getCart('buyer-a')).items[0].stale).toBeUndefined();
@@ -218,8 +238,16 @@ describeIfPostgres('the cart domain on a real server', () => {
       const first = await seedProduct('seller-a', 9);
       const second = await seedProduct('seller-b', 9);
 
-      await addItem('buyer-a', { listingId: first.listingId, variantId: first.variantId, quantity: 1 });
-      await addItem('buyer-a', { listingId: second.listingId, variantId: second.variantId, quantity: 1 });
+      await addItem('buyer-a', {
+        listingId: first.listingId,
+        variantId: first.variantId,
+        quantity: 1,
+      });
+      await addItem('buyer-a', {
+        listingId: second.listingId,
+        variantId: second.variantId,
+        quantity: 1,
+      });
 
       await Promise.all([
         updateItem('buyer-a', first.variantId, 4),
@@ -237,7 +265,11 @@ describeIfPostgres('the cart domain on a real server', () => {
     it('refuses a zero-quantity line at the database', async () => {
       await seedCategory();
       const product = await seedProduct('seller-a', 5);
-      await addItem('buyer-a', { listingId: product.listingId, variantId: product.variantId, quantity: 1 });
+      await addItem('buyer-a', {
+        listingId: product.listingId,
+        variantId: product.variantId,
+        quantity: 1,
+      });
       const cart = await findCartByUser('buyer-a');
       if (!cart) throw new Error('cart missing');
 
@@ -255,7 +287,11 @@ describeIfPostgres('the cart domain on a real server', () => {
     it('removes the line when the quantity is set to zero', async () => {
       await seedCategory();
       const product = await seedProduct('seller-a', 5);
-      await addItem('buyer-a', { listingId: product.listingId, variantId: product.variantId, quantity: 2 });
+      await addItem('buyer-a', {
+        listingId: product.listingId,
+        variantId: product.variantId,
+        quantity: 2,
+      });
 
       await updateItem('buyer-a', product.variantId, 0);
 
@@ -265,7 +301,11 @@ describeIfPostgres('the cart domain on a real server', () => {
     it('throws NOT_FOUND for a line that is not in the cart', async () => {
       await seedCategory();
       const product = await seedProduct('seller-a', 5);
-      await addItem('buyer-a', { listingId: product.listingId, variantId: product.variantId, quantity: 1 });
+      await addItem('buyer-a', {
+        listingId: product.listingId,
+        variantId: product.variantId,
+        quantity: 1,
+      });
 
       await expectCode(
         updateItem('buyer-a', '00000000-0000-0000-0000-0000000000ff', 1),
@@ -278,7 +318,11 @@ describeIfPostgres('the cart domain on a real server', () => {
     it('empties the lines and keeps the cart row', async () => {
       await seedCategory();
       const product = await seedProduct('seller-a', 5);
-      await addItem('buyer-a', { listingId: product.listingId, variantId: product.variantId, quantity: 2 });
+      await addItem('buyer-a', {
+        listingId: product.listingId,
+        variantId: product.variantId,
+        quantity: 2,
+      });
 
       await clearCart('buyer-a');
 

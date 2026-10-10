@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const publisher = vi.hoisted(() => ({
   observeHttp: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
-  installFetch: vi.fn(), observeSocket: vi.fn(), stop: vi.fn(async () => {}),
+  installFetch: vi.fn(),
+  observeSocket: vi.fn(),
+  stop: vi.fn(async () => {}),
 }));
 const create = vi.hoisted(() => vi.fn((_options: unknown) => publisher));
 /**
@@ -17,7 +19,12 @@ vi.mock('@oxy.so/core/server', () => ({
   createEcosystemTraffic: create,
   canAttestWorkloadIdentity: canAttest,
 }));
-import { ecosystemActivityMiddleware, observeEcosystemSocket, startEcosystemActivity, stopEcosystemActivity } from '../ecosystemActivity';
+import {
+  ecosystemActivityMiddleware,
+  observeEcosystemSocket,
+  startEcosystemActivity,
+  stopEcosystemActivity,
+} from '../ecosystemActivity';
 
 describe('ecosystem activity lifecycle', () => {
   beforeEach(() => {
@@ -27,7 +34,11 @@ describe('ecosystem activity lifecycle', () => {
     vi.clearAllMocks();
     canAttest.mockReturnValue(false);
   });
-  afterEach(async () => { await stopEcosystemActivity(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+  afterEach(async () => {
+    await stopEcosystemActivity();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
 
   it('does not start or publish with neither an attestable identity nor a pair', () => {
     vi.stubEnv('OXY_SERVICE_API_KEY', undefined);
@@ -68,7 +79,9 @@ describe('ecosystem activity lifecycle', () => {
   });
 
   it('fails boot when the shared collector rejects its configuration', () => {
-    create.mockImplementationOnce(() => { throw new Error('Invalid infrastructure region'); });
+    create.mockImplementationOnce(() => {
+      throw new Error('Invalid infrastructure region');
+    });
     expect(() => startEcosystemActivity(() => true)).toThrow('Invalid infrastructure region');
     expect(publisher.installFetch).not.toHaveBeenCalled();
   });

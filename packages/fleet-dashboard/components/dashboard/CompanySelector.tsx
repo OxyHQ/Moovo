@@ -1,7 +1,7 @@
-import { View, Pressable, ScrollView } from "react-native";
-import type { Company } from "@moovo/shared-types";
-import { Text } from "@/components/ui/text";
-import { cn } from "@/lib/utils";
+import { View, Pressable, ScrollView } from 'react-native';
+import type { Company } from '@moovo/shared-types';
+import { Text } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
 
 interface CompanySelectorProps {
   companies: Company[];
@@ -15,11 +15,7 @@ interface CompanySelectorProps {
  * (a horizontally-scrolling row of pressables — no platform-specific menu). Only
  * shown when the operator belongs to more than one company.
  */
-export function CompanySelector({
-  companies,
-  selectedCompanyId,
-  onSelect,
-}: CompanySelectorProps) {
+export function CompanySelector({ companies, selectedCompanyId, onSelect }: CompanySelectorProps) {
   if (companies.length <= 1) return null;
 
   return (
@@ -37,10 +33,10 @@ export function CompanySelector({
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
             className={cn(
-              "flex-row items-center gap-2 rounded-full border px-3.5 py-2",
+              'flex-row items-center gap-2 rounded-full border px-3.5 py-2',
               active
-                ? "border-primary bg-primary/10"
-                : "border-border bg-background web:hover:bg-accent",
+                ? 'border-primary bg-primary/10'
+                : 'border-border bg-background web:hover:bg-accent',
             )}
           >
             {/* Brand accent dot — `brandColor` is a per-company runtime CSS color
@@ -51,10 +47,7 @@ export function CompanySelector({
               style={{ backgroundColor: company.brandColor }}
             />
             <Text
-              className={cn(
-                "text-sm font-medium",
-                active ? "text-primary" : "text-foreground",
-              )}
+              className={cn('text-sm font-medium', active ? 'text-primary' : 'text-foreground')}
               numberOfLines={1}
             >
               {company.name}

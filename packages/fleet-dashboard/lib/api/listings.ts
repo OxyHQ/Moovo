@@ -1,9 +1,4 @@
-import type {
-  Listing,
-  ListingQuery,
-  PaginatedResponse,
-  ApiResponse,
-} from '@moovo/shared-types';
+import type { Listing, ListingQuery, PaginatedResponse, ApiResponse } from '@moovo/shared-types';
 import apiClient from './client';
 
 /**

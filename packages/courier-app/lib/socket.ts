@@ -1,5 +1,5 @@
-import { io, type Socket } from "socket.io-client";
-import config from "./config";
+import { io, type Socket } from 'socket.io-client';
+import config from './config';
 
 /**
  * Socket.IO connection manager for the courier surface.
@@ -17,7 +17,7 @@ let socket: Socket | null = null;
 let currentToken: string | null = null;
 
 /** Transports the backend accepts, in preference order (websocket, then polling). */
-const TRANSPORTS = ["websocket", "polling"] as const;
+const TRANSPORTS = ['websocket', 'polling'] as const;
 
 /**
  * Connect (or reconnect) the shared socket with `token`. If a live connection

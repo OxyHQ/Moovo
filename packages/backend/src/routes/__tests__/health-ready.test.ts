@@ -28,7 +28,10 @@ const { postgresQuery } = vi.hoisted(() => ({
 
 vi.mock('../../db/postgres.js', () => ({
   // `getClient()` returns a tagged-template function, so the mock has to be one.
-  getClient: () => (...args: unknown[]) => postgresQuery(...args),
+  getClient:
+    () =>
+    (...args: unknown[]) =>
+      postgresQuery(...args),
 }));
 
 vi.mock('../../lib/redis.js', () => ({ getRedisClient: () => null }));

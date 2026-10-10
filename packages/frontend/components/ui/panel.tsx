@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react';
 import {
   View,
   Modal,
@@ -7,11 +7,11 @@ import {
   useWindowDimensions,
   StyleSheet,
   Platform,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { cn } from "@/lib/utils";
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { cn } from '@/lib/utils';
 
-const USE_NATIVE_DRIVER = Platform.OS !== "web";
+const USE_NATIVE_DRIVER = Platform.OS !== 'web';
 
 interface PanelProps {
   /** Whether the panel is open */
@@ -19,7 +19,7 @@ interface PanelProps {
   /** Callback when panel should close */
   onClose: () => void;
   /** Which side the panel appears on */
-  side?: "left" | "right";
+  side?: 'left' | 'right';
   /** Width of the panel on desktop */
   width?: number;
   /** Children to render inside the panel */
@@ -37,7 +37,7 @@ interface PanelProps {
 export function Panel({
   open,
   onClose,
-  side = "right",
+  side = 'right',
   width = 320,
   children,
   className,
@@ -53,7 +53,7 @@ export function Panel({
   // Update animation when screen size changes
   React.useEffect(() => {
     if (!open) {
-      slideAnim.setValue(side === "right" ? screenWidth : -screenWidth);
+      slideAnim.setValue(side === 'right' ? screenWidth : -screenWidth);
     }
   }, [screenWidth, open, side]);
 
@@ -76,7 +76,7 @@ export function Panel({
       } else {
         Animated.parallel([
           Animated.timing(slideAnim, {
-            toValue: side === "right" ? screenWidth : -screenWidth,
+            toValue: side === 'right' ? screenWidth : -screenWidth,
             duration: 250,
             useNativeDriver: USE_NATIVE_DRIVER,
           }),
@@ -98,9 +98,9 @@ export function Panel({
       <View
         style={{ width, paddingTop: insets.top }}
         className={cn(
-          "bg-background",
-          side === "right" ? "border-l border-border" : "border-r border-border",
-          className
+          'bg-background',
+          side === 'right' ? 'border-l border-border' : 'border-r border-border',
+          className,
         )}
       >
         {children}
@@ -123,7 +123,7 @@ export function Panel({
           style={[
             StyleSheet.absoluteFill,
             {
-              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
               opacity: fadeAnim,
             },
           ]}
@@ -135,7 +135,7 @@ export function Panel({
         <Animated.View
           style={[
             styles.mobilePanel,
-            side === "left" ? { left: 0 } : { right: 0 },
+            side === 'left' ? { left: 0 } : { right: 0 },
             {
               width: screenWidth,
               transform: [{ translateX: slideAnim }],
@@ -144,9 +144,9 @@ export function Panel({
         >
           <View
             className={cn(
-              "flex-1 bg-background",
-              side === "right" ? "border-l border-border" : "border-r border-border",
-              className
+              'flex-1 bg-background',
+              side === 'right' ? 'border-l border-border' : 'border-r border-border',
+              className,
             )}
             style={{ paddingTop: insets.top }}
           >
@@ -160,7 +160,7 @@ export function Panel({
 
 const styles = StyleSheet.create({
   mobilePanel: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     bottom: 0,
   },

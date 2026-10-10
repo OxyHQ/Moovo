@@ -50,13 +50,16 @@ const leaseOwner = `tracking-${process.pid}-${randomUUID().slice(0, 8)}`;
  * reclaims the parcel.
  */
 function startLeaseHeartbeat(parcelId: string): () => void {
-  const interval = setInterval(() => {
-    void renewParcelLease(parcelId, leaseOwner, config.tracking.leaseMs).then((held) => {
-      if (!held) {
-        log.general.warn({ parcelId }, '[Tracking] lease lost while polling');
-      }
-    });
-  }, Math.max(1_000, Math.floor(config.tracking.leaseMs / 3)));
+  const interval = setInterval(
+    () => {
+      void renewParcelLease(parcelId, leaseOwner, config.tracking.leaseMs).then((held) => {
+        if (!held) {
+          log.general.warn({ parcelId }, '[Tracking] lease lost while polling');
+        }
+      });
+    },
+    Math.max(1_000, Math.floor(config.tracking.leaseMs / 3)),
+  );
   interval.unref?.();
   return () => clearInterval(interval);
 }

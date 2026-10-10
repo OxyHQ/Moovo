@@ -1,8 +1,8 @@
-import { View } from "react-native";
-import type { LucideIcon } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { Card } from "@/components/ui/card";
-import { useColorScheme } from "@/lib/useColorScheme";
+import { View } from 'react-native';
+import type { LucideIcon } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { Card } from '@/components/ui/card';
+import { useColorScheme } from '@/lib/useColorScheme';
 
 interface StatCardProps {
   /** Short metric label. */
@@ -21,13 +21,7 @@ interface StatCardProps {
  * A single KPI tile — a labelled metric with a leading icon. Used on the home
  * overview and the stats screen. Pure presentation; the caller formats values.
  */
-export function StatCard({
-  label,
-  value,
-  caption,
-  icon: Icon,
-  loading = false,
-}: StatCardProps) {
+export function StatCard({ label, value, caption, icon: Icon, loading = false }: StatCardProps) {
   const { colors } = useColorScheme();
   return (
     <Card className="min-w-0 flex-1 gap-3 p-4">
@@ -43,7 +37,7 @@ export function StatCard({
         </View>
       </View>
       <Text className="text-2xl font-bold text-surface-foreground" numberOfLines={1}>
-        {loading ? "—" : value}
+        {loading ? '—' : value}
       </Text>
       {caption ? (
         <Text className="text-xs text-muted-foreground" numberOfLines={1}>

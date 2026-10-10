@@ -74,9 +74,7 @@ export default function ResetPasswordScreen() {
         <Text className="text-3xl font-bold text-foreground tracking-tight">
           {t('resetPassword.title')}
         </Text>
-        <Text className="text-base text-muted-foreground">
-          {t('resetPassword.subtitle')}
-        </Text>
+        <Text className="text-base text-muted-foreground">{t('resetPassword.subtitle')}</Text>
       </View>
 
       {/* Form */}

@@ -136,10 +136,10 @@ describeIfPostgres('the Postgres test harness', () => {
     // can only happen if the entrypoint connected and compared, which is
     // precisely the thing a no-op would not do.
     await expect(
-      runMigrateEntrypoint(
-        ['--target-database=definitely_not_this_database', '--phase=all'],
-        { ...process.env, DATABASE_URL: suite!.databaseUrl },
-      ),
+      runMigrateEntrypoint(['--target-database=definitely_not_this_database', '--phase=all'], {
+        ...process.env,
+        DATABASE_URL: suite!.databaseUrl,
+      }),
     ).rejects.toThrow(
       // Pinned to a message only the guard produces, naming BOTH the expected
       // and the reached database. A looser pattern — anything matching

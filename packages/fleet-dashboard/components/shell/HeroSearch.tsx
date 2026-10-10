@@ -1,8 +1,8 @@
-import React, { useCallback, useState } from "react";
-import { View, Pressable, TextInput } from "react-native";
-import { Search } from "lucide-react-native";
-import { MoovoWordmark } from "@/components/ui/moovo-wordmark";
-import { useColorScheme } from "@/lib/useColorScheme";
+import React, { useCallback, useState } from 'react';
+import { View, Pressable, TextInput } from 'react-native';
+import { Search } from 'lucide-react-native';
+import { MoovoWordmark } from '@/components/ui/moovo-wordmark';
+import { useColorScheme } from '@/lib/useColorScheme';
 
 /* ================================================================
    HeroSearch — wordmark + large search bar (content-area header)
@@ -10,7 +10,7 @@ import { useColorScheme } from "@/lib/useColorScheme";
 
 export function HeroSearch() {
   const { colors } = useColorScheme();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
 
   // A real submit handler that reads the query. There is no `/search` route
   // yet, so it does nothing harmful (no navigation to a missing route). Wire

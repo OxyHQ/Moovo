@@ -162,7 +162,9 @@ function SignedOutPrompt() {
   return (
     <View className="px-4 pt-8">
       <View className="items-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-10">
-        <Text className="text-sm font-medium text-foreground">Sign in to track your deliveries</Text>
+        <Text className="text-sm font-medium text-foreground">
+          Sign in to track your deliveries
+        </Text>
         <Text className="mt-1 text-center text-xs text-muted-foreground">
           Create a shipment above — we'll ask you to sign in to send it.
         </Text>

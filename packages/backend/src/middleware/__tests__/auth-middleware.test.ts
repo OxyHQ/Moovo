@@ -37,11 +37,7 @@ vi.mock('@oxy.so/core/server', async (importOriginal) => {
   return { ...actual, OxyServer: MockOxyServer };
 });
 
-import {
-  authenticateTelegramBot,
-  authenticateTokenOrApiKey,
-  requireScope,
-} from '../auth.js';
+import { authenticateTelegramBot, authenticateTokenOrApiKey, requireScope } from '../auth.js';
 
 type MockFn = ReturnType<typeof vi.fn>;
 

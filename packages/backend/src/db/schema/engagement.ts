@@ -155,9 +155,6 @@ export const webPushSubscriptions = pgTable(
     updatedAt: updatedAt(),
   },
   (table) => [
-    uniqueIndex('web_push_subscriptions_oxy_user_endpoint_key').on(
-      table.oxyUserId,
-      table.endpoint,
-    ),
+    uniqueIndex('web_push_subscriptions_oxy_user_endpoint_key').on(table.oxyUserId, table.endpoint),
   ],
 );

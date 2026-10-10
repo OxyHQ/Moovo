@@ -31,10 +31,7 @@ const Textarea = React.forwardRef<TextInput, TextareaProps>(
         multiline
         scrollEnabled={false}
         textAlignVertical="top"
-        style={[
-          Platform.OS === 'web' ? webAutoGrowStyle : undefined,
-          style,
-        ]}
+        style={[Platform.OS === 'web' ? webAutoGrowStyle : undefined, style]}
         {...props}
       />
     );

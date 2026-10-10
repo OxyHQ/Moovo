@@ -30,7 +30,7 @@ apiClient.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor for error handling
@@ -39,7 +39,7 @@ apiClient.interceptors.response.use(
   (error) => {
     // Let components handle auth errors
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

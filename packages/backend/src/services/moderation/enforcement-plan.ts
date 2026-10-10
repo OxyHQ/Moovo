@@ -124,13 +124,12 @@ function actionFor(
  * is a policy decision with legal weight, and a mapping table is the wrong place
  * to make it.
  */
-const SEVERITY_FALLBACK: Readonly<Record<Severity, ModerationEnforcementAction>> =
-  Object.freeze({
-    critical: 'manual_review',
-    high: 'suspend_courier',
-    medium: 'manual_review',
-    low: 'manual_review',
-  });
+const SEVERITY_FALLBACK: Readonly<Record<Severity, ModerationEnforcementAction>> = Object.freeze({
+  critical: 'manual_review',
+  high: 'suspend_courier',
+  medium: 'manual_review',
+  low: 'manual_review',
+});
 
 const SEVERITY_ORDER: readonly Severity[] = ['low', 'medium', 'high', 'critical'];
 
@@ -222,9 +221,7 @@ export function planEnforcement(
   );
 
   if (fromRecommendations.length > 0) {
-    const collapsed = collapse(
-      withReinstateForNoViolation(decision, target, fromRecommendations),
-    );
+    const collapsed = collapse(withReinstateForNoViolation(decision, target, fromRecommendations));
     return collapsed.length > 0
       ? collapsed
       : [{ action: 'none', reason: 'No recommended action maps to a Moovo effect' }];

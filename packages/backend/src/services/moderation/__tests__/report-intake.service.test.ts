@@ -80,8 +80,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   // Run the transaction body inline, with the handle the real code would get.
-  transaction.mockImplementation(async (operation: (tx: unknown) => Promise<unknown>) =>
-    await operation(TX),
+  transaction.mockImplementation(
+    async (operation: (tx: unknown) => Promise<unknown>) => await operation(TX),
   );
   insertReport.mockImplementation(async (doc: Record<string, unknown>) => storedReport(doc));
   enqueue.mockResolvedValue('moderation:report.submit:report-1');

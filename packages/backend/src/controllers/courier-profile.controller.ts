@@ -12,10 +12,7 @@ import type { Request, Response } from 'express';
 import { getRequiredOxyUserId } from '@oxy.so/core/server';
 import type { CreateVehicleInput, Vehicle as VehicleDTO } from '@moovo/shared-types';
 import type { CourierProfileRow } from '../db/fleet/courierProfileRepository.js';
-import {
-  listVehiclesForCourier,
-  type VehicleRecord,
-} from '../db/fleet/vehicleRepository.js';
+import { listVehiclesForCourier, type VehicleRecord } from '../db/fleet/vehicleRepository.js';
 import {
   getMine,
   updatePrefs,

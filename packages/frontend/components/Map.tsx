@@ -78,7 +78,10 @@ export default function Map({
     <MapView
       ref={mapRef}
       style={styles.map}
-      initialRegion={toRegion(initialCenter ?? markers[0]?.coordinate ?? DEFAULT_CENTER, initialZoom)}
+      initialRegion={toRegion(
+        initialCenter ?? markers[0]?.coordinate ?? DEFAULT_CENTER,
+        initialZoom,
+      )}
       onPress={handlePress}
     >
       {markers.map((marker) => (

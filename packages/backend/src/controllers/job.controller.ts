@@ -53,7 +53,8 @@ export async function listMyJobs(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const { page, limit } = parsePagination(req.query);
-    const status = typeof req.query.status === 'string' ? (req.query.status as JobStatus) : undefined;
+    const status =
+      typeof req.query.status === 'string' ? (req.query.status as JobStatus) : undefined;
     const role = req.query.role === 'courier' ? 'courier' : 'sender';
     const { data, total } =
       role === 'courier'
@@ -104,7 +105,11 @@ export async function pickupJob(req: Request, res: Response): Promise<void> {
   const id = routeParam(req, 'id');
   try {
     const oxyUserId = getRequiredOxyUserId(req);
-    const job = await pickup(oxyUserId, id, locationFromBody(req.body as { lng?: number; lat?: number }));
+    const job = await pickup(
+      oxyUserId,
+      id,
+      locationFromBody(req.body as { lng?: number; lat?: number }),
+    );
     sendSuccess(res, await hydrateJob(job, displayCurrencyFromQuery(req)));
   } catch (err) {
     log.general.error({ err, jobId: id }, 'Failed to mark job picked up');

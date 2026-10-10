@@ -82,9 +82,7 @@ const CATEGORY_TO_ALLEGATION: Readonly<Record<ReportCategory, TaxonomyCode>> = O
  * `service_failure` both map to `other.policy_specific`, so a reporter ticking
  * both would otherwise send the same code twice.
  */
-export function allegationsForCategories(
-  categories: readonly ReportCategory[],
-): TaxonomyCode[] {
+export function allegationsForCategories(categories: readonly ReportCategory[]): TaxonomyCode[] {
   const codes = new Set<TaxonomyCode>();
   for (const category of categories) {
     const code = CATEGORY_TO_ALLEGATION[category];

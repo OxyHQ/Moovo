@@ -254,9 +254,7 @@ describeIfPostgres('shipments and quotes on a real server', () => {
   it('generates both endpoint points in (lng, lat) order', async () => {
     const created = await insertShipment(fullShipment());
 
-    const [row] = await client()<
-      Array<{ px: number; py: number; dx: number; dy: number }>
-    >`
+    const [row] = await client()<Array<{ px: number; py: number; dx: number; dy: number }>>`
       SELECT ST_X(pickup_location::geometry) AS px, ST_Y(pickup_location::geometry) AS py,
              ST_X(dropoff_location::geometry) AS dx, ST_Y(dropoff_location::geometry) AS dy
       FROM shipments WHERE id = ${created.id}
@@ -365,12 +363,17 @@ describeIfPostgres('shipments and quotes on a real server', () => {
       await insertShipment(minimalShipment({ senderOxyUserId: 'theirs' }));
 
       expect(await countShipmentsForSender({ senderOxyUserId: 'mine' })).toBe(1);
-      const rows = await listShipmentsForSender({ senderOxyUserId: 'mine' }, { page: 1, limit: 10 });
+      const rows = await listShipmentsForSender(
+        { senderOxyUserId: 'mine' },
+        { page: 1, limit: 10 },
+      );
       expect(rows.map((r) => r.senderOxyUserId)).toEqual(['mine']);
     });
 
     it('filters by status and type independently', async () => {
-      await insertShipment(minimalShipment({ senderOxyUserId: 'f', type: 'food', status: 'draft' }));
+      await insertShipment(
+        minimalShipment({ senderOxyUserId: 'f', type: 'food', status: 'draft' }),
+      );
       await insertShipment(
         minimalShipment({ senderOxyUserId: 'f', type: 'package', status: 'quoting' }),
       );
@@ -423,9 +426,18 @@ describeIfPostgres('shipments and quotes on a real server', () => {
         `;
       }
 
-      const first = await listShipmentsForSender({ senderOxyUserId: 'paged' }, { page: 1, limit: 2 });
-      const second = await listShipmentsForSender({ senderOxyUserId: 'paged' }, { page: 2, limit: 2 });
-      const third = await listShipmentsForSender({ senderOxyUserId: 'paged' }, { page: 3, limit: 2 });
+      const first = await listShipmentsForSender(
+        { senderOxyUserId: 'paged' },
+        { page: 1, limit: 2 },
+      );
+      const second = await listShipmentsForSender(
+        { senderOxyUserId: 'paged' },
+        { page: 2, limit: 2 },
+      );
+      const third = await listShipmentsForSender(
+        { senderOxyUserId: 'paged' },
+        { page: 3, limit: 2 },
+      );
 
       const seen = [...first, ...second, ...third].map((r) => r.itemDescription);
       expect(seen).toEqual(['item-4', 'item-3', 'item-2', 'item-1', 'item-0']);
@@ -743,20 +755,38 @@ describeIfPostgres('shipments and quotes on a real server', () => {
    * can lose its guard while every test still passes.
    */
   it.each([
-    ['pickup', (s: NewShipment) => { s.pickup.location.coordinates = [2.1734]; }],
-    ['dropoff', (s: NewShipment) => { s.dropoff.location.coordinates = [2.8249]; }],
-    ['pickup NaN', (s: NewShipment) => { s.pickup.location.coordinates = [Number.NaN, 41.4]; }],
-  ])('refuses a malformed %s coordinate pair before it reaches the server', async (label, break_) => {
-    const broken = minimalShipment();
-    break_(broken);
+    [
+      'pickup',
+      (s: NewShipment) => {
+        s.pickup.location.coordinates = [2.1734];
+      },
+    ],
+    [
+      'dropoff',
+      (s: NewShipment) => {
+        s.dropoff.location.coordinates = [2.8249];
+      },
+    ],
+    [
+      'pickup NaN',
+      (s: NewShipment) => {
+        s.pickup.location.coordinates = [Number.NaN, 41.4];
+      },
+    ],
+  ])(
+    'refuses a malformed %s coordinate pair before it reaches the server',
+    async (label, break_) => {
+      const broken = minimalShipment();
+      break_(broken);
 
-    const endpoint = label.startsWith('pickup') ? 'pickup' : 'dropoff';
-    await expect(insertShipment(broken)).rejects.toThrow(
-      new RegExp(`${endpoint} location needs a finite`),
-    );
-    // Nothing was written, so the refusal cost nothing to recover from.
-    expect(await countShipmentsForSender({ senderOxyUserId: broken.senderOxyUserId })).toBe(0);
-  });
+      const endpoint = label.startsWith('pickup') ? 'pickup' : 'dropoff';
+      await expect(insertShipment(broken)).rejects.toThrow(
+        new RegExp(`${endpoint} location needs a finite`),
+      );
+      // Nothing was written, so the refusal cost nothing to recover from.
+      expect(await countShipmentsForSender({ senderOxyUserId: broken.senderOxyUserId })).toBe(0);
+    },
+  );
 
   it('counts zero for a sender with no shipments at all', async () => {
     // A vacuity floor for the filter tests above: the predicate really does
@@ -766,5 +796,4 @@ describeIfPostgres('shipments and quotes on a real server', () => {
       await listShipmentsForSender({ senderOxyUserId: 'nobody' }, { page: 1, limit: 10 }),
     ).toEqual([]);
   });
-
 });

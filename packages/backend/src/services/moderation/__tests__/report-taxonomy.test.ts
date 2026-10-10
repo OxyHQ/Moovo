@@ -44,9 +44,7 @@ describe('allegationsForCategories', () => {
     it('maps prohibited_item to the commerce code, which genuinely fits', () => {
       // Moovo moves physical goods; shipping something that may not be shipped is
       // precisely what this code describes.
-      expect(allegationsForCategories(['prohibited_item'])).toEqual([
-        'commerce.prohibited_item',
-      ]);
+      expect(allegationsForCategories(['prohibited_item'])).toEqual(['commerce.prohibited_item']);
     });
 
     it.each(['unsafe_conduct', 'service_failure'] as const)(

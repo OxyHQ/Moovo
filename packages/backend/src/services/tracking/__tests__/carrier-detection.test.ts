@@ -187,10 +187,9 @@ describe('detectCarriers', () => {
     // A Moovo parcel is created by BOOKING, never by pasting: its row is a
     // pointer at a job. Detecting one from a number would let anyone conjure a
     // pointer with no job behind it.
-    const everything = [
-      ...detectCarriers('MOV000042'),
-      ...detectCarriers('1234567890'),
-    ].map((candidate) => candidate.carrierKey);
+    const everything = [...detectCarriers('MOV000042'), ...detectCarriers('1234567890')].map(
+      (candidate) => candidate.carrierKey,
+    );
     expect(everything).not.toContain('moovo');
   });
 });

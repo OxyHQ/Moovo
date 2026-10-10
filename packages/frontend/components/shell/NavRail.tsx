@@ -1,19 +1,19 @@
-import React, { useCallback, useState } from "react";
-import { View, Pressable, Platform, type LayoutRectangle, type ViewStyle } from "react-native";
-import { createPortal } from "react-dom";
-import { useRouter, usePathname } from "expo-router";
-import { type LucideIcon } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { Logo } from "@/components/Logo";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { cn } from "@/lib/utils";
-import { useAuth, ProfileButton } from "@oxy.so/services";
-import { NAV_ITEMS, isNavItemActive, type NavItem } from "./nav-items";
+import React, { useCallback, useState } from 'react';
+import { View, Pressable, Platform, type LayoutRectangle, type ViewStyle } from 'react-native';
+import { createPortal } from 'react-dom';
+import { useRouter, usePathname } from 'expo-router';
+import { type LucideIcon } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { Logo } from '@/components/Logo';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { cn } from '@/lib/utils';
+import { useAuth, ProfileButton } from '@oxy.so/services';
+import { NAV_ITEMS, isNavItemActive, type NavItem } from './nav-items';
 
-const IS_WEB = Platform.OS === "web";
+const IS_WEB = Platform.OS === 'web';
 
 /** Viewport coordinates of the hovered rail item, used to place the tooltip. */
-type AnchorRect = Pick<LayoutRectangle, "x" | "y" | "width" | "height">;
+type AnchorRect = Pick<LayoutRectangle, 'x' | 'y' | 'width' | 'height'>;
 
 /**
  * Read the hovered element's viewport rect from a RN-web hover event. RN-web
@@ -43,7 +43,7 @@ function rectFromHover(event: { currentTarget?: unknown }): AnchorRect | null {
    ================================================================ */
 
 function RailTooltip({ label, anchor }: { label: string; anchor: AnchorRect | null }) {
-  if (!IS_WEB || anchor === null || typeof document === "undefined") return null;
+  if (!IS_WEB || anchor === null || typeof document === 'undefined') return null;
 
   // Right of the icon, vertically centred on it (8px gap mirrors the old `ml-2`).
   const left = anchor.x + anchor.width + 8;
@@ -53,14 +53,22 @@ function RailTooltip({ label, anchor }: { label: string; anchor: AnchorRect | nu
     <View
       pointerEvents="none"
       // `fixed` is web-only (this tooltip only renders on web); RN's ViewStyle does not list it.
-      style={{ position: "fixed", left, top, transform: [{ translateY: "-50%" }], zIndex: 2147483647 } as unknown as ViewStyle}
+      style={
+        {
+          position: 'fixed',
+          left,
+          top,
+          transform: [{ translateY: '-50%' }],
+          zIndex: 2147483647,
+        } as unknown as ViewStyle
+      }
       className="rounded-md bg-foreground px-2.5 py-1"
     >
       <Text className="text-xs font-medium text-background" numberOfLines={1}>
         {label}
       </Text>
     </View>,
-    document.body
+    document.body,
   );
 }
 
@@ -89,8 +97,8 @@ function NavRailItem({ icon: Icon, label, isActive, onPress }: NavRailItemProps)
         accessibilityLabel={label}
         accessibilityState={{ selected: isActive }}
         className={cn(
-          "h-12 w-12 items-center justify-center rounded-2xl web:transition",
-          isActive ? "bg-secondary" : "active:bg-secondary web:hover:bg-secondary"
+          'h-12 w-12 items-center justify-center rounded-2xl web:transition',
+          isActive ? 'bg-secondary' : 'active:bg-secondary web:hover:bg-secondary',
         )}
       >
         <Icon
@@ -120,7 +128,7 @@ function ProfileButtonRail() {
   const router = useRouter();
   const { signIn } = useAuth();
 
-  const onNavigateManage = useCallback(() => router.push("/settings"), [router]);
+  const onNavigateManage = useCallback(() => router.push('/settings'), [router]);
   const onAddAccount = useCallback(() => {
     signIn().catch(() => {});
   }, [signIn]);
@@ -144,7 +152,7 @@ export function NavRail() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const goHome = useCallback(() => router.push("/"), [router]);
+  const goHome = useCallback(() => router.push('/'), [router]);
 
   const handlePress = useCallback(
     (item: NavItem) => {
@@ -157,7 +165,7 @@ export function NavRail() {
         router.push(item.href as Parameters<typeof router.push>[0]);
       }
     },
-    [router]
+    [router],
   );
 
   return (

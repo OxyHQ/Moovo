@@ -53,7 +53,10 @@ export async function remainingBudget(
       // A Redis blip must not stop the poller: falling back to the local bucket
       // spends at most one task's worth of budget, which is the same failure
       // mode as running without Redis at all.
-      log.general.warn({ err: error, carrierKey }, '[Tracking] budget read failed; using local bucket');
+      log.general.warn(
+        { err: error, carrierKey },
+        '[Tracking] budget read failed; using local bucket',
+      );
     }
   }
 

@@ -40,10 +40,7 @@ import type {
   JobStatusEventValue,
   JobWithHistory,
 } from '../db/transport/jobShape.js';
-import type {
-  ShipmentEndpointValue,
-  ParcelDetailsValue,
-} from '../db/transport/shipmentShape.js';
+import type { ShipmentEndpointValue, ParcelDetailsValue } from '../db/transport/shipmentShape.js';
 import { getFairRate } from './faircoin-rate.service.js';
 import { resolveMedia } from './media.service.js';
 import { toDisplayPriceBreakdown } from '../utils/fair-display.js';

@@ -672,33 +672,33 @@ describeIfPostgres('the reports table itself', () => {
     // The CHECK is the backstop behind `requireReportedType`. A service-layer
     // guard holds until the second caller arrives; this one holds against `psql`.
     await expect(
-      getDb().insert(reports).values({
-        id: uuidv7(),
-        reporter: 'reporter-1',
-        reportedType: 'spaceship',
-        reportedId: 'thing-1',
-        categories: ['other'],
-        status: 'pending',
-        localStatus: 'received',
-      }),
-    ).rejects.toSatisfy((error: unknown) =>
-      isCheckViolation(error, 'reports_reported_type_check'),
-    );
+      getDb()
+        .insert(reports)
+        .values({
+          id: uuidv7(),
+          reporter: 'reporter-1',
+          reportedType: 'spaceship',
+          reportedId: 'thing-1',
+          categories: ['other'],
+          status: 'pending',
+          localStatus: 'received',
+        }),
+    ).rejects.toSatisfy((error: unknown) => isCheckViolation(error, 'reports_reported_type_check'));
   });
 
   it('refuses a category outside the closed set', async () => {
     await expect(
-      getDb().insert(reports).values({
-        id: uuidv7(),
-        reporter: 'reporter-1',
-        reportedType: 'courier',
-        reportedId: 'courier-1',
-        categories: ['harassment', 'not-a-category'],
-        status: 'pending',
-        localStatus: 'received',
-      }),
-    ).rejects.toSatisfy((error: unknown) =>
-      isCheckViolation(error, 'reports_categories_check'),
-    );
+      getDb()
+        .insert(reports)
+        .values({
+          id: uuidv7(),
+          reporter: 'reporter-1',
+          reportedType: 'courier',
+          reportedId: 'courier-1',
+          categories: ['harassment', 'not-a-category'],
+          status: 'pending',
+          localStatus: 'received',
+        }),
+    ).rejects.toSatisfy((error: unknown) => isCheckViolation(error, 'reports_categories_check'));
   });
 });

@@ -1,13 +1,13 @@
-import type { ReactNode } from "react";
-import { View } from "react-native";
-import { Link } from "expo-router";
-import { Lock } from "lucide-react-native";
-import type { Company } from "@moovo/shared-types";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { CompanySelector } from "@/components/dashboard/CompanySelector";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { useTranslation } from "@/hooks/useTranslation";
+import type { ReactNode } from 'react';
+import { View } from 'react-native';
+import { Link } from 'expo-router';
+import { Lock } from 'lucide-react-native';
+import type { Company } from '@moovo/shared-types';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { CompanySelector } from '@/components/dashboard/CompanySelector';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface CompanyHeaderProps {
   /** Page title (e.g. "Members"). */
@@ -55,15 +55,15 @@ export function NoCompaniesState() {
   return (
     <View className="items-center gap-4 py-16">
       <Text className="text-center text-lg font-semibold text-foreground">
-        {t("home.emptyTitle")}
+        {t('home.emptyTitle')}
       </Text>
       <Text className="max-w-md text-center text-base text-muted-foreground">
-        {t("home.emptySubtitle")}
+        {t('home.emptySubtitle')}
       </Text>
       <Link href="/companies/new" asChild>
         <Button>
           <Text className="text-sm font-medium text-primary-foreground">
-            {t("companies.createCompany")}
+            {t('companies.createCompany')}
           </Text>
         </Button>
       </Link>
@@ -84,10 +84,10 @@ export function PermissionDenied({ message }: { message?: string }) {
         <Lock size={22} color={colors.mutedForeground} />
       </View>
       <Text className="text-center text-base font-semibold text-foreground">
-        {t("common.permissionDeniedTitle")}
+        {t('common.permissionDeniedTitle')}
       </Text>
       <Text className="max-w-md text-center text-sm text-muted-foreground">
-        {message ?? t("common.permissionDeniedBody")}
+        {message ?? t('common.permissionDeniedBody')}
       </Text>
     </View>
   );

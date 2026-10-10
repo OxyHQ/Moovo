@@ -41,15 +41,30 @@ router.get('/vapid-public-key', getVapidPublicKey);
 router.use(authenticateToken);
 
 // Notification feed + read state (static routes first, then param routes).
-router.get('/', makeRateLimiter('general'), validateQuery(notificationListQuerySchema), listNotifications);
+router.get(
+  '/',
+  makeRateLimiter('general'),
+  validateQuery(notificationListQuerySchema),
+  listNotifications,
+);
 router.get('/unread-count', makeRateLimiter('general'), getUnreadCount);
 router.post('/read-all', makeRateLimiter('general'), markAllRead);
 router.patch('/:id/read', makeRateLimiter('general'), validateEntityId('id'), markRead);
 router.patch('/:id/dismiss', makeRateLimiter('general'), validateEntityId('id'), dismiss);
 
 // Expo push-token management.
-router.post('/push-token', makeRateLimiter('general'), validateBody(pushTokenSchema), registerPushToken);
-router.delete('/push-token', makeRateLimiter('general'), validateBody(pushTokenDeleteSchema), removePushToken);
+router.post(
+  '/push-token',
+  makeRateLimiter('general'),
+  validateBody(pushTokenSchema),
+  registerPushToken,
+);
+router.delete(
+  '/push-token',
+  makeRateLimiter('general'),
+  validateBody(pushTokenDeleteSchema),
+  removePushToken,
+);
 
 // Web-push subscription management.
 router.post(

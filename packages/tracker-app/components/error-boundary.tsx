@@ -17,10 +17,7 @@ interface ErrorBoundaryState {
  * depend on the styling pipeline, the theme provider or any context that may
  * itself be the thing that failed.
  */
-export class AppErrorBoundary extends React.Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
+export class AppErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { error: null };
@@ -84,8 +81,8 @@ export class AppErrorBoundary extends React.Component<
               marginBottom: 24,
             }}
           >
-            Ha ocurrido un error inesperado. Puedes volver a intentarlo; tu número de
-            seguimiento no se ha perdido.
+            Ha ocurrido un error inesperado. Puedes volver a intentarlo; tu número de seguimiento no
+            se ha perdido.
           </Text>
 
           {__DEV__ && (
@@ -125,9 +122,7 @@ export class AppErrorBoundary extends React.Component<
               alignItems: 'center',
             })}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff' }}>
-              Reintentar
-            </Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#ffffff' }}>Reintentar</Text>
           </Pressable>
         </View>
       </View>

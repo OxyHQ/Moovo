@@ -4,8 +4,8 @@ import type {
   CreateVehicleInput,
   Vehicle,
   VehicleType,
-} from "@moovo/shared-types";
-import apiClient from "./client";
+} from '@moovo/shared-types';
+import apiClient from './client';
 
 /**
  * Courier API client.
@@ -20,19 +20,19 @@ import apiClient from "./client";
 
 /** Fetch the signed-in courier's own profile (aggregates + availability). */
 export async function fetchCourierMe(): Promise<ApiResponse<CourierProfile>> {
-  const { data } = await apiClient.get<ApiResponse<CourierProfile>>("/courier/me");
+  const { data } = await apiClient.get<ApiResponse<CourierProfile>>('/courier/me');
   return data;
 }
 
 /** Flip the signed-in courier to `online` so they can be offered jobs. */
 export async function goOnline(): Promise<ApiResponse<CourierProfile>> {
-  const { data } = await apiClient.post<ApiResponse<CourierProfile>>("/courier/online");
+  const { data } = await apiClient.post<ApiResponse<CourierProfile>>('/courier/online');
   return data;
 }
 
 /** Flip the signed-in courier to `offline` so they stop being offered jobs. */
 export async function goOffline(): Promise<ApiResponse<CourierProfile>> {
-  const { data } = await apiClient.post<ApiResponse<CourierProfile>>("/courier/offline");
+  const { data } = await apiClient.post<ApiResponse<CourierProfile>>('/courier/offline');
   return data;
 }
 
@@ -41,16 +41,16 @@ export async function pingCourierLocation(
   lng: number,
   lat: number,
 ): Promise<ApiResponse<CourierProfile>> {
-  const { data } = await apiClient.post<ApiResponse<CourierProfile>>(
-    "/courier/location",
-    { lng, lat },
-  );
+  const { data } = await apiClient.post<ApiResponse<CourierProfile>>('/courier/location', {
+    lng,
+    lat,
+  });
   return data;
 }
 
 /** List the signed-in courier's vehicles. */
 export async function fetchCourierVehicles(): Promise<ApiResponse<Vehicle[]>> {
-  const { data } = await apiClient.get<ApiResponse<Vehicle[]>>("/courier/vehicles");
+  const { data } = await apiClient.get<ApiResponse<Vehicle[]>>('/courier/vehicles');
   return data;
 }
 
@@ -58,10 +58,7 @@ export async function fetchCourierVehicles(): Promise<ApiResponse<Vehicle[]>> {
 export async function createCourierVehicle(
   input: CreateVehicleInput,
 ): Promise<ApiResponse<Vehicle>> {
-  const { data } = await apiClient.post<ApiResponse<Vehicle>>(
-    "/courier/vehicles",
-    input,
-  );
+  const { data } = await apiClient.post<ApiResponse<Vehicle>>('/courier/vehicles', input);
   return data;
 }
 
@@ -74,9 +71,9 @@ export interface UpdateCourierVehicleInput {
   /** Optional registration plate. */
   plate?: string;
   /** Optional capacity overrides; weight defaults from the capability table. */
-  capacity?: CreateVehicleInput["capacity"];
+  capacity?: CreateVehicleInput['capacity'];
   /** Lifecycle status. */
-  status?: "active" | "inactive";
+  status?: 'active' | 'inactive';
 }
 
 /** Update one of the signed-in courier's vehicles. */
@@ -84,30 +81,20 @@ export async function updateCourierVehicle(
   id: string,
   input: UpdateCourierVehicleInput,
 ): Promise<ApiResponse<Vehicle>> {
-  const { data } = await apiClient.patch<ApiResponse<Vehicle>>(
-    `/courier/vehicles/${id}`,
-    input,
-  );
+  const { data } = await apiClient.patch<ApiResponse<Vehicle>>(`/courier/vehicles/${id}`, input);
   return data;
 }
 
 /** Delete one of the signed-in courier's vehicles. */
-export async function deleteCourierVehicle(
-  id: string,
-): Promise<ApiResponse<{ id: string }>> {
-  const { data } = await apiClient.delete<ApiResponse<{ id: string }>>(
-    `/courier/vehicles/${id}`,
-  );
+export async function deleteCourierVehicle(id: string): Promise<ApiResponse<{ id: string }>> {
+  const { data } = await apiClient.delete<ApiResponse<{ id: string }>>(`/courier/vehicles/${id}`);
   return data;
 }
 
 /** Select the signed-in courier's active vehicle (recomputes their capability). */
-export async function setActiveVehicle(
-  vehicleId: string,
-): Promise<ApiResponse<CourierProfile>> {
-  const { data } = await apiClient.post<ApiResponse<CourierProfile>>(
-    "/courier/active-vehicle",
-    { vehicleId },
-  );
+export async function setActiveVehicle(vehicleId: string): Promise<ApiResponse<CourierProfile>> {
+  const { data } = await apiClient.post<ApiResponse<CourierProfile>>('/courier/active-vehicle', {
+    vehicleId,
+  });
   return data;
 }

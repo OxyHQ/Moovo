@@ -78,9 +78,7 @@ export function toTrackedParcel(input: {
       ? { estimatedDeliveryAt: parcel.estimatedDeliveryAt.toISOString() }
       : {}),
     ...(parcel.deliveredAt ? { deliveredAt: parcel.deliveredAt.toISOString() } : {}),
-    ...(parcel.lastCheckpointAt
-      ? { lastCheckpointAt: parcel.lastCheckpointAt.toISOString() }
-      : {}),
+    ...(parcel.lastCheckpointAt ? { lastCheckpointAt: parcel.lastCheckpointAt.toISOString() } : {}),
     checkpointCount: parcel.checkpointCount,
     trackingUrl: buildTrackingUrl(carrier, parcel.trackingNumber),
     notifyOnStateChange: subscription.notifyOnStateChange,
@@ -111,9 +109,7 @@ export function toPublicLookup(input: {
       ? { estimatedDeliveryAt: parcel.estimatedDeliveryAt.toISOString() }
       : {}),
     ...(parcel.deliveredAt ? { deliveredAt: parcel.deliveredAt.toISOString() } : {}),
-    ...(parcel.lastCheckpointAt
-      ? { lastCheckpointAt: parcel.lastCheckpointAt.toISOString() }
-      : {}),
+    ...(parcel.lastCheckpointAt ? { lastCheckpointAt: parcel.lastCheckpointAt.toISOString() } : {}),
     trackingUrl: buildTrackingUrl(carrier, parcel.trackingNumber),
     checkpoints: checkpoints.map((row) => {
       // Built by NAMING the permitted fields rather than by spreading the

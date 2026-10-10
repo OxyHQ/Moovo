@@ -20,7 +20,7 @@ export interface MapMarker {
   /** `[lng, lat]` position. */
   coordinate: LngLat;
   /** Semantic role, used to pick the marker color. */
-  kind: "pickup" | "dropoff" | "courier";
+  kind: 'pickup' | 'dropoff' | 'courier';
   /** Accessible label / title. */
   label: string;
 }
@@ -40,17 +40,17 @@ export interface JobMapProps {
 }
 
 /** Marker fill colors by role (kept platform-agnostic). */
-export const MARKER_COLORS: Record<MapMarker["kind"], string> = {
-  pickup: "#16a34a",
-  dropoff: "#dc2626",
-  courier: "#2563eb",
+export const MARKER_COLORS: Record<MapMarker['kind'], string> = {
+  pickup: '#16a34a',
+  dropoff: '#dc2626',
+  courier: '#2563eb',
 };
 
 /** The free OpenStreetMap raster tile template (no API key required). */
-export const OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+export const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 /** Required OSM attribution string. */
-export const OSM_ATTRIBUTION = "© OpenStreetMap contributors";
+export const OSM_ATTRIBUTION = '© OpenStreetMap contributors';
 
 /** Default zoom when fitting a single point. */
 export const DEFAULT_ZOOM = 13;

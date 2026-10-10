@@ -29,10 +29,7 @@ await esbuild.build({
    * shared chunk — the one failure that would strike exactly when a deploy is
    * mid-flight.
    */
-  entryPoints: [
-    'src/index.ts',
-    'src/db/migrate.ts',
-  ],
+  entryPoints: ['src/index.ts', 'src/db/migrate.ts'],
   bundle: true,
   platform: 'node',
   target: 'node20',
@@ -51,15 +48,17 @@ await esbuild.build({
   // named @oxy.so/crowdsource*. Node's own ESM loader picks the right build, so
   // leave the resolution to Node; the runtime image ships node_modules (see the
   // Dockerfile), so they resolve there.
-  plugins: [{
-    name: 'externalize-third-party',
-    setup(build) {
-      build.onResolve({ filter: /^[^./]/ }, args => {
-        if (args.path.startsWith('@moovo/')) return undefined;
-        return { path: args.path, external: true };
-      });
+  plugins: [
+    {
+      name: 'externalize-third-party',
+      setup(build) {
+        build.onResolve({ filter: /^[^./]/ }, (args) => {
+          if (args.path.startsWith('@moovo/')) return undefined;
+          return { path: args.path, external: true };
+        });
+      },
     },
-  }],
+  ],
   sourcemap: false,
   minify: false,
   logLevel: 'info',

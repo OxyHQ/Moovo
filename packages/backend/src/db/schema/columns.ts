@@ -61,9 +61,7 @@ export const longitude = () => doublePrecision();
 export const generatedGeographyPoint = (longitudeColumn: string, latitudeColumn: string) =>
   geography().generatedAlwaysAs(
     (): SQL =>
-      sql.raw(
-        `ST_SetSRID(ST_MakePoint(${longitudeColumn}, ${latitudeColumn}), 4326)::geography`,
-      ),
+      sql.raw(`ST_SetSRID(ST_MakePoint(${longitudeColumn}, ${latitudeColumn}), 4326)::geography`),
   );
 
 /**

@@ -133,7 +133,7 @@ async function getHealthSnapshot(): Promise<HealthSnapshot> {
     postgres: postgres.ok ? 'connected' : 'unavailable',
     redis: redisStatus,
     memory: {
-      rss: Math.round(mem.rss / 1024 / 1024),       // MB
+      rss: Math.round(mem.rss / 1024 / 1024), // MB
       heapUsed: Math.round(mem.heapUsed / 1024 / 1024), // MB
       heapTotal: Math.round(mem.heapTotal / 1024 / 1024), // MB
     },

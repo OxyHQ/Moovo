@@ -377,9 +377,7 @@ export async function listJobsAwaitingCourier(
   const rows = await db
     .select()
     .from(jobs)
-    .where(
-      and(eq(jobs.fulfillmentType, 'moovo_courier'), inArray(jobs.status, [...statuses])),
-    );
+    .where(and(eq(jobs.fulfillmentType, 'moovo_courier'), inArray(jobs.status, [...statuses])));
   return rows.map(toJobRecord);
 }
 

@@ -54,10 +54,7 @@ export async function listEnabledProvidersForType(
     .select()
     .from(providers)
     .where(
-      and(
-        eq(providers.enabled, true),
-        sql`${shipmentType} = any(${providers.supportedTypes})`,
-      ),
+      and(eq(providers.enabled, true), sql`${shipmentType} = any(${providers.supportedTypes})`),
     );
 }
 
@@ -84,7 +81,10 @@ export async function findProvidersByIds(
   db: DatabaseOrTransaction = getDb(),
 ): Promise<ProviderRow[]> {
   if (providerIds.length === 0) return [];
-  return await db.select().from(providers).where(inArray(providers.id, [...providerIds]));
+  return await db
+    .select()
+    .from(providers)
+    .where(inArray(providers.id, [...providerIds]));
 }
 
 /**

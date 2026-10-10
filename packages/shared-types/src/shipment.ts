@@ -76,9 +76,7 @@ export interface ParcelDetails {
  * When the shipment should be fulfilled: immediately (`now`) or at a future
  * `scheduledFor` time (`scheduled`).
  */
-export type Scheduling =
-  | { kind: 'now' }
-  | { kind: 'scheduled'; scheduledFor: string };
+export type Scheduling = { kind: 'now' } | { kind: 'scheduled'; scheduledFor: string };
 
 /** A shipment photo (an Oxy media file id + optional alt text + ordering). */
 export interface ShipmentPhoto {

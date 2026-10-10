@@ -297,7 +297,9 @@ describe('the deploy holds no runtime secret', () => {
   it('no workflow writes SSM', () => {
     expect(workflows.length).toBeGreaterThan(3); // vacuity floor
     const writers = workflows
-      .filter(([, text]) => /\bssm\s+(put-parameter|delete-parameters?|label-parameter-version)\b/i.test(text))
+      .filter(([, text]) =>
+        /\bssm\s+(put-parameter|delete-parameters?|label-parameter-version)\b/i.test(text),
+      )
       .map(([file]) => file);
     expect(writers).toEqual([]);
   });

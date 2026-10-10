@@ -160,9 +160,7 @@ export default function TrackScreen() {
               </Text>
               <Pressable
                 accessibilityRole="button"
-                onPress={() =>
-                  router.replace({ pathname: '/track/[number]', params: { number } })
-                }
+                onPress={() => router.replace({ pathname: '/track/[number]', params: { number } })}
                 className="mt-4 h-11 items-center justify-center rounded-xl bg-primary px-5"
               >
                 <Text className="text-sm font-semibold text-primary-foreground">
@@ -203,8 +201,8 @@ export default function TrackScreen() {
                     Hemos identificado el transportista
                   </Text>
                   <Text className="mt-1 text-sm text-muted-foreground">
-                    Moovo todavía no recibe el estado de {parcel.carrier.name}, así que el
-                    recorrido lo tiene su web. Te llevamos directo a la página de este envío.
+                    Moovo todavía no recibe el estado de {parcel.carrier.name}, así que el recorrido
+                    lo tiene su web. Te llevamos directo a la página de este envío.
                   </Text>
                 </View>
               )}
@@ -232,9 +230,7 @@ export default function TrackScreen() {
 
               <Pressable
                 accessibilityRole="button"
-                onPress={() =>
-                  router.replace({ pathname: '/track/[number]', params: { number } })
-                }
+                onPress={() => router.replace({ pathname: '/track/[number]', params: { number } })}
                 className="mt-2 h-11 items-center justify-center rounded-xl px-5"
               >
                 <Text className="text-sm text-muted-foreground">
@@ -243,7 +239,9 @@ export default function TrackScreen() {
               </Pressable>
 
               <View className="mt-8 rounded-2xl border border-border bg-card p-5">
-                <Text className="text-base font-semibold text-foreground">Guárdalo en tu lista</Text>
+                <Text className="text-base font-semibold text-foreground">
+                  Guárdalo en tu lista
+                </Text>
                 <Text className="mt-1 text-sm text-muted-foreground">
                   {!isAuthenticated
                     ? 'Inicia sesión para tener todos tus envíos en una sola lista.'

@@ -1,24 +1,20 @@
-import { useState } from "react";
-import { View, ActivityIndicator } from "react-native";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Truck } from "lucide-react-native";
-import type {
-  Vehicle,
-  CreateVehicleInput,
-  CompanyMember,
-} from "@moovo/shared-types";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { DashboardScreen } from "@/components/dashboard/DashboardScreen";
+import { useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Pencil, Trash2, Truck } from 'lucide-react-native';
+import type { Vehicle, CreateVehicleInput, CompanyMember } from '@moovo/shared-types';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
   CompanyHeader,
   NoCompaniesState,
   PermissionDenied,
-} from "@/components/dashboard/CompanyHeader";
-import { UserCell } from "@/components/dashboard/UserCell";
-import { VehicleDialog } from "@/components/dashboard/VehicleDialog";
+} from '@/components/dashboard/CompanyHeader';
+import { UserCell } from '@/components/dashboard/UserCell';
+import { VehicleDialog } from '@/components/dashboard/VehicleDialog';
 import { toast } from '@oxy.so/bloom/toast';
 import {
   fetchVehicles,
@@ -26,18 +22,18 @@ import {
   updateVehicle,
   deleteVehicle,
   type UpdateVehicleBody,
-} from "@/lib/api/vehicles";
-import { queryKeys } from "@/lib/hooks/query-keys";
-import { useCompanyContext } from "@/lib/hooks/use-company-context";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { useTranslation } from "@/hooks/useTranslation";
-import { cn } from "@/lib/utils";
+} from '@/lib/api/vehicles';
+import { queryKeys } from '@/lib/hooks/query-keys';
+import { useCompanyContext } from '@/lib/hooks/use-company-context';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { useTranslation } from '@/hooks/useTranslation';
+import { cn } from '@/lib/utils';
 
 /** Extract a human message from an axios/API error. */
 function errorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === "object" && "response" in err) {
-    const data = (err as { response?: { data?: { message?: string; error?: string } } })
-      .response?.data;
+  if (err && typeof err === 'object' && 'response' in err) {
+    const data = (err as { response?: { data?: { message?: string; error?: string } } }).response
+      ?.data;
     if (data?.message) return data.message;
     if (data?.error) return data.error;
   }
@@ -59,7 +55,7 @@ function VehicleCard({
 }) {
   const { t } = useTranslation();
   const { colors } = useColorScheme();
-  const isActive = vehicle.status === "active";
+  const isActive = vehicle.status === 'active';
 
   return (
     <Card className="min-w-0 flex-1 gap-3 p-4">
@@ -73,22 +69,22 @@ function VehicleCard({
           </Text>
           <Text className="text-xs text-muted-foreground" numberOfLines={1}>
             {t(`fleet.type.${vehicle.type}`)}
-            {vehicle.plate ? ` · ${vehicle.plate}` : ""}
+            {vehicle.plate ? ` · ${vehicle.plate}` : ''}
           </Text>
         </View>
         <View
           className={cn(
-            "self-start rounded-full px-2.5 py-1",
-            isActive ? "bg-primary/10" : "bg-muted",
+            'self-start rounded-full px-2.5 py-1',
+            isActive ? 'bg-primary/10' : 'bg-muted',
           )}
         >
           <Text
             className={cn(
-              "text-xs font-semibold",
-              isActive ? "text-primary" : "text-muted-foreground",
+              'text-xs font-semibold',
+              isActive ? 'text-primary' : 'text-muted-foreground',
             )}
           >
-            {isActive ? t("fleet.statusActive") : t("fleet.statusInactive")}
+            {isActive ? t('fleet.statusActive') : t('fleet.statusInactive')}
           </Text>
         </View>
       </View>
@@ -102,30 +98,23 @@ function VehicleCard({
           </View>
         ))}
         <Text className="text-[11px] text-muted-foreground">
-          {t("fleet.capacityKg", { kg: vehicle.capacity.maxWeightKg })}
+          {t('fleet.capacityKg', { kg: vehicle.capacity.maxWeightKg })}
         </Text>
       </View>
 
       {canWrite ? (
         <View className="flex-row gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onPress={() => onEdit(vehicle)}
-          >
+          <Button variant="outline" size="sm" className="flex-1" onPress={() => onEdit(vehicle)}>
             <View className="flex-row items-center gap-1.5">
               <Pencil size={14} color={colors.foreground} />
-              <Text className="text-xs font-medium text-foreground">
-                {t("common.edit")}
-              </Text>
+              <Text className="text-xs font-medium text-foreground">{t('common.edit')}</Text>
             </View>
           </Button>
           <Button
             variant="outline"
             size="sm"
             onPress={() => onDelete(vehicle)}
-            accessibilityLabel={t("common.delete")}
+            accessibilityLabel={t('common.delete')}
           >
             <Trash2 size={14} color={colors.mutedForeground} />
           </Button>
@@ -140,26 +129,21 @@ function EnrolledCouriers({ members }: { members: CompanyMember[] }) {
   const { t } = useTranslation();
   // Drivers + dispatchers are the people who operate the fleet; owners are
   // operators too but listed under Members. Show the fleet-facing roles here.
-  const couriers = members.filter(
-    (m) => m.role === "driver" || m.role === "dispatcher",
-  );
+  const couriers = members.filter((m) => m.role === 'driver' || m.role === 'dispatcher');
 
   return (
     <Card className="p-4">
       <Text className="pb-1 text-base font-semibold text-surface-foreground">
-        {t("fleet.couriersTitle", { count: couriers.length })}
+        {t('fleet.couriersTitle', { count: couriers.length })}
       </Text>
       {couriers.length === 0 ? (
         <Text className="py-6 text-center text-sm text-muted-foreground">
-          {t("fleet.noCouriers")}
+          {t('fleet.noCouriers')}
         </Text>
       ) : (
         couriers.map((m) => (
           <View key={m.oxyUserId} className="border-b border-border py-3">
-            <UserCell
-              oxyUserId={m.oxyUserId}
-              subtitle={t(`members.role.${m.role}`)}
-            />
+            <UserCell oxyUserId={m.oxyUserId} subtitle={t(`members.role.${m.role}`)} />
           </View>
         ))
       )}
@@ -173,8 +157,8 @@ function FleetBody() {
   const queryClient = useQueryClient();
 
   const companyId = ctx.selectedCompanyId;
-  const canRead = ctx.can("jobs:read");
-  const canWrite = ctx.can("fleet:write");
+  const canRead = ctx.can('jobs:read');
+  const canWrite = ctx.can('fleet:write');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Vehicle | null>(null);
@@ -183,7 +167,7 @@ function FleetBody() {
   const vehiclesQuery = useQuery({
     queryKey: companyId
       ? queryKeys.companies.vehicles(companyId)
-      : ["companies", "none", "vehicles"],
+      : ['companies', 'none', 'vehicles'],
     queryFn: () => fetchVehicles(companyId as string),
     enabled: ctx.canUsePrivateApi && companyId !== null && canRead,
   });
@@ -197,14 +181,13 @@ function FleetBody() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (input: CreateVehicleInput) =>
-      createVehicle(companyId as string, input),
+    mutationFn: (input: CreateVehicleInput) => createVehicle(companyId as string, input),
     onSuccess: () => {
       invalidate();
       setDialogOpen(false);
-      toast.success(t("fleet.vehicleAdded"));
+      toast.success(t('fleet.vehicleAdded'));
     },
-    onError: (err) => toast.error(errorMessage(err, t("fleet.addFailed"))),
+    onError: (err) => toast.error(errorMessage(err, t('fleet.addFailed'))),
   });
 
   const updateMutation = useMutation({
@@ -214,18 +197,18 @@ function FleetBody() {
       invalidate();
       setDialogOpen(false);
       setEditing(null);
-      toast.success(t("fleet.vehicleUpdated"));
+      toast.success(t('fleet.vehicleUpdated'));
     },
-    onError: (err) => toast.error(errorMessage(err, t("fleet.updateFailed"))),
+    onError: (err) => toast.error(errorMessage(err, t('fleet.updateFailed'))),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteVehicle(companyId as string, id),
     onSuccess: () => {
       invalidate();
-      toast.success(t("fleet.vehicleDeleted"));
+      toast.success(t('fleet.vehicleDeleted'));
     },
-    onError: (err) => toast.error(errorMessage(err, t("fleet.deleteFailed"))),
+    onError: (err) => toast.error(errorMessage(err, t('fleet.deleteFailed'))),
   });
 
   if (ctx.isLoadingCompanies) {
@@ -243,7 +226,7 @@ function FleetBody() {
   return (
     <View className="gap-6 px-5 py-8 md:px-8">
       <CompanyHeader
-        title={t("nav.fleet")}
+        title={t('nav.fleet')}
         companies={ctx.companies}
         selectedCompanyId={ctx.selectedCompanyId}
         onSelect={ctx.selectCompany}
@@ -259,7 +242,7 @@ function FleetBody() {
               <View className="flex-row items-center gap-1.5">
                 <Plus size={16} className="text-primary-foreground" />
                 <Text className="text-sm font-medium text-primary-foreground">
-                  {t("fleet.addVehicle")}
+                  {t('fleet.addVehicle')}
                 </Text>
               </View>
             </Button>
@@ -268,7 +251,7 @@ function FleetBody() {
       />
 
       {!canRead ? (
-        <PermissionDenied message={t("fleet.readDenied")} />
+        <PermissionDenied message={t('fleet.readDenied')} />
       ) : (
         <>
           {vehiclesQuery.isPending ? (
@@ -278,18 +261,16 @@ function FleetBody() {
           ) : vehiclesQuery.isError ? (
             <View className="items-center gap-3 py-16">
               <Text className="text-center text-sm text-muted-foreground">
-                {t("fleet.loadError")}
+                {t('fleet.loadError')}
               </Text>
               <Button variant="outline" onPress={() => vehiclesQuery.refetch()}>
-                <Text className="text-sm font-medium text-foreground">
-                  {t("common.tryAgain")}
-                </Text>
+                <Text className="text-sm font-medium text-foreground">{t('common.tryAgain')}</Text>
               </Button>
             </View>
           ) : vehicles.length === 0 ? (
             <Card className="items-center gap-2 p-8">
               <Text className="text-center text-sm text-muted-foreground">
-                {t("fleet.noVehicles")}
+                {t('fleet.noVehicles')}
               </Text>
             </Card>
           ) : (
@@ -333,9 +314,9 @@ function FleetBody() {
         onOpenChange={(open) => {
           if (!open) setToDelete(null);
         }}
-        title={t("fleet.deleteTitle")}
-        description={t("fleet.deleteConfirm")}
-        confirmText={t("common.delete")}
+        title={t('fleet.deleteTitle')}
+        description={t('fleet.deleteConfirm')}
+        confirmText={t('common.delete')}
         confirmVariant="destructive"
         loading={deleteMutation.isPending}
         onConfirm={() => {

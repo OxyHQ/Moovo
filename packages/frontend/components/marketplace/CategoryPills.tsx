@@ -1,7 +1,7 @@
-import { View, Pressable, ScrollView } from "react-native";
-import { Image } from "expo-image";
-import { Text } from "@/components/ui/text";
-import type { CategoryPill } from "@moovo/shared-types";
+import { View, Pressable, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
+import { Text } from '@/components/ui/text';
+import type { CategoryPill } from '@moovo/shared-types';
 
 /** Horizontal gap (px) between adjacent chips. */
 const CHIP_GAP = 8;
@@ -61,10 +61,7 @@ function CategoryPillChip({ pill, onPressPill }: CategoryPillChipProps) {
           contentFit="cover"
           className="h-8 w-8 rounded-full"
         />
-        <View
-          pointerEvents="none"
-          className="absolute inset-0 rounded-full border border-border"
-        />
+        <View pointerEvents="none" className="absolute inset-0 rounded-full border border-border" />
       </View>
       <Text numberOfLines={1} className="text-sm font-medium text-foreground">
         {pill.name}

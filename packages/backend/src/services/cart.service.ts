@@ -64,7 +64,9 @@ function firstImageUrl(listing: ListingRecord | undefined): string | undefined {
 
 /** Clamp a requested quantity to `[1, maxQuantityPerItem]` and the live ceiling. */
 function clampQuantity(requested: number, tracked: boolean, available: number): number {
-  const ceiling = tracked ? Math.min(config.cart.maxQuantityPerItem, available) : config.cart.maxQuantityPerItem;
+  const ceiling = tracked
+    ? Math.min(config.cart.maxQuantityPerItem, available)
+    : config.cart.maxQuantityPerItem;
   return Math.max(0, Math.min(requested, ceiling));
 }
 
