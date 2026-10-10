@@ -75,13 +75,11 @@ export default function NotificationsScreen() {
     if (!isAuthenticated) {
       router.replace('/(app)');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, router]);
 
-  useEffect(() => {
-    checkPermissions();
-  }, []);
-
-  const checkPermissions = async () => {
+  // Reads only module APIs and state setters, so it is stable and the effect
+  // below still runs once on mount.
+  const checkPermissions = useCallback(async () => {
     if (Platform.OS === 'web') {
       setPermissionStatus('unavailable');
       setPushLoading(false);
@@ -96,7 +94,11 @@ export default function NotificationsScreen() {
     } finally {
       setPushLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkPermissions();
+  }, [checkPermissions]);
 
   const handleTogglePush = async (value: boolean) => {
     if (Platform.OS === 'web') return;

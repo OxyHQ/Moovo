@@ -59,6 +59,7 @@ export default function JobMap({ markers, route, className }: JobMapProps) {
 
   // Create the map once against the container DOM node, and tear it down on
   // unmount. Map creation against a DOM element is inherently effectful.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: create-once; the first marker only seeds the initial centre, and later marker changes are reconciled by the effect below
   useEffect(() => {
     // On react-native-web a View ref resolves to its backing DOM node.
     const container = containerRef.current as unknown as HTMLElement | null;
