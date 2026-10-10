@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { View } from 'react-native';
 import { cn } from '@/lib/utils';
 import { MoovoWordmark } from '@/components/ui/moovo-wordmark';

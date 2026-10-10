@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, Pressable, Platform, type LayoutRectangle, type ViewStyle } from 'react-native';
 import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'expo-router';
