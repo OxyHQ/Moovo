@@ -23,7 +23,7 @@
  *    value flows into a `total: number` on the paginated response.
  */
 
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, assert, beforeAll, describe, expect, it } from 'vitest';
 import type { PriceBreakdown } from '@moovo/shared-types';
 import {
   POSTGRES_TESTS_ENABLED,
@@ -458,7 +458,8 @@ describeIfPostgres('shipments and quotes on a real server', () => {
         },
       ]);
 
-      const read = await findQuoteById(written!.id);
+      assert(written);
+      const read = await findQuoteById(written.id);
       expect(read?.priceBreakdown).toEqual(breakdown(500));
       expect(read?.currency).toBe('FAIR');
       expect(read?.source).toBe('moovo_courier');
@@ -488,8 +489,9 @@ describeIfPostgres('shipments and quotes on a real server', () => {
         },
       ]);
 
-      expect((await findQuoteById(a!.id))?.priceBreakdown).toEqual(withExtras);
-      const plain = await findQuoteById(b!.id);
+      assert(a && b);
+      expect((await findQuoteById(a.id))?.priceBreakdown).toEqual(withExtras);
+      const plain = await findQuoteById(b.id);
       expect(plain?.priceBreakdown).not.toHaveProperty('surge');
       expect(plain?.priceBreakdown).not.toHaveProperty('fees');
     });
@@ -557,16 +559,17 @@ describeIfPostgres('shipments and quotes on a real server', () => {
         },
       ]);
 
-      await markQuoteSelected(internal!.id);
+      assert(internal && external && lapsed);
+      await markQuoteSelected(internal.id);
       const listed = await listActiveQuotesForShipment(shipment.id);
 
       // `external_provider` sorts before `moovo_courier` — the source's
       // `{source: 1}`, preserved verbatim because it is the order the API has
       // always returned.
-      expect(listed.map((q) => q.id)).toEqual([external!.id, internal!.id]);
-      expect(listed.map((q) => q.id)).not.toContain(lapsed!.id);
+      expect(listed.map((q) => q.id)).toEqual([external.id, internal.id]);
+      expect(listed.map((q) => q.id)).not.toContain(lapsed.id);
       // A selected quote is still listed: the customer must see what they chose.
-      expect(listed.find((q) => q.id === internal!.id)?.status).toBe('selected');
+      expect(listed.find((q) => q.id === internal.id)?.status).toBe('selected');
     });
 
     it('cascades quotes when their shipment is deleted', async () => {

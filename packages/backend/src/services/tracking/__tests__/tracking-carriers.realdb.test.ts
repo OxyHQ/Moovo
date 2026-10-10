@@ -17,11 +17,12 @@
  * up identical and `$onUpdate` therefore leaves `updated_at` alone.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, assert, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../../../db/testDatabase';
 import { seedTrackingCarriers } from '../seed-tracking-carriers.js';
@@ -39,11 +40,12 @@ describeIfPostgres('seeding the tracking carriers', () => {
   let suite: SuiteDatabase | null = null;
 
   async function tupleVersion(key: string): Promise<{ xmin: string; updatedAt: string }> {
-    const [row] = await suite!.client<{ xmin: string; updated_at: string }[]>`
+    const [row] = await requireSuite(suite).client<{ xmin: string; updated_at: string }[]>`
       SELECT xmin::text AS xmin, updated_at::text AS updated_at
       FROM tracking_carriers WHERE key = ${key}
     `;
-    return { xmin: row!.xmin, updatedAt: row!.updated_at };
+    assert(row, `no tracking_carriers row for ${key}`);
+    return { xmin: row.xmin, updatedAt: row.updated_at };
   }
 
   beforeAll(async () => {
@@ -94,7 +96,7 @@ describeIfPostgres('seeding the tracking carriers', () => {
     // The failure this whole `DO NOTHING` exists to prevent: somebody fixes a
     // broken carrier URL at 09:00, and the 17:00 deploy silently puts the
     // broken one back.
-    await suite!.client`
+    await requireSuite(suite).client`
       UPDATE tracking_carriers
       SET deep_link_template = 'https://operator.example/fixed?n={number}', enabled = false
       WHERE key = 'seur'
@@ -108,7 +110,7 @@ describeIfPostgres('seeding the tracking carriers', () => {
   });
 
   it('re-creates only the carrier an operator deleted', async () => {
-    await suite!.client`DELETE FROM tracking_carriers WHERE key = 'gls'`;
+    await requireSuite(suite).client`DELETE FROM tracking_carriers WHERE key = 'gls'`;
     expect(await seedTrackingCarriers()).toBe(1);
     expect(await findTrackingCarrierByKey('gls')).not.toBeNull();
   });

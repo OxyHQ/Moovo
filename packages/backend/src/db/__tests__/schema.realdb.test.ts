@@ -20,6 +20,7 @@ import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../testDatabase';
 import { getDb } from '../postgres';
@@ -221,7 +222,7 @@ describeIfPostgres('the migrated schema', () => {
     // A pg enum cannot gain a value in the same transaction as the code using
     // it, and cannot lose one at all. The whole schema is `text` + CHECK, so
     // there should be no enum type in this database whatsoever.
-    const rows = await suite!.client<{ typname: string }[]>`
+    const rows = await requireSuite(suite).client<{ typname: string }[]>`
       SELECT t.typname FROM pg_type t
       JOIN pg_namespace n ON n.oid = t.typnamespace
       WHERE t.typtype = 'e' AND n.nspname = 'public'
@@ -232,7 +233,7 @@ describeIfPostgres('the migrated schema', () => {
   it('carries a CHECK for every closed-set column', async () => {
     // A floor rather than an exact count: the point is that the constraints
     // really landed in the database, not merely that the helper was called.
-    const [row] = await suite!.client<{ count: number }[]>`
+    const [row] = await requireSuite(suite).client<{ count: number }[]>`
       SELECT count(*)::int AS count FROM pg_constraint
       WHERE contype = 'c' AND connamespace = 'public'::regnamespace
     `;

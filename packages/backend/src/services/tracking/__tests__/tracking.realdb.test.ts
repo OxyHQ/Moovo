@@ -19,11 +19,12 @@
  *    bumping every tuple. `xmin` is what separates them.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, assert, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../../../db/testDatabase';
 import { getDb } from '../../../db/postgres';
@@ -57,14 +58,14 @@ describeIfPostgres('the tracking write path', () => {
   let suite: SuiteDatabase | null = null;
 
   async function countParcels(): Promise<number> {
-    const [row] = await suite!.client<{ count: number }[]>`
+    const [row] = await requireSuite(suite).client<{ count: number }[]>`
       SELECT count(*)::int AS count FROM tracked_parcels
     `;
     return row?.count ?? 0;
   }
 
   async function parcelRow(number: string) {
-    const [row] = await suite!.client<
+    const [row] = await requireSuite(suite).client<
       {
         id: string;
         carrier_key: string;
@@ -92,7 +93,7 @@ describeIfPostgres('the tracking write path', () => {
   });
 
   beforeEach(async () => {
-    await suite!.client`DELETE FROM tracked_parcels`;
+    await requireSuite(suite).client`DELETE FROM tracked_parcels`;
   });
 
   describe('one identity per (carrier, number)', () => {
@@ -175,7 +176,7 @@ describeIfPostgres('the tracking write path', () => {
       const first = await ingestCheckpoints(parcel.id, history);
       expect(first).toHaveLength(2);
 
-      const [before] = await suite!.client<{ xmin: string }[]>`
+      const [before] = await requireSuite(suite).client<{ xmin: string }[]>`
         SELECT xmin::text AS xmin FROM tracking_checkpoints
         WHERE parcel_id = ${parcel.id} ORDER BY occurred_at LIMIT 1
       `;
@@ -184,14 +185,15 @@ describeIfPostgres('the tracking write path', () => {
       const second = await ingestCheckpoints(parcel.id, history);
       expect(second).toHaveLength(0);
 
-      const [after] = await suite!.client<{ xmin: string; count: number }[]>`
+      const [after] = await requireSuite(suite).client<{ xmin: string; count: number }[]>`
         SELECT xmin::text AS xmin,
                (SELECT count(*)::int FROM tracking_checkpoints WHERE parcel_id = ${parcel.id}) AS count
         FROM tracking_checkpoints
         WHERE parcel_id = ${parcel.id} ORDER BY occurred_at LIMIT 1
       `;
-      expect(after!.count).toBe(2);
-      expect(after!.xmin).toBe(before!.xmin);
+      assert(before && after, 'the checkpoint row is missing');
+      expect(after.count).toBe(2);
+      expect(after.xmin).toBe(before.xmin);
     });
 
     it('accepts a genuinely new event appended to a history it already has', async () => {
@@ -277,7 +279,9 @@ describeIfPostgres('the tracking write path', () => {
       const moved = await updateParcel(tracked.id, 'oxy-ana', { carrierKey: 'dhl-express' });
 
       expect(moved.carrier.key).toBe('dhl-express');
-      const [fedex] = await suite!.client<{ carrier_key: string; subscriber_count: number }[]>`
+      const [fedex] = await requireSuite(suite).client<
+        { carrier_key: string; subscriber_count: number }[]
+      >`
         SELECT carrier_key, subscriber_count FROM tracked_parcels WHERE carrier_key = 'fedex'
       `;
       expect(fedex?.carrier_key).toBe('fedex');

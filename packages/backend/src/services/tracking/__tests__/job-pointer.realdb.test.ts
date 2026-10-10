@@ -19,11 +19,12 @@
  *   blank row in somebody's list.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, assert, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../../../db/testDatabase';
 import { getDb } from '../../../db/postgres';
@@ -39,7 +40,7 @@ describeIfPostgres('the Moovo job pointer', () => {
   let suite: SuiteDatabase | null = null;
 
   async function insertJob(id: string, jobNumber: string) {
-    await suite!.client`
+    await requireSuite(suite).client`
       INSERT INTO shipments (
         id, sender_oxy_user_id, type,
         pickup_latitude, pickup_longitude, pickup_line1, pickup_city,
@@ -54,7 +55,7 @@ describeIfPostgres('the Moovo job pointer', () => {
         2.5, 'small', ''
       )
     `;
-    await suite!.client`INSERT INTO jobs ${suite!.client({
+    await requireSuite(suite).client`INSERT INTO jobs ${requireSuite(suite).client({
       id,
       job_number: jobNumber,
       shipment_id: `ship-${id}`,
@@ -94,9 +95,9 @@ describeIfPostgres('the Moovo job pointer', () => {
   });
 
   beforeEach(async () => {
-    await suite!.client`DELETE FROM tracked_parcels`;
-    await suite!.client`DELETE FROM jobs`;
-    await suite!.client`DELETE FROM shipments`;
+    await requireSuite(suite).client`DELETE FROM tracked_parcels`;
+    await requireSuite(suite).client`DELETE FROM jobs`;
+    await requireSuite(suite).client`DELETE FROM shipments`;
   });
 
   it('ships the moovo carrier with the SCHEMA, not with the boot-time seed', async () => {
@@ -104,7 +105,7 @@ describeIfPostgres('the Moovo job pointer', () => {
     // transaction, so a missing row fails the foreign key — and therefore the
     // BOOKING, not merely the tracker. Leaving it to a boot seed would make
     // that a race between a deploy and its first customer.
-    const [row] = await suite!.client<{ key: string }[]>`
+    const [row] = await requireSuite(suite).client<{ key: string }[]>`
       SELECT key FROM tracking_carriers WHERE key = 'moovo'
     `;
     expect(row?.key).toBe('moovo');
@@ -126,6 +127,7 @@ describeIfPostgres('the Moovo job pointer', () => {
 
     const parcel = await findParcelByJobId('job-1');
     expect(parcel).not.toBeNull();
+    assert(parcel);
     expect(parcel?.carrierKey).toBe('moovo');
     // The hyphen the job number is printed with cannot survive the CHECK, so
     // the pointer stores what a sender pasting it would normalise to.
@@ -134,14 +136,14 @@ describeIfPostgres('the Moovo job pointer', () => {
     expect(parcel?.pollMode).toBe('manual');
     expect(parcel?.nextPollAt).toBeNull();
 
-    const [checkpoints] = await suite!.client<{ count: number }[]>`
-      SELECT count(*)::int AS count FROM tracking_checkpoints WHERE parcel_id = ${parcel!.id}
+    const [checkpoints] = await requireSuite(suite).client<{ count: number }[]>`
+      SELECT count(*)::int AS count FROM tracking_checkpoints WHERE parcel_id = ${parcel.id}
     `;
     expect(checkpoints?.count).toBe(0);
 
-    const [subs] = await suite!.client<{ count: number }[]>`
+    const [subs] = await requireSuite(suite).client<{ count: number }[]>`
       SELECT count(*)::int AS count FROM tracked_parcel_subscriptions
-      WHERE parcel_id = ${parcel!.id} AND oxy_user_id = 'oxy-sender'
+      WHERE parcel_id = ${parcel.id} AND oxy_user_id = 'oxy-sender'
     `;
     expect(subs?.count).toBe(1);
   });
@@ -179,7 +181,7 @@ describeIfPostgres('the Moovo job pointer', () => {
         );
       });
     }
-    const [row] = await suite!.client<{ count: number }[]>`
+    const [row] = await requireSuite(suite).client<{ count: number }[]>`
       SELECT count(*)::int AS count FROM tracked_parcels WHERE moovo_job_id = 'job-3'
     `;
     expect(row?.count).toBe(1);

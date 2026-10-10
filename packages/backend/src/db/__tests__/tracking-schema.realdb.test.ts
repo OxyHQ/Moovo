@@ -24,6 +24,7 @@ import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../testDatabase';
 
@@ -42,7 +43,7 @@ describeIfPostgres('the tracking schema', () => {
   let suite: SuiteDatabase | null = null;
 
   async function insertCarrier(key: string, fields: Record<string, unknown> = {}) {
-    await suite!.client`INSERT INTO tracking_carriers ${suite!.client({
+    await requireSuite(suite).client`INSERT INTO tracking_carriers ${requireSuite(suite).client({
       id: `carrier-${key}`,
       key,
       name: key.toUpperCase(),
@@ -53,7 +54,7 @@ describeIfPostgres('the tracking schema', () => {
 
   /** A parcel with every NOT NULL column filled, overridden by `fields`. */
   async function insertParcel(id: string, fields: Record<string, unknown> = {}) {
-    await suite!.client`INSERT INTO tracked_parcels ${suite!.client({
+    await requireSuite(suite).client`INSERT INTO tracked_parcels ${requireSuite(suite).client({
       id,
       carrier_key: 'ups',
       tracking_number: `1Z999AA1012345678${id.length}`,
@@ -63,7 +64,7 @@ describeIfPostgres('the tracking schema', () => {
   }
 
   async function insertCheckpoint(id: string, fields: Record<string, unknown> = {}) {
-    await suite!.client`INSERT INTO tracking_checkpoints ${suite!.client({
+    await requireSuite(suite).client`INSERT INTO tracking_checkpoints ${requireSuite(suite).client({
       id,
       parcel_id: 'p-base',
       dedupe_key: id,
@@ -183,7 +184,7 @@ describeIfPostgres('the tracking schema', () => {
     });
 
     it('accepts a pointer to a real job under the moovo carrier', async () => {
-      await suite!.client`
+      await requireSuite(suite).client`
         INSERT INTO shipments (
           id, sender_oxy_user_id, type,
           pickup_latitude, pickup_longitude, pickup_line1, pickup_city,
@@ -198,7 +199,7 @@ describeIfPostgres('the tracking schema', () => {
           2.5, 'small', ''
         )
       `;
-      await suite!.client`INSERT INTO jobs ${suite!.client({
+      await requireSuite(suite).client`INSERT INTO jobs ${requireSuite(suite).client({
         id: 'job-track',
         job_number: 'MOV-000042',
         shipment_id: 'ship-track',
@@ -265,7 +266,7 @@ describeIfPostgres('the tracking schema', () => {
       // The common case: most carriers report a place name and no position, and
       // absent must stay genuinely absent rather than becoming (0, 0).
       await expect(insertCheckpoint('cp-nogeo')).resolves.toBeUndefined();
-      const [row] = await suite!.client<{ location: string | null }[]>`
+      const [row] = await requireSuite(suite).client<{ location: string | null }[]>`
         SELECT location FROM tracking_checkpoints WHERE id = 'cp-nogeo'
       `;
       expect(row?.location).toBeNull();
@@ -274,14 +275,18 @@ describeIfPostgres('the tracking schema', () => {
 
   describe('tracked_parcel_subscriptions — many watchers, one parcel', () => {
     it('refuses the same user adding one parcel twice', async () => {
-      await suite!.client`INSERT INTO tracked_parcel_subscriptions ${suite!.client({
+      await requireSuite(suite).client`INSERT INTO tracked_parcel_subscriptions ${requireSuite(
+        suite,
+      ).client({
         id: 'sub-1',
         parcel_id: 'p-base',
         oxy_user_id: 'oxy-ana',
         entered_number: '1Z999AA1 0123456784',
       })}`;
       await expect(
-        suite!.client`INSERT INTO tracked_parcel_subscriptions ${suite!.client({
+        requireSuite(suite).client`INSERT INTO tracked_parcel_subscriptions ${requireSuite(
+          suite,
+        ).client({
           id: 'sub-1-again',
           parcel_id: 'p-base',
           oxy_user_id: 'oxy-ana',
@@ -293,17 +298,19 @@ describeIfPostgres('the tracking schema', () => {
     it('lets two users watch one parcel — and that stays ONE parcel row', async () => {
       // The cost property, asserted as a property rather than inferred from the
       // index definition.
-      await suite!.client`INSERT INTO tracked_parcel_subscriptions ${suite!.client({
+      await requireSuite(suite).client`INSERT INTO tracked_parcel_subscriptions ${requireSuite(
+        suite,
+      ).client({
         id: 'sub-2',
         parcel_id: 'p-base',
         oxy_user_id: 'oxy-bea',
         entered_number: '1Z999AA10123456784',
       })}`;
 
-      const [parcels] = await suite!.client<{ count: number }[]>`
+      const [parcels] = await requireSuite(suite).client<{ count: number }[]>`
         SELECT count(*)::int AS count FROM tracked_parcels WHERE id = 'p-base'
       `;
-      const [subs] = await suite!.client<{ count: number }[]>`
+      const [subs] = await requireSuite(suite).client<{ count: number }[]>`
         SELECT count(*)::int AS count FROM tracked_parcel_subscriptions WHERE parcel_id = 'p-base'
       `;
       expect(parcels?.count).toBe(1);

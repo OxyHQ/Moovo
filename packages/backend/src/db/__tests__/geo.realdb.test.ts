@@ -21,6 +21,7 @@ import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../testDatabase';
 
@@ -65,7 +66,7 @@ describeIfPostgres('geography columns', () => {
     // The assertion that catches a swap. Madrid and Barcelona are ~505 km
     // apart; with latitude and longitude transposed the same two rows come out
     // roughly 1,000 km apart, so the tolerance below cannot absorb the error.
-    const [row] = await suite!.client<{ meters: number }[]>`
+    const [row] = await requireSuite(suite).client<{ meters: number }[]>`
       SELECT ST_Distance(
         (SELECT location FROM courier_profiles WHERE oxy_user_id = 'courier-madrid'),
         (SELECT location FROM courier_profiles WHERE oxy_user_id = 'courier-barcelona')
@@ -76,7 +77,7 @@ describeIfPostgres('geography columns', () => {
   });
 
   it('reads a generated point back as a Point at SRID 4326', async () => {
-    const [row] = await suite!.client<{ type: string; srid: number }[]>`
+    const [row] = await requireSuite(suite).client<{ type: string; srid: number }[]>`
       SELECT ST_GeometryType(location::geometry) AS type, ST_SRID(location) AS srid
       FROM courier_profiles WHERE oxy_user_id = 'courier-madrid'
     `;
@@ -91,7 +92,7 @@ describeIfPostgres('geography columns', () => {
     // This is `dispatch.service.ts`'s query shape: a radius filter plus
     // distance ordering, then a limit. `search.service.ts` is deliberately
     // NOT this shape — see the note at the end of this file.
-    const rows = await suite!.client<{ oxy_user_id: string; meters: number }[]>`
+    const rows = await requireSuite(suite).client<{ oxy_user_id: string; meters: number }[]>`
       SELECT oxy_user_id,
              ST_Distance(location, ST_SetSRID(ST_MakePoint(${MADRID[0]}, ${MADRID[1]}), 4326)::geography) AS meters
       FROM courier_profiles
@@ -114,7 +115,7 @@ describeIfPostgres('geography columns', () => {
   });
 
   it('excludes couriers outside the radius rather than merely ranking them last', async () => {
-    const rows = await suite!.client<{ oxy_user_id: string }[]>`
+    const rows = await requireSuite(suite).client<{ oxy_user_id: string }[]>`
       SELECT oxy_user_id FROM courier_profiles
       WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(${MADRID[0]}, ${MADRID[1]}), 4326)::geography, 100000)
     `;
@@ -126,15 +127,15 @@ describeIfPostgres('geography columns', () => {
     // because an absent position and a position at (0, 0) — in the Gulf of
     // Guinea, ~4,000 km from Madrid — are different facts. A NULL ordinate
     // generates a NULL location, so the row is simply not a candidate.
-    await suite!.client`
+    await requireSuite(suite).client`
       INSERT INTO courier_profiles (id, oxy_user_id) VALUES ('courier-silent', 'courier-silent')
     `;
-    const [row] = await suite!.client<{ location: string | null }[]>`
+    const [row] = await requireSuite(suite).client<{ location: string | null }[]>`
       SELECT location FROM courier_profiles WHERE oxy_user_id = 'courier-silent'
     `;
     expect(row?.location).toBeNull();
 
-    const rows = await suite!.client<{ oxy_user_id: string }[]>`
+    const rows = await requireSuite(suite).client<{ oxy_user_id: string }[]>`
       SELECT oxy_user_id FROM courier_profiles
       WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(0, 0), 4326)::geography, 50000)
     `;
@@ -144,7 +145,7 @@ describeIfPostgres('geography columns', () => {
   it('refuses a half-reported position', async () => {
     // The one geo shape the source really did allow, on `listings.location`.
     await expect(
-      suite!.client`
+      requireSuite(suite).client`
         INSERT INTO courier_profiles (id, oxy_user_id, latitude)
         VALUES ('courier-partial', 'courier-partial', 40.4168)
       `,
@@ -164,7 +165,7 @@ describeIfPostgres('geography columns', () => {
     // a separate change with its own before/after — landing it inside a
     // migration would make any post-cutover complaint impossible to attribute
     // to a port defect rather than an intended behaviour change.
-    const rows = await suite!.client<{ oxy_user_id: string }[]>`
+    const rows = await requireSuite(suite).client<{ oxy_user_id: string }[]>`
       SELECT oxy_user_id FROM courier_profiles
       WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(${MADRID[0]}, ${MADRID[1]}), 4326)::geography, 600000)
       ORDER BY oxy_user_id ASC

@@ -7,7 +7,7 @@
  * latency nobody can trace back to a missing line.
  */
 
-import { describe, expect, it } from 'vitest';
+import { assert, describe, expect, it } from 'vitest';
 import { TRACKING_STATUSES } from '@moovo/shared-types';
 import { TRACKING_CADENCE, failureBackoffMs, nextPollAt } from '../tracking-cadence.js';
 import { TRACKING_TERMINAL_STATUSES } from '../tracking-status.js';
@@ -30,6 +30,12 @@ function due(overrides: Partial<Parameters<typeof nextPollAt>[0]> = {}) {
 
 const minutesUntil = (date: Date | null) =>
   date === null ? null : (date.getTime() - NOW.getTime()) / 60_000;
+
+/** Minutes until a due time that must exist: fails the test if the parcel was left unscheduled. */
+const scheduledMinutesUntil = (date: Date | null): number => {
+  assert(date !== null, 'expected a scheduled poll, got null');
+  return (date.getTime() - NOW.getTime()) / 60_000;
+};
 
 describe('TRACKING_CADENCE', () => {
   it('has an entry for every tracking status', () => {
@@ -56,10 +62,10 @@ describe('nextPollAt', () => {
   });
 
   it('backs off as a parcel goes quiet', () => {
-    const fresh = minutesUntil(due({ status: 'in_transit', lastCheckpointAt: NOW }))!;
-    const stale = minutesUntil(
+    const fresh = scheduledMinutesUntil(due({ status: 'in_transit', lastCheckpointAt: NOW }));
+    const stale = scheduledMinutesUntil(
       due({ status: 'in_transit', lastCheckpointAt: new Date('2026-02-25T12:00:00.000Z') }),
-    )!;
+    );
     expect(stale).toBeGreaterThan(fresh);
   });
 
@@ -84,8 +90,8 @@ describe('nextPollAt', () => {
   it('keeps polling a webhook carrier, slowly, rather than not at all', () => {
     // A push feed that stops silently is exactly what a backstop is for. `null`
     // here would mean the parcel freezes and nothing ever notices.
-    const polled = minutesUntil(due({ pollMode: 'poll' }))!;
-    const pushed = minutesUntil(due({ pollMode: 'webhook' }))!;
+    const polled = scheduledMinutesUntil(due({ pollMode: 'poll' }));
+    const pushed = scheduledMinutesUntil(due({ pollMode: 'webhook' }));
     expect(pushed).toBe(polled * 8);
     expect(pushed).not.toBeNull();
   });
@@ -95,8 +101,8 @@ describe('nextPollAt', () => {
   });
 
   it('spreads due times so a batch added together does not stay together', () => {
-    const low = minutesUntil(due({ status: 'out_for_delivery', random: () => 0 }))!;
-    const high = minutesUntil(due({ status: 'out_for_delivery', random: () => 1 }))!;
+    const low = scheduledMinutesUntil(due({ status: 'out_for_delivery', random: () => 0 }));
+    const high = scheduledMinutesUntil(due({ status: 'out_for_delivery', random: () => 1 }));
     expect(low).toBe(17);
     expect(high).toBe(23);
     expect(high).toBeGreaterThan(low);

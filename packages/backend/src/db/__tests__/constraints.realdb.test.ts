@@ -19,6 +19,7 @@ import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../testDatabase';
 
@@ -29,7 +30,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
 
   /** A shipment, so jobs have something to reference. Returns its id. */
   async function insertShipment(id: string): Promise<string> {
-    await suite!.client`
+    await requireSuite(suite).client`
       INSERT INTO shipments (
         id, sender_oxy_user_id, type,
         pickup_latitude, pickup_longitude, pickup_line1, pickup_city,
@@ -77,7 +78,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
       totals: JSON.stringify({ total: { fairMinor: 300 } }),
       ...fields,
     };
-    await suite!.client`INSERT INTO jobs ${suite!.client(base)}`;
+    await requireSuite(suite).client`INSERT INTO jobs ${requireSuite(suite).client(base)}`;
   }
 
   beforeAll(async () => {
@@ -99,7 +100,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
   describe('listings — ownerType is user XOR store', () => {
     it('accepts a user-owned listing', async () => {
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO listings (id, owner_type, oxy_user_id, title, condition, description)
           VALUES ('l-user', 'user', 'oxy-1', 'A bike', 'used', '')
         `,
@@ -108,7 +109,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
 
     it('accepts a store-owned listing', async () => {
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO listings (id, owner_type, store_id, title, condition, description)
           VALUES ('l-store', 'store', 'store-1', 'A lamp', 'new', '')
         `,
@@ -117,7 +118,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
 
     it('refuses a user-owned listing with no owner', async () => {
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO listings (id, owner_type, title, condition, description)
           VALUES ('l-bad-1', 'user', 'Orphan', 'used', '')
         `,
@@ -126,7 +127,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
 
     it('refuses a listing owned BOTH ways — the race the hook could not stop', async () => {
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO listings (id, owner_type, oxy_user_id, store_id, title, condition, description)
           VALUES ('l-bad-2', 'user', 'oxy-1', 'store-1', 'Both', 'used', '')
         `,
@@ -142,7 +143,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
       // asserts the closed-set constraint itself rather than a race between
       // two error messages.
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO listings (id, owner_type, oxy_user_id, title, condition, description)
           VALUES ('l-bad-3', 'user', 'oxy-1', 'Other', 'refurbished', '')
         `,
@@ -154,7 +155,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
       // guaranteed, so the assertion names both rather than pinning a
       // behaviour Postgres never promised.
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO listings (id, owner_type, oxy_user_id, title, condition, description)
           VALUES ('l-bad-4', 'cooperative', 'oxy-1', 'Other', 'used', '')
         `,
@@ -165,7 +166,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
   describe('vehicles — ownerType is courier XOR company', () => {
     it('accepts a courier-owned vehicle', async () => {
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO vehicles (id, owner_type, courier_oxy_user_id, type)
           VALUES ('v-courier', 'courier', 'oxy-2', 'bike')
         `,
@@ -174,7 +175,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
 
     it('accepts a company-owned vehicle', async () => {
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO vehicles (id, owner_type, company_id, type)
           VALUES ('v-company', 'company', 'company-1', 'van')
         `,
@@ -183,7 +184,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
 
     it('refuses a company vehicle that also names a courier', async () => {
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO vehicles (id, owner_type, company_id, courier_oxy_user_id, type)
           VALUES ('v-bad', 'company', 'company-1', 'oxy-2', 'van')
         `,
@@ -270,7 +271,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
     it('accepts a `scheduled` shipment that carries a time', async () => {
       await insertShipment('s-sched');
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           UPDATE shipments SET scheduling_kind = 'scheduled', scheduled_for = now()
           WHERE id = 's-sched'
         `,
@@ -280,14 +281,16 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
     it('refuses a `scheduled` shipment with no time', async () => {
       await insertShipment('s-sched-bad');
       await expect(
-        suite!.client`UPDATE shipments SET scheduling_kind = 'scheduled' WHERE id = 's-sched-bad'`,
+        requireSuite(suite)
+          .client`UPDATE shipments SET scheduling_kind = 'scheduled' WHERE id = 's-sched-bad'`,
       ).rejects.toThrow(/shipments_scheduling_shape_check/);
     });
 
     it('refuses a `now` shipment that carries a time', async () => {
       await insertShipment('s-now-bad');
       await expect(
-        suite!.client`UPDATE shipments SET scheduled_for = now() WHERE id = 's-now-bad'`,
+        requireSuite(suite)
+          .client`UPDATE shipments SET scheduled_for = now() WHERE id = 's-now-bad'`,
       ).rejects.toThrow(/shipments_scheduling_shape_check/);
     });
 
@@ -304,7 +307,8 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
       // on any server version.
       await insertShipment('s-kind-bad');
       await expect(
-        suite!.client`UPDATE shipments SET scheduling_kind = 'eventually' WHERE id = 's-kind-bad'`,
+        requireSuite(suite)
+          .client`UPDATE shipments SET scheduling_kind = 'eventually' WHERE id = 's-kind-bad'`,
       ).rejects.toThrow(/shipments_scheduling_kind_check|shipments_scheduling_shape_check/);
     });
   });
@@ -312,7 +316,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
   describe('orders — a constraint the source never had at the database', () => {
     it('accepts a store-sold order', async () => {
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO orders (
             id, order_number, buyer_oxy_user_id, seller_type, store_id,
             ship_to_recipient_name, ship_to_line1, ship_to_city, ship_to_postal_code,
@@ -331,7 +335,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
 
     it('refuses an order that names both a seller and a store', async () => {
       await expect(
-        suite!.client`
+        requireSuite(suite).client`
           INSERT INTO orders (
             id, order_number, buyer_oxy_user_id, seller_type, store_id, seller_oxy_user_id,
             ship_to_recipient_name, ship_to_line1, ship_to_city, ship_to_postal_code,
@@ -360,19 +364,21 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
     // REAL database here: a mocked write accepts statements a real server does
     // not.
     it('stores the revision, and refuses an out-of-order decision', async () => {
-      await suite!.client`
+      await requireSuite(suite).client`
         INSERT INTO reports (id, reporter, reported_type, reported_id, categories, decision_revision)
         VALUES ('r-1', 'oxy-reporter', 'courier', 'oxy-courier', ARRAY['harassment'], 6)
       `;
 
       // Revision 3 arriving after 6 — the exact stale-delivery case.
-      const stale = await suite!.client`
+      const stale = await requireSuite(suite).client`
         UPDATE reports SET status = 'resolved', decision_revision = 3
         WHERE id = 'r-1' AND (decision_revision IS NULL OR decision_revision < 3)
       `;
       expect(stale.count).toBe(0);
 
-      const [unchanged] = await suite!.client<{ decision_revision: number; status: string }[]>`
+      const [unchanged] = await requireSuite(suite).client<
+        { decision_revision: number; status: string }[]
+      >`
         SELECT decision_revision, status FROM reports WHERE id = 'r-1'
       `;
       expect(unchanged?.decision_revision).toBe(6);
@@ -380,7 +386,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
 
       // A NEWER revision still applies, so the guard is not simply refusing
       // everything — the failure mode that would pass a rejection-only test.
-      const fresh = await suite!.client`
+      const fresh = await requireSuite(suite).client`
         UPDATE reports SET status = 'resolved', decision_revision = 7
         WHERE id = 'r-1' AND (decision_revision IS NULL OR decision_revision < 7)
       `;
@@ -391,17 +397,17 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
       // The backfill leaves `decision_revision` NULL: those decisions were
       // applied unguarded and their revisions cannot be reconstructed. The
       // `IS NULL` branch admits the next decision once, and guards after.
-      await suite!.client`
+      await requireSuite(suite).client`
         INSERT INTO reports (id, reporter, reported_type, reported_id, categories)
         VALUES ('r-2', 'oxy-reporter-2', 'courier', 'oxy-courier', ARRAY['harassment'])
       `;
-      const first = await suite!.client`
+      const first = await requireSuite(suite).client`
         UPDATE reports SET decision_revision = 4
         WHERE id = 'r-2' AND (decision_revision IS NULL OR decision_revision < 4)
       `;
       expect(first.count).toBe(1);
 
-      const second = await suite!.client`
+      const second = await requireSuite(suite).client`
         UPDATE reports SET decision_revision = 2
         WHERE id = 'r-2' AND (decision_revision IS NULL OR decision_revision < 2)
       `;
