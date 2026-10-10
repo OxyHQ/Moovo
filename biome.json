@@ -60,10 +60,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended",
-      "style": {
-        "noNonNullAssertion": "warn"
-      }
+      "preset": "recommended"
     }
   },
   "overrides": [
