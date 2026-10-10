@@ -55,6 +55,7 @@ export function FleetMap({ markers, initialCenter, height = 320 }: FleetMapProps
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
 
   // Create the map once.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Create-once: initialCenter is only the seed viewport.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     const map = new maplibregl.Map({
@@ -75,8 +76,6 @@ export function FleetMap({ markers, initialCenter, height = 320 }: FleetMapProps
       map.remove();
       mapRef.current = null;
     };
-    // Create-once: initialCenter is only the seed viewport.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reconcile markers + fit bounds when the marker set changes.

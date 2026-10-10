@@ -77,7 +77,9 @@ bun run dev:backend      # API
 bun run build            # shared-types, then backend, then frontend
 bun run build:courier    # Expo web export for Moovo Go
 bun run build:hub        # Expo web export for Moovo Hub
-bun run lint             # every workspace
+bun run lint             # Biome: format + lint check, whole repo
+bun run lint:fix         # apply Biome's safe fixes and formatting
+bun run format           # format only
 
 bun run --filter @moovo/backend test        # Vitest
 bun run --filter @moovo/backend typecheck   # tsc --noEmit

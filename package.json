@@ -24,7 +24,9 @@
     "build:backend": "bun run build:shared-types && bun run --filter @moovo/backend build",
     "start:frontend": "bun run --filter @moovo/frontend start",
     "start:backend": "bun run --filter @moovo/backend start",
-    "lint": "bun run --filter '*' lint",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
     "doctor:oxy": "oxy-doctor --ci",
     "android": "bun run --filter @moovo/frontend android",
     "ios": "bun run --filter @moovo/frontend ios",
@@ -41,6 +43,7 @@
   ],
   "author": "",
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@oxy.so/doctor": "1.1.0",
     "typescript": "^5.9.3"
   },
