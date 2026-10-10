@@ -1,10 +1,10 @@
 /**
- * The replacement for Moovo's five Mongo TTL indexes.
+ * Row expiry for Moovo's five expiring tables.
  *
- * Postgres has no TTL index. Mongo reaped these rows; nothing in Postgres
- * does, and the absence is INVISIBLE — there is no deleted call site, no
- * orphaned function, nothing a reviewer diffing the port would see go missing.
- * A table ported without an entry here simply grows forever, with no error and
+ * Postgres has no TTL index: nothing reaps a row unless something here does,
+ * and the absence is INVISIBLE — there is no call site, no orphaned function,
+ * nothing a reviewer reading a diff would see go missing. A table added
+ * without an entry here simply grows forever, with no error and
  * no failing test, until somebody notices the disk or notices rows being
  * served that should have been gone.
  *
@@ -159,10 +159,9 @@ export const UNSWEPT_GROWING_TABLES: readonly { table: string; why: string }[] =
   {
     table: 'job_location_pings',
     why:
-      'The source capped this trail with `$push … $slice: -N`, which was a ' +
-      'MONGO DOCUMENT-SIZE concern rather than a retention policy — a row has ' +
-      'no such limit, so the port moved the cap to the READ ' +
-      '(`listRecentLocationPings`) and keeps every ping. Registering it here ' +
+      'The trail is capped on the READ (`listRecentLocationPings`), not the ' +
+      'write: a document-size cap is not a retention policy and a row has no ' +
+      'size limit, so every ping is kept. Registering it here ' +
       'needs a retention in seconds, and no defensible number is derivable ' +
       'from this repo: the figure that matters is how long a courier route ' +
       'must stay reconstructible for a DISPUTE, which is a product decision. ' +
@@ -193,7 +192,7 @@ export const UNSWEPT_GROWING_TABLES: readonly { table: string; why: string }[] =
 /**
  * How often the sweep runs.
  *
- * Mongo's TTL monitor ran once a minute. This is deliberately much slower:
+ * Hourly, deliberately not every minute:
  * every read path filters on its own deadline independently of the sweep (a
  * lapsed quote is not selectable, an expired offer is not acceptable), so a
  * not-yet-swept row is stale but never unsafe. The sweep is disk hygiene, not

@@ -7,7 +7,7 @@
  * nothing else in this repo does.** Their boolean answer is written into the
  * moderation audit trail as "applied" or "not applied", so a port that always
  * reported success would record enforcement that never happened — and a jury's
- * decision would read as carried out. Mongo's `matchedCount` counts documents
+ * decision would read as carried out. A `matchedCount` counts documents
  * matching the FILTER; Postgres `rowCount` counts rows the UPDATE wrote. Those
  * two disagree when a filter matches a row whose values are already the target
  * values — and here they CANNOT, because both predicates exclude the no-change
@@ -322,7 +322,7 @@ export interface DispatchCandidateQuery {
  * dispatched before verification completed. That is a SECOND behaviour change
  * riding on the same predicate, named here rather than left to be discovered.
  *
- * `= any(eligible_job_types)` is array CONTAINMENT — the port of Mongo's
+ * `= any(eligible_job_types)` is array CONTAINMENT — the port of the source's
  * `{eligibleJobTypes: <one value>}`. `eq()` would compare the whole array to a
  * scalar and silently match nothing, so dispatch would find no couriers at all
  * and read as "nobody is online".

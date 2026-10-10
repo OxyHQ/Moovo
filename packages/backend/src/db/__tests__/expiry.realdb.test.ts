@@ -1,5 +1,5 @@
 /**
- * The expiry sweep — the replacement for five Mongo TTL indexes.
+ * The expiry sweep for Moovo's expiring tables.
  *
  * The failure this file exists to catch is not "the sweep is broken". It is
  * "the sweep reaps MORE than it should", which produces no error, deletes real
@@ -25,8 +25,8 @@ import { getDb } from '../postgres';
 const describeIfPostgres = POSTGRES_TESTS_ENABLED ? describe : describe.skip;
 
 /**
- * Every TTL index the Mongo models declared, plus the two Moovo Tracker tables
- * that were never a Mongo anything. If this grows, so must the registry.
+ * The five expiring courier/moderation tables plus the two Moovo Tracker
+ * tables. If this grows, so must the registry.
  */
 const EXPECTED_TARGET_COUNT = 7;
 
@@ -51,8 +51,7 @@ describeIfPostgres('the expiry sweep', () => {
 
   it('has a supporting index behind every swept column', async () => {
     // Against the real catalogue, not the TypeScript that was meant to produce
-    // it. Without a leading btree the sweep is a full table scan every run —
-    // the cost Mongo's TTL index hid, now paid on a schedule.
+    // it. Without a leading btree the sweep is a full table scan every run.
     const violations = await findUnsupportedExpiryColumns(getDb(), EXPIRY_TARGETS);
     expect(violations).toEqual([]);
   });
@@ -146,7 +145,7 @@ describeIfPostgres('the expiry sweep', () => {
   describe('job offers — the BACKSTOP reaps unconditionally', () => {
     it('reaps every offer past its expiry, whatever its status', async () => {
       // Deliberately NOT the `notifications` shape. That index carried a
-      // partial filter; this one does not — Mongo reaps ANY offer past
+      // partial filter; this one does not — the sweep reaps ANY offer past
       // `expiresAt`, and this is the bounded-growth backstop BEHIND the
       // semantic `offered → expired` flip.
       //

@@ -142,11 +142,9 @@ export async function applyDecisionOutboxEvent(event: ModerationOutboxEvent): Pr
    * enforcement was already claimed under its own `revision` row, so the audit
    * trail keeps both and only the CURRENT answer reaches the report.
    *
-   * **And this guard starts working at the cutover — it has never held.**
-   * `ReportSchema` declared no `decisionRevision` path, so Mongoose's strict
-   * mode stripped it from every `$set`: the field was never stored, the
-   * `{$lt}` arm could never match, and every late delivery of an earlier
-   * revision was applied. Storing the column is what makes the refusal real.
+   * **Storing `decision_revision` is what makes the refusal real.** The source
+   * never stored the field, so every late delivery of an earlier revision was
+   * applied.
    * See `db/moderation/reportRepository.ts`.
    */
   await applyDecisionToReport(report.id, decision.revision, state);

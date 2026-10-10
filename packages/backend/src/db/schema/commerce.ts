@@ -189,8 +189,7 @@ export const orders = pgTable(
      *
      * **SETTLED 2026-08-10, and the instruction to re-run it is discharged
      * rather than outstanding.** The source database is destroyed, and
-     * `counts-at-dump.json` in the final archive
-     * (`s3://oxy-mongo-backups-usw2-237343248947/final/2026-08-10/`) records
+     * `counts-at-dump.json` in the final 2026-08-10 archive records
      * `orders: 0` at the moment of the last restore-verified dump. So the
      * window this comment was worried about — rows arriving between the schema
      * landing and cutover — closed with nothing in it, and no further row can
@@ -224,7 +223,7 @@ export const orders = pgTable(
     /** Not `required` in the source either — set by checkout, not enforced. */
     checkoutGroupId: text(),
     /**
-     * The port of Mongo's `{unique:true, sparse:true}`. A plain unique index
+     * Unique among the rows that HAVE one. A plain unique index
      * would NOT be equivalent: Postgres treats every NULL as DISTINCT for
      * uniqueness, so a plain unique index already tolerates any number of
      * NULLs and looks like sparse-unique by accident. A partial index says
@@ -255,9 +254,9 @@ export const orders = pgTable(
      *
      * This is a NEW constraint, added deliberately where the source enforced
      * the invariant in SERVICE CODE ONLY — and `orders` is the one model with
-     * this shape that never got a `pre('validate')` hook. Mongoose does not
+     * this shape that never got a `pre('validate')` hook. The source did not
      * validate on `updateOne`/`findOneAndUpdate` either, so a violating row
-     * may exist right now.
+     * could have existed.
      *
      * UNVIOLATED, NOT VERIFIED — and the difference was the point. A census of
      * `moovo-production` (instrument mutation-tested against planted

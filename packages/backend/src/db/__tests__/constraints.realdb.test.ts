@@ -349,19 +349,16 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
     });
   });
 
-  describe('reports.decision_revision — a guard that could not exist in Mongo', () => {
-    // `IReport` declares `decisionRevision` and `moderation-decision.worker.ts`
-    // `$set`s it, but `ReportSchema` declares no such path — so mongoose's
-    // strict mode strips it from every update and the field is structurally
-    // unwritable. Proven through the raw driver, and the consequence proven
-    // too: the worker's `$or: [{$exists:false}, {$lt:N}]` filter always takes
-    // the first branch, so a STALE decision matches and overwrites a newer one.
-    // The guard its own doc comment describes has never once held.
+  describe('reports.decision_revision — a guard the source never held', () => {
+    // The source declared `decisionRevision` on its interface and the decision
+    // worker set it, but its schema declared no such path, so strict mode
+    // stripped it from every update and the field was structurally
+    // unwritable: a STALE decision matched and overwrote a newer one.
     //
-    // It went unnoticed because `moderation-decision.worker.test.ts` mocks
-    // `Report.updateOne` and asserts only the SHAPE of the filter — passing
-    // happily while the server threw the field away. Hence a REAL database
-    // here: a mocked write accepts statements a real server does not.
+    // It went unnoticed because a mocked write asserted only the SHAPE of the
+    // filter — passing happily while the server threw the field away. Hence a
+    // REAL database here: a mocked write accepts statements a real server does
+    // not.
     it('stores the revision, and refuses an out-of-order decision', async () => {
       await suite!.client`
         INSERT INTO reports (id, reporter, reported_type, reported_id, categories, decision_revision)

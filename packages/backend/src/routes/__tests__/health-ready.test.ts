@@ -1,13 +1,8 @@
 /**
  * The readiness probe, which is what decides whether a task receives traffic.
  *
- * This file was written around one case, `does NOT require Mongo once Mongo is
- * unconfigured`, which tested a state that did not exist in production yet.
- * It has since been reached and passed: production answered `not_configured`
- * for the whole window between the cutover and this cut, so the Mongo-removal
- * deploy never had a health check to fail. That case has now gone with the
- * store it guarded — what is left is the property it was protecting, that
- * readiness tracks the store the service ACTUALLY reads and nothing else.
+ * The property under test is that readiness tracks the store the service
+ * ACTUALLY reads and nothing else.
  *
  * The Postgres probe is mocked at `db/postgres` rather than run against a real
  * server: what is under test is the DECISION the handler makes from a probe's
@@ -85,9 +80,9 @@ describe('GET /health/ready', () => {
   /**
    * Readiness must track ONLY the stores the service reads.
    *
-   * Mongo is gone, so a residual mention of it in a readiness response would be
-   * a dependency this service does not have — and the shape of the bug that
-   * makes a probe outlive its store is precisely a key nobody removed.
+   * Any other key in a readiness response would be a dependency this service
+   * does not have — and the shape of the bug that makes a probe outlive its
+   * store is precisely a key nobody removed.
    */
   it('names no store other than Postgres', async () => {
     const response = await get('/health/ready');

@@ -2,12 +2,12 @@
  * The reviews domain against a real PostgreSQL server.
  *
  * This file REPLACES `services/__tests__/review.service.test.ts`, which mocked
- * five Mongoose models. Three properties decide whether this port is correct
+ * five source models. Three properties decide whether this port is correct
  * and none of them survives a mock:
  *
  *  - **The verified-purchase gate's listing branch is a JOIN now.** The source
- *    asked `{'items.listingId': targetId}`, which Mongo answers by reaching
- *    inside the order's embedded array; line items are their own table, so the
+ *    asked `{'items.listingId': targetId}`, reaching inside the order's
+ *    embedded array; line items are their own table, so the
  *    same question is an EXISTS over `order_items`. A mock returning a
  *    hand-built order proves nothing about which orders the server would match
  *    — and this gate is what stands between a stranger and a review.

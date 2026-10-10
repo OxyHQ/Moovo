@@ -3,8 +3,8 @@
  *
  * ## The one thing to get right here: `modifiedCount` is not `matchedCount`
  *
- * Mongo reports both, and this domain's callers deliberately use DIFFERENT
- * ones. Postgres reports only `rowCount`, which behaves like `matchedCount` —
+ * The source reported both, and this domain's callers deliberately use
+ * DIFFERENT ones. Postgres reports only `rowCount`, which behaves like `matchedCount` —
  * an UPDATE that writes a column its existing value still counts the row. So
  * every `modifiedCount` caller needs its "would this actually change anything"
  * condition MOVED INTO the WHERE clause, and every `matchedCount` caller must

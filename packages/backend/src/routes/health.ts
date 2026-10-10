@@ -8,16 +8,10 @@
  * receives traffic at all. Two properties follow from that and are the reason
  * this file is shaped the way it is:
  *
- *  - **It must not depend on a store the service is in the middle of leaving.**
- *    It once returned 503 unless `mongoose.connection.readyState === 1`, which
- *    would have been catastrophic on the deploy that removed Mongo: every task
- *    would have failed the check within ~90s and ECS would have replaced them
- *    in a loop, while the build, the migration and the rollout all reported
- *    success. Making the Mongo half conditional on Mongo being CONFIGURED is
- *    what let that deploy land without timing a code change against it — by
- *    the time Mongo was deleted this probe had already stopped asking, and
- *    production was answering `mongodb: not_configured`. The conditional has
- *    now gone the same way as the store it guarded.
+ *  - **It must not depend on a store the service does not read.** A probe
+ *    gated on a dependency the service is leaving fails every task within ~90s
+ *    of that dependency going away, and ECS replaces them in a loop while the
+ *    build, the migration and the rollout all report success.
  *  - **It must actually ask the store the service reads.** A probe naming one
  *    database and checking only that one is wrong in both directions: before
  *    this change a Postgres outage read as `ready` while every request failed.
@@ -118,11 +112,7 @@ async function getHealthSnapshot(): Promise<HealthSnapshot> {
 
   /**
    * Healthy means every store this deployment depends on can answer.
-   *
-   * This once gated on Mongo ALONE, which was wrong in both directions: it
-   * would have reported unhealthy the moment Mongo was retired, and it
-   * reported healthy throughout a Postgres outage while every request failed.
-   * Postgres is now the only store, so it is the whole answer.
+   * Postgres is the only store, so it is the whole answer.
    */
   const isHealthy = postgres.ok;
 

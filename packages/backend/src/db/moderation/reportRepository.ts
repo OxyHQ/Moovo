@@ -9,8 +9,8 @@
  * ## `decisionRevision` starts working here, and it never has before
  *
  * `IReport` declares it and the decision worker writes it, but `ReportSchema`
- * declares no such path — so Mongoose's strict mode stripped it from every
- * `$set`, the column was never stored, and the `{decisionRevision: {$lt: n}}`
+ * declared no such path — so strict mode stripped it from every `$set`, the
+ * column was never stored, and the `{decisionRevision: {$lt: n}}`
  * arm of the guard could never match. The guard against applying a LATE
  * delivery of an EARLIER revision has therefore never held in production.
  *

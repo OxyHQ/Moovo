@@ -8,8 +8,8 @@
  *
  * ## Why this is its own module
  *
- * It used to live in `catalog-hydration.service.ts`, which imports the
- * `ProductVariant`, `SellerProfile` and `Store` Mongoose models at module
+ * It used to live in `catalog-hydration.service.ts`, which loads the
+ * marketplace catalogue (`ProductVariant`, `SellerProfile`, `Store`) at module
  * scope. Resolving a file id has nothing to do with any of them, but three
  * COURIER services — `courier-hydration`, `job-hydration` and
  * `shipment-hydration` — call it, so every one of them transitively loaded

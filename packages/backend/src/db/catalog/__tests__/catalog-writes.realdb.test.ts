@@ -2,7 +2,7 @@
  * The catalogue WRITE paths against a real PostgreSQL server.
  *
  * This file REPLACES `services/__tests__/inventory.service.test.ts`, which
- * mocked the Mongoose model and asserted the exact filter and `$inc` document
+ * mocked the model layer and asserted the exact filter and `$inc` document
  * handed to it. That was the only option while no test server existed; it is
  * both impossible and wrong now, and the reason is the point of the port:
  *
@@ -350,7 +350,7 @@ describeIfPostgres('the catalogue write paths on a real server', () => {
 
   describe('archiveListing has matchedCount semantics', () => {
     /**
-     * Postgres reports `rowCount`, which behaves like Mongo's `matchedCount`.
+     * Postgres reports `rowCount`, which behaves like a `matchedCount`.
      * Archiving an ALREADY-archived listing therefore still matches and must
      * succeed — a `status <> 'archived'` predicate would read as
      * `modifiedCount` and turn a harmless retry into a 404.

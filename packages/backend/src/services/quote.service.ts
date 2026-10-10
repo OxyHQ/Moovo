@@ -13,7 +13,7 @@
  *
  * The quote inserts and the `quoting → quoted` flip commit TOGETHER. They are
  * one fact — "this shipment has been quoted" — and the source could not express
- * that, because the two collections were separate Mongo writes; a crash between
+ * that, because the two collections were separate writes; a crash between
  * them left a shipment stuck in `quoting` with its quotes already visible. Both
  * rows live in one database now, so the atomicity is nearly free.
  *

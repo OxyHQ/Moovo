@@ -8,8 +8,8 @@
  *
  * The name says SHARED rather than naming the database, and that is deliberate:
  * the property the SDK's default lacks is that this store is visible to every
- * task, not which engine holds it. The previous name said `mongo`, which is how
- * a rename becomes due again the next time the storage moves.
+ * task, not which engine holds it. Naming the engine is how a rename becomes
+ * due again the next time the storage moves.
  *
  * The claim/release contract is the store's, and it is the right one. A row
  * inserted BEFORE the handler runs means a concurrent redelivery cannot also run

@@ -99,9 +99,8 @@ describe('a growing table is in exactly one of the two lists', () => {
   });
 
   it('declares job_location_pings, which grows and is deliberately not swept', () => {
-    // The concrete instance, pinned by name: the source's `$slice` cap was a
-    // Mongo document-size concern, so the port keeps every ping and the
-    // retention is a product decision nobody has made yet. If it is ever
+    // The concrete instance, pinned by name: the trail is capped on the READ,
+    // so every ping is kept and the retention is a product decision nobody has made yet. If it is ever
     // registered above, this line moves rather than disappearing.
     expect(unsweptTables).toContain('job_location_pings');
   });

@@ -36,7 +36,7 @@ import { notFound } from '../lib/errors/error-codes.js';
 /**
  * Serialize a stored row to the wire `Address` DTO.
  *
- * `!== null`, not `!== undefined`: Mongo omitted an unset optional while
+ * `!== null`, not `!== undefined`: the source omitted an unset optional while
  * Postgres returns `null`, and the old test passes for `null` — so a straight
  * translation would start emitting `{"label": null, "line2": null, ...}` where
  * the API emitted nothing.

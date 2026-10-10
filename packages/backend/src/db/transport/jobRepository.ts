@@ -24,7 +24,7 @@
  *
  * ## 2. The status event commits WITH the transition
  *
- * Mongo did `$set` and `$push` in one document update, so a transition that
+ * The source did `$set` and `$push` in one document update, so a transition that
  * left no audit entry was unrepresentable. Two statements can drift, so both
  * functions below take a transaction and both are called inside one. A job
  * whose status moved with nothing in its trail saying so is not a smaller bug
@@ -184,7 +184,7 @@ export async function listJobStatusEvents(
  * The most recent `limit` breadcrumbs, oldest first.
  *
  * The source capped the STORED trail with `$push … $slice: -N`, because an
- * unbounded array grows one Mongo document without bound. The table has no such
+ * unbounded array grows one document without bound. The table has no such
  * limit and the schema deliberately keeps every ping, so the cap moves to the
  * READ: the newest `limit` rows, reversed, which is byte-identical to what the
  * source's array held. Nothing is destroyed to produce it, so pruning stays a

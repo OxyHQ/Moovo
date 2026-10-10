@@ -41,11 +41,9 @@ const TABLES: PgTable[] = Object.values(schema as Record<string, unknown>).filte
 /**
  * The table count, pinned.
  *
- * 26 Mongoose models become 25 tables (`counters` becomes two SEQUENCEs, which
- * is what Postgres has and what that collection was emulating), plus 9 child
+ * 25 domain tables (`counters` is two SEQUENCEs, not a table), plus 9 child
  * tables for embedded arrays that are queried, updated per element, or both,
- * plus the 5 Moovo Tracker tables, which are native to Postgres and were never
- * a Mongo anything.
+ * plus the 5 Moovo Tracker tables.
  *
  * Pinned rather than derived because the barrel is the thing that decides
  * whether a table is migrated at all: a table defined but never exported
@@ -151,7 +149,7 @@ const ID_COLUMNS_WITHOUT_FOREIGN_KEY: readonly { column: string; reason: string 
   },
 
   // A `Trigger` collection does not exist anywhere in this codebase — the
-  // source's only mongoose `ref`, and it dangles. `notification-service.ts`
+  // source's only model `ref`, and it dangles. `notification-service.ts`
   // writes it, so the column stays; there is simply no table to point at.
   { column: 'notifications.trigger_id', reason: 'No `triggers` table exists — a dangling ref.' },
 
@@ -196,7 +194,7 @@ describeIfPostgres('the migrated schema', () => {
 
   it('breaks no schema-wide convention', async () => {
     // snake_case names, `timestamptz` everywhere, a primary key on every table,
-    // no `_id`/`__v` mongoose artefacts, no empty-string defaults — plus the
+    // no `_id`/`__v` ODM artefacts, no empty-string defaults — plus the
     // vacuity floors, folded into the same violation list so a single
     // assertion cannot pass by examining nothing.
     const violations = await findSchemaInvariantViolations(getDb(), {

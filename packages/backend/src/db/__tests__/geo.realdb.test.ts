@@ -142,7 +142,7 @@ describeIfPostgres('geography columns', () => {
   });
 
   it('refuses a half-reported position', async () => {
-    // The one geo shape Mongo really did allow, on `listings.location`.
+    // The one geo shape the source really did allow, on `listings.location`.
     await expect(
       suite!.client`
         INSERT INTO courier_profiles (id, oxy_user_id, latitude)
@@ -152,8 +152,8 @@ describeIfPostgres('geography columns', () => {
   });
 
   it('matches search.service.ts: a radius FILTER, with the declared sort winning', async () => {
-    // Measured against a real mongod (8.2.6), because it is not answerable from
-    // source: `search.service.ts` chains `.sort(buildSort(...))` after a `$near`
+    // Measured against a real server of the source engine, because it is not
+    // answerable from source: `search.service.ts` chains `.sort(buildSort(...))` after a `$near`
     // filter, and `buildSort` never special-cases the geo case. An explicit
     // sort OVERRIDES `$near`'s distance ordering — ANY explicit sort, verified
     // with `_id` as a control — and no error is raised.

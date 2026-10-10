@@ -1,11 +1,10 @@
 /**
  * The moderation domain against a real PostgreSQL server.
  *
- * This file replaces `moderation-durability.mongo.test.ts` and exists for the
- * same reason that one did: **a mocked repository accepts every statement,
- * including ones the server rejects.** The Mongo version was written after an
- * update naming `updatedAt` under two operators passed a whole mocked suite and
- * failed every real write; the engine changed, the blind spot did not.
+ * This file exists because **a mocked repository accepts every statement,
+ * including ones the server rejects.** An update naming `updatedAt` under two
+ * operators once passed a whole mocked suite and failed every real write; that
+ * blind spot is engine-independent.
  *
  * Every property below is one a mock cannot hold, and most fail in the direction
  * that LOOKS like working software:
@@ -27,7 +26,7 @@
  *    the transaction".
  *  - **The three lease transitions do not share count semantics.** Each is
  *    called TWICE, and the second call is asserted on the ROW rather than on the
- *    number: under Mongoose `timestamps: true` made `modifiedCount` agree with
+ *    number: in the source `timestamps: true` made `modifiedCount` agree with
  *    `matchedCount` for a reason that had nothing to do with `status`, so a test
  *    comparing two numbers passes on that coincidence. Which column carries the
  *    evidence differs by case, and getting it wrong looks like flakiness — a
@@ -37,7 +36,7 @@
  *    NOTHING issues no UPDATE at all, so there `updated_at` and `xmin` are the
  *    right evidence. Both are measured below rather than assumed.
  *  - **`decisionRevision`, in BOTH directions.** The guard has never held in
- *    production — `ReportSchema` declared no such path, so Mongoose stripped it
+ *    production — `ReportSchema` declared no such path, so strict mode stripped it
  *    from every `$set` and the `{$lt}` arm could never match. Storing the column
  *    turns it on, which is a behaviour CHANGE, so the refusal and the admission
  *    are pinned separately.
@@ -413,8 +412,8 @@ describeIfPostgres('outbox leases against a real server', () => {
     expect(await renewModerationOutboxRow('lease-4', 'owner-a', 60_000, at)).toBe(true);
     const firstLease = await outboxLeaseUntil('lease-4');
 
-    // Same `now` and same lease length, so `lease_until` cannot move. Under
-    // Mongo this is precisely the case `modifiedCount` reported as FAILURE, and
+    // Same `now` and same lease length, so `lease_until` cannot move. This is
+    // precisely the case a `modifiedCount` would report as FAILURE, and
     // the dispatcher answers a lost lease by abandoning delivery mid-flight.
     expect(await renewModerationOutboxRow('lease-4', 'owner-a', 60_000, at)).toBe(true);
     expect(await outboxLeaseUntil('lease-4')).toBe(firstLease);
@@ -627,7 +626,7 @@ describeIfPostgres('the decisionRevision guard, which starts working here', () =
    *
    * A correction and the decision it supersedes are separate webhook events with
    * separate retry schedules, so revision 1 can be retried after revision 2 has
-   * been applied. Under Mongoose the column was never stored, so this refusal
+   * been applied. In the source the column was never stored, so this refusal
    * never happened: the retry overwrote an accepted appeal's `dismissed` with
    * `resolved`, and the report said the courier was found in violation of
    * something they had been cleared of.

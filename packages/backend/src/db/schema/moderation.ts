@@ -83,13 +83,11 @@ export const reports = pgTable(
      * The revision of the last decision written to this report — and a column
      * the SOURCE never actually had.
      *
-     * `IReport` declares it and `moderation-decision.worker.ts` writes it with
-     * `$set`, but `ReportSchema` declares no such path, so Mongoose's strict
-     * mode strips it from every update. The guard it exists for — refusing a
-     * late delivery of an EARLIER revision — therefore never held: the
-     * `{decisionRevision: {$lt: n}}` arm of that filter could never match,
-     * because the field was never stored. Declaring it here is what makes the
-     * guard real; nothing in the Mongo model is touched.
+     * The source's interface declared it and the decision worker wrote it, but
+     * its schema declared no such path, so it was stripped from every update.
+     * The guard it exists for — refusing a late delivery of an EARLIER
+     * revision — therefore never held, because the field was never stored.
+     * Declaring it here is what makes the guard real.
      */
     decisionRevision: integer(),
     submittedAt: timestamptz(),

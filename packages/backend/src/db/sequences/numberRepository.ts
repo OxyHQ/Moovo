@@ -2,8 +2,8 @@
  * Human-friendly, sequential order and job numbers.
  *
  * The source kept a `counters` collection — `{_id: <name>, seq: Number}` with
- * `findByIdAndUpdate($inc, {upsert: true})` — because that is Mongo's only way
- * to express a sequence. Postgres has a real one, so `db/schema/sequences.ts`
+ * `findByIdAndUpdate($inc, {upsert: true})` — a workaround for a store without
+ * sequences. Postgres has a real one, so `db/schema/sequences.ts`
  * declares `order_number_seq` and `job_number_seq` and this module allocates
  * from them. Porting the workaround would have carried a row-level hotspot
  * across for nothing: every concurrent checkout contended for one document.

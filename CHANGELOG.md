@@ -7,7 +7,7 @@ All notable changes to Moovo are documented here.
 ### Added
 
 - Initial scaffold of the Moovo base, derived from the Oxy Expo + Express
-  monorepo shell: Express bootstrap, Socket.IO, MongoDB/Redis/logger libs,
+  monorepo shell: Express bootstrap, Socket.IO, Redis/logger libs,
   `@oxy.so/core/server` auth middleware, health/auth/feedback/notifications
   routes, and push/web-push notification infrastructure.
 - Frontend shell: OxyProvider + BloomThemeProvider provider tree, SSO callback

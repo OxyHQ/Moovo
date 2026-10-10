@@ -16,7 +16,6 @@ rebranded to **Moovo**. The following work is intentionally deferred.
 | Staging API | `staging-api.moovo.now` |
 | App scheme | `moovo` |
 | iOS bundle id / Android package | `now.moovo.app` |
-| MongoDB db name | `moovo-{NODE_ENV}` |
 | AWS ECR repo | `oxy/moovo` (cluster stays `oxy-cluster`) |
 | Cloudflare Pages projects | `moovo`, `moovo-go`, `moovo-hub`, `moovo-tracker` |
 | Tracker web | `tracker.moovo.now` (scheme `moovotracker`, bundle `now.moovo.tracker`) |
@@ -103,224 +102,34 @@ later phase it will be removed/replaced by the Moovo courier/transport domain
 (deliveries, shipments, couriers, providers, fulfillment routing between
 Moovo's own couriers and external providers like DHL/FedEx).
 
-**DECIDED 2026-08-10: the marketplace is PORTED to PostgreSQL, not deleted.**
-The product owner chose it knowing the measurement below; it is not an
-engineering judgement and it should not be relitigated from the code.
+**DECIDED 2026-08-10: the marketplace runs on PostgreSQL, not deleted.** The
+product owner chose it; it is not an engineering judgement and it should not be
+relitigated from the code. **No frontend calls any of it.** The only
+marketplace endpoint referenced in the three Expo apps is `/listings`, in a
+`lib/api/listings.ts` that has zero importers. Two separate findings follow:
+36 dead frontend files / 3,159 lines, and 9 shared-types DTO files whose only
+consumers are those dead trees.
 
-> **COMPLETE as of the cut (#73).** The port landed slice by slice and the cut
-> then removed `src/models/`, `lib/db.ts`, `lib/mongo-bootstrap.ts`,
-> `scripts/seed.ts`, the `mongoose` dependency and `MONGODB_URI`. **PostgreSQL
-> is the only store; there is no Mongo in this repo and no rollback target.**
->
-> Everything from here to §5 is kept as the RECORD of how it was done — read it
-> in the past tense. Two items are still LIVE and are marked where they appear:
-> the tag-search regression, and the entrypoint lesson.
+### Verify against the entrypoint production actually runs, not the convenient one
 
-### What the port starts from, measured rather than assumed
-
-- **No schema work.** All 13 marketplace tables already ship in migration
-  `0000` — `carts`, `cart_items`, `categories`, `listings`, `product_variants`,
-  `inventory_levels`, `orders`, `order_items`, `order_status_events`,
-  `reviews`, `seller_profiles`, `stores`, `store_members`. This is
-  repositories and rewiring only.
-- **8 registered Mongoose models, not 10.** `models/schemas/{money,fair-money}-schema.ts`
-  register nothing; they are embedded sub-schemas. All 8 are marketplace, so
-  zero courier models remain.
-- **The blast radius is 45 files / 5,795 lines, not 26 files.** A model-importer
-  census structurally cannot see this, because controllers import SERVICES, not
-  models. The number comes from reachability out of `src/index.ts` with the
-  marketplace routers blocked (172 reachable → 127).
-- **No frontend calls any of it.** The only marketplace endpoint referenced in
-  the three Expo apps is `/listings`, in a `lib/api/listings.ts` that has zero
-  importers. Two separate findings follow and are NOT part of the port: 36 dead
-  frontend files / 3,159 lines, and 9 shared-types DTO files whose only
-  consumers are those dead trees. The port may give the DTOs real consumers,
-  which is why it is a live question rather than a deletion.
-
-### The transaction prediction in this file was WRONG — do not inherit it
-
-An earlier revision predicted that `checkout`/`cart`/`order` share transactions
-the way the moderation outbox coupled its models. **Measured: there is not one
-`startSession`, `withTransaction`, `.session(` or `ClientSession` anywhere in
-`packages/backend/src`.** The single grep hit is the word "session" in a
-comment. The service graph is also a clean DAG. So the work genuinely slices by
-domain, and the constraint that forced moderation's three models to move as a
-unit has no analogue here. That prediction was reasonable when written; it is
-recorded as wrong because a handover prediction exists to be checked.
-
-Slices, ordered so each is useful rather than by table count: `resolveMedia`
-(landed, #60) → stores + seller profiles → catalogue (the first point at which
-Moovo can serve a listing) → cart → orders + checkout → reviews. Note
-`queue/handlers.ts` does not belong to one slice: `handleLowInventoryAlert` is
-the catalogue's, `handleOrderEventNotification` and `handleExpireReservations`
-are orders', `handleRecomputeAggregates` and `handleAggregateSweep` are
-reviews'.
-
-Because the target is empty, a repository returning nothing and a repository
-correctly returning nothing are the same observation. Every slice therefore
-lands with a fixture seeding **two owners** and asserting the wrong owner's rows
-are absent — that is what distinguishes a working filter from an absent one.
-
-### How the port ran, slice by slice — all landed
-
-`resolveMedia` extracted (#60); stores, members and seller profiles (#62); the
-catalogue READ repository plus its 15 realdb cases (#63, additive); catalogue
-reads + writes (#65); cart (#66); schema census comments discharged (#67); the
-order repository (#68, additive); the orders and checkout SERVICE SWITCH with
-the two order queue handlers (#69, #71); reviews (#72); **the cut (#73)**.
-
-`review.service` was the last non-test, non-seed file importing a marketplace
-model — four of them. Its `assertVerifiedPurchase` now reads `orderRepository`,
-and the two queries it needed were not symmetric: one a by-id + buyer + status
-check, the other a `{'items.listingId': …}` search that became a join onto
-`order_items`.
-
-### Counting model call sites: two holes worth inheriting
-
-Both found by PRINTING THE RESIDUAL — the files that import a model and appear
-to call nothing on it — rather than by trusting a call-site count.
-
-1. **A call with an explicit generic type argument is invisible to the obvious
-   pattern.** `Review.aggregate<{…}>(` does not match `\.[a-zA-Z]+\(`, because
-   the `<…>` sits between the method name and the paren. `queue/handlers.ts`
-   read as ZERO call sites and has one. Match on `\.[a-zA-Z]+` and confirm by
-   eye, or the count is silently short.
-2. **A type-only importer legitimately has zero call sites**, and stays
-   invisible until `models/` is deleted and the build breaks.
-   `middleware/__tests__/store-authz.test.ts` imports `IStoreMember` this way.
-   **At the cut, re-derive these with `tsc` rather than a reader scan.**
-
-Measured on this branch: **zero dynamic imports of any model** (20 dynamic
-imports exist in the tree, so the scan is not vacuous), and every
-`mongoose.models.X` hit is the self-registration idiom inside the model file
-that defines it — none is a consumer reaching into the registry.
-
-**Slice 3a is half done, and the seam it stopped at is deliberate.** The
-repository exists with its semantics pinned; the rewiring does not. What
-remains:
-
-1. Point `search.service` at `searchListingsOffset`/`searchListingsCursor`. It
-   becomes a translation of `ListingQuery` and nothing else.
-2. Move `catalog-hydration` to consume `ListingRow` via the DECIDED adapter —
-   see the next section for its one condition.
-3. Repoint `listings`, `categories`, `seller-listings` and `stores` controllers.
-4. Replace the mocked catalogue tests with realdb ones, as #62 did for stores.
-
-**Do not re-derive #63's semantics — they are pinned by tests and cost a real
-measurement each.** Four translations fail by returning a PLAUSIBLE page rather
-than an error: `{categorySlugs:'x'}` is array CONTAINMENT (`eq()` matches
-nothing, which reads as an empty category); `ORDER BY … DESC` puts NULLs FIRST
-in Postgres where Mongo puts a missing value last; a keyset boundary written as
-a row comparison is NULL for undated rows and silently drops them; and
-`ST_Distance()` in `ORDER BY` cannot use the GiST index where the `<->` operator
-can.
-
-### `hydrateListings` straddles the 3a/3b split — DECIDED: the adapter
-
-It has five caller files: `listings`, `categories`, `seller-listings` and
-`stores` (all 3a) **plus `products-admin`, which is 3b** and feeds it documents
-from `catalog-write`. Changing its parameter from `IListing` to `ListingRow`
-breaks that fifth caller.
-
-**Decision (2026-08-10): add a temporary `listingDocToRow` adapter** at the
-un-ported call sites — the `withStoreId` device from slice 2. The two rejected
-options and why: widening 3a to include `products-admin` drags in
-`catalog-write`, so the split collapses and the large PR comes back; reversing
-to writes-first inverts the ordering and delays the milestone that actually
-matters, which is Moovo serving a listing.
-
-**The reason is the one to inherit: ONE hydration path is what is being
-protected.** Two representations of a listing is precisely the failure this
-port exists to remove, so a temporary mapping at a handful of call sites is
-cheaper than a second projection that would have to be kept honest against the
-first.
-
-**The condition that makes it a migration artefact rather than a shim that
-accretes: write its deletion trigger AT ITS DEFINITION.** A comment on
-`listingDocToRow` naming the exact call sites it exists for (`products-admin`,
-and anything else 3b touches) and stating that it is deleted when 3b lands. Not
-in a PR body — a PR body is archaeology once merged, which is why this file
-exists at all.
-
-### The half-ported handler: the hazard this port was steered around
-
-Kept because it is the shape that makes a store migration dangerous, and it
-stops being visible the moment the migration finishes.
-
-A handler reading one entity from Postgres and another from Mongo is the
-silent-wrong-answer shape: it does not fail, it answers with half the truth. A
-handler WHOLLY on Mongo is safe by comparison — with no `MONGODB_URI` it throws
-on the first read rather than returning a wrong answer.
-
-Each slice was checked against this rather than assumed. `stores.controller`
-was the one mixed handler — store from Postgres (#62), listings from Mongo —
-and #65 closed it. `review.service.assertVerifiedPurchase` read `Order`, so the
-orders slice could have made it half-ported; it did not, because every other
-read in that file was Mongoose too, so the first to run threw. Reviews (#72)
-was where that property had to be established rather than inherited.
-
-**No mixed handler ever reached `main`, and no counting was carried forward
-arithmetically** — each slice re-measured, because a count carried forward is
-an assertion rather than a measurement.
-
-### LIVE: `listings.search_vector` loses tag search — a migration, not a read-path fix
-
-The two halves of the generated column are not symmetric. `to_tsvector` STEMS
-the prose; `array_to_tsvector` stores each tag VERBATIM; `plainto_tsquery` stems
-the query either way. Measured on the server:
-
-```
-plainto_tsquery('english','watering')  ->  'water'
-array_to_tsvector(ARRAY['watering'])   ->  'watering'      match? false
-array_to_tsvector(ARRAY['garden'])     vs  'garden'        match? true
-```
-
-So **a tag is findable only when it is already an English stem**, where Mongo's
-`$text` stemmed tag values too. A small functional loss, not a faithful port.
-
-Fixing it changes a generated column and therefore needs a migration, so it was
-deliberately NOT done inside a read-path slice. The current behaviour is
-asserted in `db/catalog/__tests__/catalog-reads.realdb.test.ts` (lands with
-#63) under a case named *"does NOT match a tag whose stem differs from the tag
-(known limitation)"*. **When that case goes red the fix has probably landed — invert
-the assertion, do not delete it.**
-
-### LIVE: verify against the entrypoint production actually runs, not the convenient one
-
-Measured 2026-08-10 while proving the boot gate (#59). Booting the API with
-`bun src/index.ts` died in `bson` with `ERR_NOT_IMPLEMENTED` — a Bun/mongoose
-incompatibility — so the process **exited 1 with nothing listening**, which was
-indistinguishable from the Mongo-connection failure being investigated while
-measuring something else entirely. The right conclusion was one step from being
-reported on evidence that did not support it.
-
-**That particular failure went with mongoose, and the RULE did not.**
 `package.json`'s `start` is `node dist/index.js`, and that is the only runtime
 worth booting for a start-up question: `bun run build`, then run the built
 artefact — the runtime image is `node`, and bun shims globals node does not
-(`__dirname` in an ESM bundle is the standing example). Re-applied at the cut
-(#73): the restructured start-up was verified by running the BUILT
-`dist/index.js` under `node`, reaching `API Server running`, a 200 from
+(`__dirname` in an ESM bundle is the standing example). A process that exits 1
+under `bun src/index.ts` with nothing listening is indistinguishable from the
+failure you are investigating. A start-up change is verified by running the
+BUILT `dist/index.js` under `node`, reaching `API Server running`, a 200 from
 `/health/ready`, and a complete graceful shutdown on SIGTERM.
 
-### A Postgres write can hide inside a block you are gating on Mongo
+### A Postgres write can hide inside a start-up block you are gating
 
-The boot fix had to gate `connectDB()` without gating the block that followed
-it. That block contains `seedProviders()`, which writes through
-`db/transport/providerRepository` to **PostgreSQL**. Gating the whole thing
-behind a Mongo connection would have silently stopped external carrier quotes
-surfacing — a **courier regression hiding inside a Mongo fix**, in the half of
-the product that was already migrated and working.
-
-Nobody reading a diff titled "boot without Mongo" is looking for a Postgres
-write inside the block being gated, which is exactly why it survives review.
-Before gating any start-up block, enumerate what it actually does.
-
-**The gate itself is gone** — the cut (#73) removed `bootstrapMongo()` and the
-`.then()` that hung off it, so the dispatchers, the socket server and the
-provider seed now run as ordinary top-level start-up inside one `try`. The
-lesson survives the gate: it applies to the next thing anybody wraps a
-condition around.
+Start-up runs `seedProviders()`, which writes through
+`db/transport/providerRepository` to PostgreSQL. Wrapping a condition around a
+start-up block that contains it would silently stop external carrier quotes
+surfacing, and nobody reading a diff titled after the condition is looking for
+a write inside the block. The dispatchers, the socket server and the provider
+seed run as ordinary top-level start-up inside one `try`. **Before gating any
+start-up block, enumerate what it actually does.**
 
 ### Two things whoever does that work needs, which are cheap to lose
 
@@ -333,21 +142,15 @@ service is reasoning from an empty sample.
 
 **Map the TRANSACTION boundaries before proposing how to split the work — not
 the import graph.** Importer counts look like they identify separable units and
-they do not, and the error is in the direction that looks tidy. Measured during
-the moderation port: the four models had 1 / 1 / 2 / 4 importers, which reads as
-four independent sub-units, but the outbox transaction couples `reports` +
+they do not, and the error is in the direction that looks tidy. In moderation
+the four tables have 1 / 1 / 2 / 4 importers, which reads as four independent
+sub-units, but the outbox transaction couples `reports` +
 `moderation_outboxes` (intake) and `moderation_events` + `moderation_outboxes`
-(inbound) — and a Mongo `ClientSession` cannot enlist a Postgres write. So no
-ordering avoided an intermediate state that destroyed exactly the atomicity the
-outbox exists for; three models had to move together and only enforcement (~4%
-of the change) was genuinely free-standing.
-
-An earlier revision extended that to the marketplace, predicting
-`checkout`/`cart`/`order` shared transactions the same way. **They did not** —
-see the section above: there was not one `startSession` in the tree, so the
-work sliced cleanly by domain. The rule that survives is the method, not the
-prediction: the seam is where the transactions are, and finding it needs a
-measurement rather than a census.
+(inbound), so three of them move together and only enforcement is genuinely
+free-standing. The marketplace is the opposite case: there is not one shared
+transaction between `checkout`, `cart` and `order`, so work there slices
+cleanly by domain. The seam is where the transactions are, and finding it needs
+a measurement rather than a census.
 
 ## 5. Branding assets
 

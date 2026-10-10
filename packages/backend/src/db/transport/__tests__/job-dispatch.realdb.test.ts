@@ -769,7 +769,7 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
      * The cap moved from the WRITE to the READ.
      *
      * The source pruned the stored trail with `$push … $slice: -N` because an
-     * unbounded array grows one Mongo document without bound. Every ping is kept
+     * unbounded array grows one document without bound. Every ping is kept
      * here and the reader takes the most recent N, ascending, which is what the
      * source's array held — with nothing destroyed to produce it.
      */

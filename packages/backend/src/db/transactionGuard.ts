@@ -8,7 +8,7 @@
  * collection exists for is silently gone — a report can be stored while the
  * promise to deliver it is not, or the reverse.
  *
- * The source states this as `if (!session.inTransaction()) throw`. Mongoose
+ * The source states this as `if (!session.inTransaction()) throw`. Its ODM
  * offers that because a session knows whether a transaction is open; drizzle
  * offers no equivalent, so the guard has to discriminate the handle itself.
  *

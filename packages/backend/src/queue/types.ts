@@ -1,7 +1,7 @@
 /**
  * Explicit, fully-typed job payloads for the Moovo marketplace BullMQ
  * queues. Payloads carry only plain JSON-serializable data — BullMQ persists
- * them in Redis, so no Mongoose documents, class instances, or functions may be
+ * them in Redis, so no ORM rows with methods, class instances, or functions may be
  * placed here.
  */
 

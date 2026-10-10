@@ -61,33 +61,32 @@ to a pg enum is DDL that cannot run inside the same transaction as the code
 that uses it, and removing one is not supported at all; a CHECK is an ordinary
 migration.
 
-## The four Mongoose hooks become CHECK constraints
+## Discriminated unions are CHECK constraints
 
-`job`, `listing`, `shipment` and `vehicle` each carry a `pre('validate')` hook
-that enforces a discriminated union — "if `ownerType` is `user`, `oxyUserId` is
-required and `storeId` is forbidden". Those are shape rules the database can
-state directly.
+`jobs`, `listings`, `shipments` and `vehicles` each carry a discriminated union
+— "if `ownerType` is `user`, `oxyUserId` is required and `storeId` is
+forbidden". Those are shape rules the database states directly.
 
-**Delete the hook, write the CHECK, handle the violation code. Do NOT
-re-express the rule at a write chokepoint as well.** A hook re-expressed in
-application code restores exactly the race the hook never closed — two
+**Write the CHECK, handle the violation code. Do NOT re-express the rule at a
+write chokepoint as well.** A rule re-expressed in application code restores
+exactly the race a validation hook never closed — two
 concurrent writers both pass the check and both write — while looking like
 belt-and-braces. The constraint is the enforcement; the application's job is to
 turn `23514` into a good error message.
 
 ## Expiry replaces the TTL indexes, and needs a CALLER
 
-Mongo had five TTL indexes. Four are `expireAfterSeconds: 0` expire-at-date
-(`joboffers`, `moderationevents`, `moderationoutboxes`, `quotes`) and one is a
-90-day retention on `notifications`.
+Five tables expire. Four are expire-at-date (`job_offers`,
+`moderation_events`, `moderation_outboxes`, `quotes`) and one is a 90-day
+retention on `notifications`.
 
-They become `@oxy.so/db`'s `./expiry` registry — and **the registry is only half
+They are registered in `@oxy.so/db`'s `./expiry` registry — and **the registry is only half
 of it.** The package supplies the sweep; Moovo must supply the thing that calls
 it on a schedule. A registry with no caller is a TTL that never reaps, which is
 invisible until rows nobody expected are still being served.
 
 **The `notifications` sweep MUST carry its partial predicate**
-(`status = 'dismissed'`). The Mongo index reaps only dismissed notifications; a
+(`status = 'dismissed'`). Only dismissed notifications are reaped; a
 sweep that drops the predicate reaps every notification older than 90 days.
 That is data loss wearing housekeeping clothes, and nothing about it looks like
 a bug until the rows are gone.
@@ -98,8 +97,7 @@ GeoJSON points become `geography(Point, 4326)` with a GiST index. Store
 `[lng, lat]` order as GeoJSON does; PostGIS `ST_MakePoint` takes the same
 order, which is the one place the two agree and the easiest to get backwards.
 
-A nullable location is genuinely nullable — the Mongo indexes are `sparse`,
-meaning "this courier has not reported a position", which is different from a
+A nullable location is genuinely nullable — NULL means "this courier has not reported a position", which is different from a
 position at (0, 0) off the coast of Africa.
 
 ## Constraints the source never enforced
@@ -111,7 +109,7 @@ an invariant the source held only in service code, or not at all:
 |---|---|
 | `orders_seller_shape_check` | `order.ts` has the same `sellerType` + `sellerOxyUserId`/`storeId` shape as `listing.ts`, but never got a `pre('validate')` hook — enforced in `checkout.service.ts` alone. |
 | `listings_location_shape_check` | `listing.location` is an inline nested object with no `required` on either sub-field, so a partial or empty coordinate pair really was persistable. |
-| `reports.decision_revision` | Declared on `IReport` and `$set` by the decision worker, but absent from `ReportSchema` — so mongoose's strict mode stripped it from every update and the guard it exists for never held. |
+| `reports.decision_revision` | Declared on `IReport` and `$set` by the decision worker, but never actually stored by the source, so the guard it exists for never held. |
 
 **These are UNVIOLATED, not VERIFIED, and the difference must not be lost.** A
 census of `moovo-production` — its instrument mutation-tested against planted
@@ -134,7 +132,7 @@ landing this schema and cutting over is where that changes.
 **That window has closed with nothing in it, and the instruction is no longer
 followable — so it is answered here rather than left standing.** The source
 database was archived and destroyed on 2026-08-10. `counts-at-dump.json` in
-`s3://oxy-mongo-backups-usw2-237343248947/final/2026-08-10/` records every
+the final 2026-08-10 archive records every
 `moovo-production` collection at the moment of the last restore-verified dump:
 `listings`, `orders`, `carts`, `categories`, `product_variants`, `reviews`,
 `seller_profiles` and `stores` all **0**; only `providers` held anything (2
@@ -206,8 +204,8 @@ Deliberate divergences from the source, recorded here because a behaviour
 change that is written down is a decision and the same change undocumented is a
 bug report three months later.
 
-- **`counters` becomes two SEQUENCEs**, not a table. The collection was Mongo's
-  only way to express a sequence, and porting the workaround would carry a
+- **`counters` becomes two SEQUENCEs**, not a table. A counter row is a
+  workaround for a database without sequences, and porting it would carry a
   row-level hotspot across for nothing. `START WITH 1` is measured: the live
   `counters` collection is empty, so the generator has never incremented.
 - **`courier_profiles.vehicleIds` is dropped.** Both writers admit only
@@ -217,7 +215,7 @@ bug report three months later.
   way. A Postgres array cannot carry a foreign key on its elements, so a
   deleted vehicle would dangle there forever.
 - **A shipment's quotes and its `quoting → quoted` flip now COMMIT TOGETHER.**
-  The source wrote `quotes` and `shipments` as two independent Mongo calls, so a
+  The source wrote `quotes` and `shipments` as two independent writes, so a
   crash between them left a shipment stuck in `quoting` with its quotes already
   visible to the customer. Both rows live in one database now, so
   `quote.service.quoteShipment` wraps the inserts and the flip in one
@@ -258,8 +256,8 @@ bug report three months later.
 
 ## Geo queries: which ordering each caller actually gets
 
-Measured against a real mongod (8.2.6), because it is not answerable from
-source: **an explicit `.sort()` OVERRIDES `$near`'s distance ordering**, and
+Measured against a real server of the source engine, because it is not
+answerable from source: **an explicit `.sort()` OVERRIDES `$near`'s distance ordering**, and
 any sort does, verified with `_id` as a control. No error is raised.
 
 - `dispatch.service.ts` chains **no** `.sort()`, so it relies on the operator's

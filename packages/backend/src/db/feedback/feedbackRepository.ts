@@ -37,7 +37,7 @@ export interface NewFeedback {
   email?: string | undefined;
   /**
    * The source stored a nested `metadata` object whose schema declared exactly
-   * these three keys, so mongoose's strict mode dropped anything else. They are
+   * these three keys, so strict mode dropped anything else. They are
    * three flat columns here, and the same three keys survive — a `jsonb` bag
    * would have widened what a client can persist, which is a change nobody
    * asked for in a table that takes free-form user input.

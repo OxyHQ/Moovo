@@ -5,8 +5,8 @@
  *
  * The source keeps `{_id: <sequence name>, seq: Number}` and allocates with
  * `findByIdAndUpdate($inc, {upsert: true})` — one document per sequence, every
- * concurrent checkout contending for the same row. That is Mongo's only way to
- * express a sequence; Postgres has a real one, so porting the WORKAROUND
+ * concurrent checkout contending for the same row. That is a workaround for a
+ * store without sequences; Postgres has a real one, so porting the WORKAROUND
  * instead of the intent would carry a row-level hotspot across for nothing.
  *
  * Both behave identically where it matters — an allocated number is never
@@ -35,8 +35,8 @@
  * production and there is no maximum to seed past.
  *
  * **SETTLED 2026-08-10 — no seeding step is needed, permanently.** The final
- * restore-verified dump records `counters: 0` (`counts-at-dump.json` in
- * `s3://oxy-mongo-backups-usw2-237343248947/final/2026-08-10/`) and the source
+ * restore-verified dump records `counters: 0` (`counts-at-dump.json` in the
+ * final 2026-08-10 archive) and the source
  * database is destroyed, so the count cannot change. The "confirm again at
  * cutover" this comment used to carry is discharged rather than outstanding.
  */

@@ -76,7 +76,7 @@ interface EffectResult {
 async function suspendCourier(oxyUserId: string): Promise<EffectResult> {
   // The repository answers the same question `matchedCount === 0` answered:
   // did this statement actually change a courier's status. Both predicates
-  // exclude the no-change case, so Mongo's matchedCount and Postgres' row
+  // exclude the no-change case, so a matchedCount and Postgres' row
   // count cannot disagree here — see the repository's own note.
   const suspended = await suspendCourierRow(oxyUserId);
   if (!suspended) {

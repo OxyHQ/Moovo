@@ -7,13 +7,13 @@
  * Four translations here are wrong in ways `tsc` and a mocked repository both
  * accept, and each was measured against the schema rather than assumed:
  *
- *  - **`{categorySlugs: 'x'}` is array CONTAINMENT, not equality.** Mongo
- *    matches a document whose array holds the value; the Postgres equivalent is
+ *  - **`{categorySlugs: 'x'}` is array CONTAINMENT, not equality.** The
+ *    source matched a document whose array holds the value; the Postgres equivalent is
  *    `'x' = any(category_slugs)`. `eq()` compiles, runs, and matches NOTHING —
  *    so a category browse would silently return an empty page, which reads as
  *    "no listings in this category" rather than as a broken query.
- *  - **`ORDER BY published_at DESC` puts NULLs FIRST in Postgres.** Mongo sorts
- *    a missing value LAST on a descending sort, so a faithful port needs
+ *  - **`ORDER BY published_at DESC` puts NULLs FIRST in Postgres.** The source
+ *    sorted a missing value LAST on a descending sort, so a faithful port needs
  *    `DESC NULLS LAST` — otherwise every unpublished draft that leaked into an
  *    active filter would head the feed. Pinned by a test with a NULL-dated row.
  *  - **A keyset comparison with a NULL member yields NULL, not true**, so the
@@ -27,7 +27,7 @@
  *
  * ## Writes
  *
- * The write side reports `rowCount`, which behaves like Mongo's `matchedCount`
+ * The write side reports `rowCount`, which behaves like a `matchedCount`
  * and NOT like `modifiedCount`. Every caller ported here consumed
  * `matchedCount` (`archiveListing`) or `deletedCount` (`removeVariant`), so a
  * plain predicate is the faithful port and no "would this actually change
@@ -64,7 +64,7 @@ export interface CursorListingPage {
 /**
  * Every predicate shared by both pagination paths.
  *
- * Geo wins over free text, exactly as the source chose: Mongo could not combine
+ * Geo wins over free text, exactly as the source chose: it could not combine
  * `$near` with `$text` in one query, and preserving the precedence keeps the
  * two engines answering the same question rather than quietly widening the
  * result set here.
@@ -107,7 +107,7 @@ function buildConditions(query: ListingQuery): SQL[] {
  * The ORDER BY for a non-cursor browse.
  *
  * `NULLS LAST` on every descending date: Postgres orders NULLs first on a
- * DESC sort and Mongo orders a missing value last, so omitting it silently
+ * DESC sort and the source ordered a missing value last, so omitting it silently
  * reverses where undated rows appear.
  */
 function buildOrderBy(query: ListingQuery): SQL[] {

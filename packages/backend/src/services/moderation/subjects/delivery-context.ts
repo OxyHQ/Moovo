@@ -34,10 +34,9 @@ import type { ModerationContextResource, ModerationResource } from './types.js';
  * contact names or the two phone numbers, and neither is a street: the
  * projection selects `city`/`region`/`country` and the user's own note, which
  * is the whole of what {@link redactEndpoint} would have been allowed to keep
- * anyway. The Mongo original expressed the same intent as a `.select()` string;
- * the column list is now the projection itself.
+ * anyway. The column list is the projection itself.
  *
- * `statusHistory` was in that string and is NOT here, because nothing below
+ * `statusHistory` is NOT here, because nothing below
  * reads it — it is not among {@link DELIVERY_FACT_KEYS} and never reached a
  * jury. Dropping it means the snapshot needs no child-table read at all, which
  * is the same "not fetched beats not passed on" argument one step further.
@@ -50,8 +49,7 @@ import type { ModerationContextResource, ModerationResource } from './types.js';
  * IN SQL, so a contact name, a phone number and two street addresses are never
  * loaded into the process assembling material for a stranger to read — and
  * neither are the photo file ids, which are declared as a COUNT here and never
- * attached. The Mongo original expressed the same intent with `.select()`; the
- * column list is now the projection itself.
+ * attached. The column list is the projection itself.
  */
 
 /**

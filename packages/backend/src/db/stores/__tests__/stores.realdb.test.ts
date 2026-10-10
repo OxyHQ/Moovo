@@ -2,7 +2,7 @@
  * The store and seller-profile domains against a real PostgreSQL server.
  *
  * This file REPLACES `services/__tests__/store.service.test.ts`, which mocked
- * the Mongoose model. That was adequate while the invariants were enforced in
+ * the model layer. That was adequate while the invariants were enforced in
  * JavaScript; it is not adequate now, and the reason is the point of the port:
  *
  *  - **The last-owner invariant is enforced under a row LOCK**, inside the same

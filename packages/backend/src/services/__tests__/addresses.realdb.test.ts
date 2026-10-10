@@ -3,7 +3,7 @@
  *
  * This REPLACES a mocked `address.service.test.ts`, and the replacement is not
  * like-for-like — it is stronger in the one way that matters. The mocked
- * version asserted the SHAPE of the Mongo filter:
+ * version asserted the SHAPE of the query filter:
  *
  *     expect(filter).toEqual({ oxyUserId: USER, isDefault: true, _id: { $ne: ADDR_ID } });
  *
