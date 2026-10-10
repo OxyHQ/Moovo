@@ -55,8 +55,8 @@ export function s10CheckDigitValid(normalised: string): boolean {
   const digits = normalised.slice(2, 11);
   const weights = [8, 6, 4, 2, 3, 5, 9, 7];
   let sum = 0;
-  for (let i = 0; i < 8; i += 1) {
-    sum += Number(digits[i]) * weights[i]!;
+  for (const [i, weight] of weights.entries()) {
+    sum += Number(digits[i]) * weight;
   }
   const remainder = sum % 11;
   let expected = 11 - remainder;
@@ -78,8 +78,7 @@ export function upsCheckDigitValid(normalised: string): boolean {
   const check = normalised.slice(17);
   let odd = 0;
   let even = 0;
-  for (let i = 0; i < body.length; i += 1) {
-    const char = body[i]!;
+  for (const [i, char] of [...body].entries()) {
     const value = char >= '0' && char <= '9' ? Number(char) : (char.charCodeAt(0) - 63) % 10;
     if (i % 2 === 0) odd += value;
     else even += value;
@@ -148,8 +147,10 @@ export function resolveDetection(candidates: CarrierCandidate[]): {
   candidates: CarrierCandidate[];
 } {
   if (candidates.length === 0) return { carrierKey: null, candidates };
-  if (candidates.length === 1) return { carrierKey: candidates[0]!.carrierKey, candidates };
+  const [only] = candidates;
+  if (candidates.length === 1 && only) return { carrierKey: only.carrierKey, candidates };
   const passers = candidates.filter((candidate) => candidate.checksumPassed);
-  if (passers.length === 1) return { carrierKey: passers[0]!.carrierKey, candidates };
+  const [onlyPasser] = passers;
+  if (passers.length === 1 && onlyPasser) return { carrierKey: onlyPasser.carrierKey, candidates };
   return { carrierKey: null, candidates };
 }
