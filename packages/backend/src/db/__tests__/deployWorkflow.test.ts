@@ -21,7 +21,7 @@
  * or by `migrate.ts`, it is IMPORTED and compared, never respelled.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { POST_PHASE_GREP_PATTERN } from '@oxy.so/db/migrate';
@@ -265,5 +265,50 @@ describe('the deploy can apply migrations', () => {
     // breaking a write that image performs, so it must wait for the new one.
     expect(pre).toBeLessThan(rollout);
     expect(rollout).toBeLessThan(post);
+  });
+});
+
+/**
+ * Runtime secrets live ONLY in SSM `/oxy/moovo/*` and the oxy-infra-owned
+ * `/oxy/_shared/*` (oxy-infra runbooks 45 and 46). Until 2026-10-10 the deploy
+ * could copy a REDIS_URL repo secret into `/oxy/_shared/REDIS_URL` — a
+ * parameter every Oxy backend reads and no app may write. No workflow writes
+ * SSM now, and none reads a repo secret beyond what CI itself spends. Comment
+ * lines are skipped so the rule can be explained where it applies.
+ */
+describe('the deploy holds no runtime secret', () => {
+  const CI_ONLY_SECRETS = new Set([
+    'GITHUB_TOKEN',
+    'CLOUDFLARE_API_TOKEN',
+    'CLOUDFLARE_ACCOUNT_ID',
+    'NPM_TOKEN',
+    'ADD_TO_PROJECT_TOKEN',
+  ]);
+  const workflows = readdirSync(join(REPO_ROOT, '.github', 'workflows'))
+    .filter((file) => /\.ya?ml$/.test(file))
+    .map((file) => {
+      const directives = read(`.github/workflows/${file}`)
+        .split('\n')
+        .filter((line) => !/^\s*#/.test(line))
+        .join('\n');
+      return [file, directives] as const;
+    });
+
+  it('no workflow writes SSM', () => {
+    expect(workflows.length).toBeGreaterThan(3); // vacuity floor
+    const writers = workflows
+      .filter(([, text]) => /\bssm\s+(put-parameter|delete-parameters?|label-parameter-version)\b/i.test(text))
+      .map(([file]) => file);
+    expect(writers).toEqual([]);
+  });
+
+  it('no workflow reads a repo secret beyond the CI-only allow-list', () => {
+    const runtime = workflows.flatMap(([file, text]) =>
+      [...text.matchAll(/\bsecrets\.([A-Za-z_][A-Za-z0-9_]*)/g)]
+        .map((match) => match[1])
+        .filter((name) => !CI_ONLY_SECRETS.has(name))
+        .map((name) => `${file}: ${name}`),
+    );
+    expect(runtime).toEqual([]);
   });
 });
