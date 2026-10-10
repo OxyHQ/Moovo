@@ -499,5 +499,6 @@ prevent.
   violations, not a statement that they are fine: tighten them to `"error"` as
   they reach zero. `biome-plugins/expo-env-vars.grit` (scoped to the four Expo
   apps) refuses computed `process.env[...]` reads and destructuring of
-  `process.env`, because Metro inlines only static `process.env.EXPO_PUBLIC_*`
+  `process.env`, by declaration (`const`/`let`/`var`) or by assignment
+  (`({ A } = process.env)`), because Metro inlines only static `process.env.EXPO_PUBLIC_*`
   member reads and anything else is `undefined` in the shipped bundle.
