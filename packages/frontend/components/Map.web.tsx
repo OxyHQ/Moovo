@@ -10,7 +10,7 @@ import {
 } from '@/components/map-types';
 
 /**
- * Web `Map` — maplibre-gl over OpenStreetMap raster tiles (NO API key).
+ * Web `MoovoMap` — maplibre-gl over OpenStreetMap raster tiles (NO API key).
  *
  * The raster style points at the public OSM tile servers, so the map renders
  * with zero credentials. maplibre is an imperative DOM library, so the map +
@@ -53,7 +53,7 @@ function createPinElement(marker: MapMarker): HTMLDivElement {
   return el;
 }
 
-export default function Map({
+export default function MoovoMap({
   markers = [],
   initialCenter,
   initialZoom = DEFAULT_ZOOM,

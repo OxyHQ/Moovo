@@ -98,16 +98,6 @@
   },
   "overrides": [
     {
-      "includes": ["packages/frontend/**"],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noShadowRestrictedNames": "warn"
-          }
-        }
-      }
-    },
-    {
       "includes": [
         "packages/frontend/**",
         "packages/courier-app/**",
