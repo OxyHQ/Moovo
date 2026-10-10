@@ -28,7 +28,7 @@ export function setTokenGetter(getter: () => string | null) {
 apiClient.interceptors.request.use((request) => {
   const token = getAccessToken?.();
   if (token) {
-    request.headers['Authorization'] = `Bearer ${token}`;
+    request.headers.Authorization = `Bearer ${token}`;
   }
   return request;
 });

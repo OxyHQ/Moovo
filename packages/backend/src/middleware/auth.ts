@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 import {
   OxyServer,
@@ -181,7 +181,7 @@ export async function authenticateTelegramBot(
       return;
     }
 
-    const crypto = await import('crypto');
+    const crypto = await import('node:crypto');
     if (!crypto.timingSafeEqual(expectedBuffer, providedBuffer)) {
       log.auth.warn({ ip: getClientIp(req) }, 'Invalid bot secret');
       res.status(401).json({ error: 'Invalid bot authentication' });
