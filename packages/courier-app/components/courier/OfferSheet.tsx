@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
-import { View, Pressable, ActivityIndicator } from "react-native";
-import { MapPin, Flag, Clock, Package } from "lucide-react-native";
-import type { JobOfferView } from "@moovo/shared-types";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { formatDisplayMoney } from "@/lib/money";
-import { formatDistance } from "@/lib/geo";
+import { useEffect, useState } from 'react';
+import { View, Pressable, ActivityIndicator } from 'react-native';
+import { MapPin, Flag, Clock, Package } from 'lucide-react-native';
+import type { JobOfferView } from '@moovo/shared-types';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { formatDisplayMoney } from '@/lib/money';
+import { formatDistance } from '@/lib/geo';
 
 /**
  * Real-time incoming dispatch offer.
@@ -108,18 +108,11 @@ export function OfferSheet({ offer, accepting, onAccept, onDecline }: OfferSheet
           >
             <Text className="text-base font-semibold text-foreground">Decline</Text>
           </Pressable>
-          <Button
-            onPress={onAccept}
-            disabled={accepting}
-            size="lg"
-            className="h-12 flex-1"
-          >
+          <Button onPress={onAccept} disabled={accepting} size="lg" className="h-12 flex-1">
             {accepting ? (
               <ActivityIndicator color={colors.primaryForeground} />
             ) : (
-              <Text className="text-base font-semibold text-primary-foreground">
-                Accept
-              </Text>
+              <Text className="text-base font-semibold text-primary-foreground">Accept</Text>
             )}
           </Button>
         </View>

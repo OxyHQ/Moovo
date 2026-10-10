@@ -65,12 +65,7 @@ router.patch(
   validateBody(updateVehicleSchema),
   updateMyVehicle,
 );
-router.delete(
-  '/vehicles/:id',
-  makeRateLimiter('courier'),
-  validateEntityId('id'),
-  deleteMyVehicle,
-);
+router.delete('/vehicles/:id', makeRateLimiter('courier'), validateEntityId('id'), deleteMyVehicle);
 
 // Active vehicle selection (recomputes the capability cache).
 router.post(

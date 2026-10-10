@@ -1,49 +1,40 @@
-import { useState } from "react";
-import { View, ActivityIndicator } from "react-native";
-import { Link } from "expo-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOxy } from "@oxy.so/services";
-import { UserPlus, Trash2, Settings } from "lucide-react-native";
-import type {
-  Company,
-  CompanyMember,
-  CompanyRole,
-} from "@moovo/shared-types";
-import { Text } from "@/components/ui/text";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
-import { DashboardScreen } from "@/components/dashboard/DashboardScreen";
+import { useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
+import { Link } from 'expo-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOxy } from '@oxy.so/services';
+import { UserPlus, Trash2, Settings } from 'lucide-react-native';
+import type { Company, CompanyMember, CompanyRole } from '@moovo/shared-types';
+import { Text } from '@/components/ui/text';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
   CompanyHeader,
   NoCompaniesState,
   PermissionDenied,
-} from "@/components/dashboard/CompanyHeader";
-import { UserCell } from "@/components/dashboard/UserCell";
+} from '@/components/dashboard/CompanyHeader';
+import { UserCell } from '@/components/dashboard/UserCell';
 import { toast } from '@oxy.so/bloom/toast';
-import {
-  fetchMembers,
-  inviteMember,
-  updateMember,
-  removeMember,
-} from "@/lib/api/members";
-import { queryKeys } from "@/lib/hooks/query-keys";
-import { useCompanyContext } from "@/lib/hooks/use-company-context";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { useTranslation } from "@/hooks/useTranslation";
-import { ownerCount } from "@/lib/permissions";
-import { formatDate } from "@/lib/format";
-import { useI18nStore } from "@/lib/stores/i18n-store";
+import { fetchMembers, inviteMember, updateMember, removeMember } from '@/lib/api/members';
+import { queryKeys } from '@/lib/hooks/query-keys';
+import { useCompanyContext } from '@/lib/hooks/use-company-context';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { useTranslation } from '@/hooks/useTranslation';
+import { ownerCount } from '@/lib/permissions';
+import { formatDate } from '@/lib/format';
+import { useI18nStore } from '@/lib/stores/i18n-store';
 
-const ROLES: CompanyRole[] = ["owner", "dispatcher", "driver"];
+const ROLES: CompanyRole[] = ['owner', 'dispatcher', 'driver'];
 
 /** Extract a human message from an axios/API error. */
 function errorMessage(err: unknown, fallback: string): string {
-  if (err && typeof err === "object" && "response" in err) {
-    const data = (err as { response?: { data?: { message?: string; error?: string } } })
-      .response?.data;
+  if (err && typeof err === 'object' && 'response' in err) {
+    const data = (err as { response?: { data?: { message?: string; error?: string } } }).response
+      ?.data;
     if (data?.message) return data.message;
     if (data?.error) return data.error;
   }
@@ -70,7 +61,7 @@ function MemberRow({
   const locale = useI18nStore((s) => s.locale);
 
   // The last owner cannot be demoted or removed (mirrors the server invariant).
-  const isLastOwner = member.role === "owner" && ownerCount(company) === 1;
+  const isLastOwner = member.role === 'owner' && ownerCount(company) === 1;
 
   return (
     <View className="gap-3 border-b border-border py-4">
@@ -84,7 +75,7 @@ function MemberRow({
           onPress={() => onRemove(member)}
           disabled={busy || isLastOwner}
           className="h-9 w-9 rounded-full"
-          accessibilityLabel={t("members.remove")}
+          accessibilityLabel={t('members.remove')}
         >
           <Trash2 size={18} color={colors.mutedForeground} />
         </Button>
@@ -94,18 +85,14 @@ function MemberRow({
         type="single"
         value={member.role}
         onValueChange={(v) => {
-          if (typeof v === "string" && v && v !== member.role && !isLastOwner) {
+          if (typeof v === 'string' && v && v !== member.role && !isLastOwner) {
             onChangeRole(member.oxyUserId, v as CompanyRole);
           }
         }}
       >
         <View className="flex-row flex-wrap gap-2">
           {ROLES.map((role) => (
-            <ToggleGroupItem
-              key={role}
-              value={role}
-              className="items-center"
-            >
+            <ToggleGroupItem key={role} value={role} className="items-center">
               {t(`members.role.${role}`)}
             </ToggleGroupItem>
           ))}
@@ -113,7 +100,7 @@ function MemberRow({
       </ToggleGroup>
 
       <Text className="text-xs text-muted-foreground">
-        {t("members.joinedOn", { date: formatDate(member.joinedAt, locale) })}
+        {t('members.joinedOn', { date: formatDate(member.joinedAt, locale) })}
       </Text>
     </View>
   );
@@ -125,12 +112,12 @@ function InviteForm({ companyId }: { companyId: string }) {
   const { oxyServices } = useOxy();
   const queryClient = useQueryClient();
 
-  const [username, setUsername] = useState("");
-  const [role, setRole] = useState<CompanyRole>("driver");
+  const [username, setUsername] = useState('');
+  const [role, setRole] = useState<CompanyRole>('driver');
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const handle = username.trim().replace(/^@/, "");
+      const handle = username.trim().replace(/^@/, '');
       // Resolve the username to a canonical Oxy user id — the invite contract
       // is keyed by `oxyUserId`, so the username is looked up first.
       const profile = await oxyServices.users.byUsername(handle);
@@ -141,11 +128,11 @@ function InviteForm({ companyId }: { companyId: string }) {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.companies.detail(companyId),
       });
-      setUsername("");
-      toast.success(t("members.inviteSuccess"));
+      setUsername('');
+      toast.success(t('members.inviteSuccess'));
     },
     onError: (err) => {
-      toast.error(errorMessage(err, t("members.inviteFailed")));
+      toast.error(errorMessage(err, t('members.inviteFailed')));
     },
   });
 
@@ -154,12 +141,12 @@ function InviteForm({ companyId }: { companyId: string }) {
   return (
     <Card className="gap-3 p-4">
       <Text className="text-base font-semibold text-surface-foreground">
-        {t("members.inviteTitle")}
+        {t('members.inviteTitle')}
       </Text>
       <Input
         value={username}
         onChangeText={setUsername}
-        placeholder={t("members.usernamePlaceholder")}
+        placeholder={t('members.usernamePlaceholder')}
         autoCapitalize="none"
         autoCorrect={false}
       />
@@ -167,7 +154,7 @@ function InviteForm({ companyId }: { companyId: string }) {
         type="single"
         value={role}
         onValueChange={(v) => {
-          if (typeof v === "string" && v) setRole(v as CompanyRole);
+          if (typeof v === 'string' && v) setRole(v as CompanyRole);
         }}
       >
         <View className="flex-row flex-wrap gap-2">
@@ -186,7 +173,7 @@ function InviteForm({ companyId }: { companyId: string }) {
         <View className="flex-row items-center gap-2">
           <UserPlus size={16} className="text-primary-foreground" />
           <Text className="text-sm font-medium text-primary-foreground">
-            {t("members.inviteButton")}
+            {t('members.inviteButton')}
           </Text>
         </View>
       </Button>
@@ -201,13 +188,11 @@ function MembersBody() {
   const [toRemove, setToRemove] = useState<CompanyMember | null>(null);
 
   const companyId = ctx.selectedCompanyId;
-  const canManage = ctx.can("members:manage");
-  const canManageCompany = ctx.can("company:manage");
+  const canManage = ctx.can('members:manage');
+  const canManageCompany = ctx.can('company:manage');
 
   const membersQuery = useQuery({
-    queryKey: companyId
-      ? queryKeys.companies.members(companyId)
-      : ["companies", "none", "members"],
+    queryKey: companyId ? queryKeys.companies.members(companyId) : ['companies', 'none', 'members'],
     queryFn: () => fetchMembers(companyId as string),
     enabled: ctx.canUsePrivateApi && companyId !== null && canManage,
     // Seed from the loaded company so the list shows instantly, then refresh.
@@ -224,14 +209,13 @@ function MembersBody() {
           queryKey: queryKeys.companies.detail(companyId),
         });
       }
-      toast.success(t("members.roleUpdated"));
+      toast.success(t('members.roleUpdated'));
     },
-    onError: (err) => toast.error(errorMessage(err, t("members.updateFailed"))),
+    onError: (err) => toast.error(errorMessage(err, t('members.updateFailed'))),
   });
 
   const removeMutation = useMutation({
-    mutationFn: (oxyUserId: string) =>
-      removeMember(companyId as string, oxyUserId),
+    mutationFn: (oxyUserId: string) => removeMember(companyId as string, oxyUserId),
     onSuccess: (members) => {
       if (companyId) {
         queryClient.setQueryData(queryKeys.companies.members(companyId), members);
@@ -239,9 +223,9 @@ function MembersBody() {
           queryKey: queryKeys.companies.detail(companyId),
         });
       }
-      toast.success(t("members.removed"));
+      toast.success(t('members.removed'));
     },
-    onError: (err) => toast.error(errorMessage(err, t("members.removeFailed"))),
+    onError: (err) => toast.error(errorMessage(err, t('members.removeFailed'))),
   });
 
   if (ctx.isLoadingCompanies) {
@@ -259,7 +243,7 @@ function MembersBody() {
   return (
     <View className="gap-6 px-5 py-8 md:px-8">
       <CompanyHeader
-        title={t("nav.members")}
+        title={t('nav.members')}
         companies={ctx.companies}
         selectedCompanyId={ctx.selectedCompanyId}
         onSelect={ctx.selectCompany}
@@ -270,7 +254,7 @@ function MembersBody() {
                 <View className="flex-row items-center gap-2">
                   <Settings size={16} className="text-foreground" />
                   <Text className="text-sm font-medium text-foreground">
-                    {t("companies.settingsLink")}
+                    {t('companies.settingsLink')}
                   </Text>
                 </View>
               </Button>
@@ -280,7 +264,7 @@ function MembersBody() {
       />
 
       {!canManage ? (
-        <PermissionDenied message={t("members.manageDenied")} />
+        <PermissionDenied message={t('members.manageDenied')} />
       ) : !company ? (
         <View className="items-center py-16">
           <ActivityIndicator />
@@ -291,7 +275,7 @@ function MembersBody() {
 
           <Card className="p-4">
             <Text className="pb-1 text-base font-semibold text-surface-foreground">
-              {t("members.listTitle", { count: members.length })}
+              {t('members.listTitle', { count: members.length })}
             </Text>
             {members.map((member) => (
               <MemberRow
@@ -299,9 +283,7 @@ function MembersBody() {
                 member={member}
                 company={company}
                 busy={roleMutation.isPending || removeMutation.isPending}
-                onChangeRole={(oxyUserId, role) =>
-                  roleMutation.mutate({ oxyUserId, role })
-                }
+                onChangeRole={(oxyUserId, role) => roleMutation.mutate({ oxyUserId, role })}
                 onRemove={setToRemove}
               />
             ))}
@@ -314,9 +296,9 @@ function MembersBody() {
         onOpenChange={(open) => {
           if (!open) setToRemove(null);
         }}
-        title={t("members.removeTitle")}
-        description={t("members.removeConfirm")}
-        confirmText={t("members.remove")}
+        title={t('members.removeTitle')}
+        description={t('members.removeConfirm')}
+        confirmText={t('members.remove')}
         confirmVariant="destructive"
         loading={removeMutation.isPending}
         onConfirm={() => {

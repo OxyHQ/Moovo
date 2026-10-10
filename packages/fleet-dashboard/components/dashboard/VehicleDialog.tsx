@@ -1,26 +1,22 @@
-import { useState } from "react";
-import { View } from "react-native";
-import type {
-  Vehicle,
-  VehicleType,
-  CreateVehicleInput,
-} from "@moovo/shared-types";
-import { Text } from "@/components/ui/text";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useState } from 'react';
+import { View } from 'react-native';
+import type { Vehicle, VehicleType, CreateVehicleInput } from '@moovo/shared-types';
+import { Text } from '@/components/ui/text';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Field } from "@/components/dashboard/FormScreen";
-import type { UpdateVehicleBody } from "@/lib/api/vehicles";
-import { useTranslation } from "@/hooks/useTranslation";
+} from '@/components/ui/dialog';
+import { Field } from '@/components/dashboard/FormScreen';
+import type { UpdateVehicleBody } from '@/lib/api/vehicles';
+import { useTranslation } from '@/hooks/useTranslation';
 
-const VEHICLE_TYPES: VehicleType[] = ["bike", "scooter", "car", "van", "truck"];
+const VEHICLE_TYPES: VehicleType[] = ['bike', 'scooter', 'car', 'van', 'truck'];
 
 /** Result emitted by the dialog — a create body or a partial update body. */
 export interface VehicleDialogSubmit {
@@ -56,15 +52,13 @@ export function VehicleDialog({
   const { t } = useTranslation();
   const isEdit = !!vehicle;
 
-  const [type, setType] = useState<VehicleType>(vehicle?.type ?? "car");
-  const [label, setLabel] = useState(vehicle?.label ?? "");
-  const [plate, setPlate] = useState(vehicle?.plate ?? "");
+  const [type, setType] = useState<VehicleType>(vehicle?.type ?? 'car');
+  const [label, setLabel] = useState(vehicle?.label ?? '');
+  const [plate, setPlate] = useState(vehicle?.plate ?? '');
   const [weight, setWeight] = useState(
-    vehicle?.capacity.maxWeightKg ? String(vehicle.capacity.maxWeightKg) : "",
+    vehicle?.capacity.maxWeightKg ? String(vehicle.capacity.maxWeightKg) : '',
   );
-  const [active, setActive] = useState(
-    vehicle ? vehicle.status === "active" : true,
-  );
+  const [active, setActive] = useState(vehicle ? vehicle.status === 'active' : true);
 
   const submit = () => {
     const trimmedLabel = label.trim();
@@ -75,7 +69,7 @@ export function VehicleDialog({
     if (isEdit) {
       const update: UpdateVehicleBody = {
         type,
-        status: active ? "active" : "inactive",
+        status: active ? 'active' : 'inactive',
       };
       if (trimmedLabel) update.label = trimmedLabel;
       if (trimmedPlate) update.plate = trimmedPlate;
@@ -94,17 +88,15 @@ export function VehicleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent closeButton className="max-w-md gap-4">
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? t("fleet.editVehicle") : t("fleet.addVehicle")}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? t('fleet.editVehicle') : t('fleet.addVehicle')}</DialogTitle>
         </DialogHeader>
 
-        <Field label={t("fleet.vehicleType")}>
+        <Field label={t('fleet.vehicleType')}>
           <ToggleGroup
             type="single"
             value={type}
             onValueChange={(v) => {
-              if (typeof v === "string" && v) setType(v as VehicleType);
+              if (typeof v === 'string' && v) setType(v as VehicleType);
             }}
           >
             <View className="flex-row flex-wrap gap-2">
@@ -117,49 +109,44 @@ export function VehicleDialog({
           </ToggleGroup>
         </Field>
 
-        <Field label={t("fleet.label")} helper={t("fleet.labelHelper")}>
+        <Field label={t('fleet.label')} helper={t('fleet.labelHelper')}>
           <Input
             value={label}
             onChangeText={setLabel}
-            placeholder={t("fleet.labelPlaceholder")}
+            placeholder={t('fleet.labelPlaceholder')}
             maxLength={120}
           />
         </Field>
 
-        <Field label={t("fleet.plate")}>
+        <Field label={t('fleet.plate')}>
           <Input
             value={plate}
             onChangeText={setPlate}
-            placeholder={t("fleet.platePlaceholder")}
+            placeholder={t('fleet.platePlaceholder')}
             autoCapitalize="characters"
             maxLength={40}
           />
         </Field>
 
-        <Field label={t("fleet.maxWeight")} helper={t("fleet.maxWeightHelper")}>
-          <Input
-            value={weight}
-            onChangeText={setWeight}
-            placeholder="0"
-            keyboardType="numeric"
-          />
+        <Field label={t('fleet.maxWeight')} helper={t('fleet.maxWeightHelper')}>
+          <Input value={weight} onChangeText={setWeight} placeholder="0" keyboardType="numeric" />
         </Field>
 
         {isEdit ? (
-          <Field label={t("fleet.statusLabel")}>
+          <Field label={t('fleet.statusLabel')}>
             <ToggleGroup
               type="single"
-              value={active ? "active" : "inactive"}
+              value={active ? 'active' : 'inactive'}
               onValueChange={(v) => {
-                if (typeof v === "string" && v) setActive(v === "active");
+                if (typeof v === 'string' && v) setActive(v === 'active');
               }}
             >
               <View className="flex-row gap-2">
                 <ToggleGroupItem value="active" className="flex-1 items-center">
-                  {t("fleet.statusActive")}
+                  {t('fleet.statusActive')}
                 </ToggleGroupItem>
                 <ToggleGroupItem value="inactive" className="flex-1 items-center">
-                  {t("fleet.statusInactive")}
+                  {t('fleet.statusInactive')}
                 </ToggleGroupItem>
               </View>
             </ToggleGroup>
@@ -174,16 +161,11 @@ export function VehicleDialog({
             onPress={() => onOpenChange(false)}
             disabled={loading}
           >
-            <Text className="text-sm">{t("common.cancel")}</Text>
+            <Text className="text-sm">{t('common.cancel')}</Text>
           </Button>
-          <Button
-            size="sm"
-            className="flex-1 h-9"
-            onPress={submit}
-            isLoading={loading}
-          >
+          <Button size="sm" className="flex-1 h-9" onPress={submit} isLoading={loading}>
             <Text className="text-sm text-primary-foreground">
-              {isEdit ? t("common.save") : t("fleet.addVehicle")}
+              {isEdit ? t('common.save') : t('fleet.addVehicle')}
             </Text>
           </Button>
         </DialogFooter>

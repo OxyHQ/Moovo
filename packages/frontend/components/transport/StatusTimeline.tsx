@@ -97,12 +97,18 @@ export function StatusTimeline({
               <Text
                 className={cn(
                   'text-sm',
-                  isCurrent ? 'font-bold text-foreground' : done ? 'font-medium text-foreground' : 'text-muted-foreground',
+                  isCurrent
+                    ? 'font-bold text-foreground'
+                    : done
+                      ? 'font-medium text-foreground'
+                      : 'text-muted-foreground',
                 )}
               >
                 {step.label}
               </Text>
-              {at ? <Text className="mt-0.5 text-xs text-muted-foreground">{shortTime(at)}</Text> : null}
+              {at ? (
+                <Text className="mt-0.5 text-xs text-muted-foreground">{shortTime(at)}</Text>
+              ) : null}
             </View>
           </View>
         );

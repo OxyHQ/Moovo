@@ -487,10 +487,7 @@ export async function requestRefresh(subscriptionId: string, oxyUserId: string):
   if (!carrier.pollSupported) {
     throw conflict(`${carrier.name} does not publish a feed we can read.`);
   }
-  if (
-    parcel.lastPolledAt &&
-    Date.now() - parcel.lastPolledAt.getTime() < REFRESH_COOLDOWN_MS
-  ) {
+  if (parcel.lastPolledAt && Date.now() - parcel.lastPolledAt.getTime() < REFRESH_COOLDOWN_MS) {
     throw conflict('This parcel was checked moments ago. Try again shortly.');
   }
 

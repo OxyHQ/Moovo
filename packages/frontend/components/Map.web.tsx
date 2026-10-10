@@ -72,6 +72,7 @@ export default function Map({
   handlersRef.current = { onPressMap, onMarkerDragEnd, interactive };
 
   // Create the map exactly once.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally created once; center/zoom changes are reconciled below.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) {
@@ -99,8 +100,6 @@ export default function Map({
       map.remove();
       mapRef.current = null;
     };
-    // Intentionally created once; center/zoom changes are reconciled below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reconcile markers whenever they change.

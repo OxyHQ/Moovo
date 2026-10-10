@@ -1,9 +1,9 @@
-import React from "react";
-import { View, Pressable } from "react-native";
-import { Text } from "@/components/ui/text";
-import { Logo } from "@/components/Logo";
+import React from 'react';
+import { View, Pressable } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { Logo } from '@/components/Logo';
 
-const FOOTER_LINKS = ["About", "Help", "Privacy", "Terms"] as const;
+const FOOTER_LINKS = ['About', 'Help', 'Privacy', 'Terms'] as const;
 
 /* ================================================================
    Footer — light footer for the home scroll
@@ -32,9 +32,7 @@ export function Footer() {
         ))}
       </View>
 
-      <Text className="mt-4 text-xs text-muted-foreground">
-        © {year} Moovo by Oxy
-      </Text>
+      <Text className="mt-4 text-xs text-muted-foreground">© {year} Moovo by Oxy</Text>
     </View>
   );
 }

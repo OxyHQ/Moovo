@@ -1,6 +1,6 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
  * Persisted selection of the active company for the Moovo Hub dashboard. An
@@ -18,11 +18,10 @@ export const useCompanyStore = create<CompanyStoreState>()(
   persist(
     (set) => ({
       selectedCompanyId: null,
-      setSelectedCompanyId: (companyId) =>
-        set({ selectedCompanyId: companyId }),
+      setSelectedCompanyId: (companyId) => set({ selectedCompanyId: companyId }),
     }),
     {
-      name: "moovo-hub-company",
+      name: 'moovo-hub-company',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

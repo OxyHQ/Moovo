@@ -5,8 +5,8 @@ import type {
   JobView,
   PaginatedResponse,
   ScanInput,
-} from "@moovo/shared-types";
-import apiClient from "./client";
+} from '@moovo/shared-types';
+import apiClient from './client';
 
 /**
  * Jobs API client.
@@ -33,8 +33,8 @@ export interface FetchCourierJobsParams {
 export async function fetchCourierJobs(
   params: FetchCourierJobsParams = {},
 ): Promise<PaginatedResponse<JobSummary>> {
-  const { data } = await apiClient.get<PaginatedResponse<JobSummary>>("/jobs", {
-    params: { role: "courier", ...params },
+  const { data } = await apiClient.get<PaginatedResponse<JobSummary>>('/jobs', {
+    params: { role: 'courier', ...params },
   });
   return data;
 }
@@ -59,14 +59,8 @@ export async function acceptJob(id: string): Promise<ApiResponse<JobView>> {
  * scanned `code` against the job's stored hash and advances the status
  * (`accepted → picked_up` for `pickup`, `in_transit → delivered` for `dropoff`).
  */
-export async function scanJob(
-  id: string,
-  input: ScanInput,
-): Promise<ApiResponse<JobView>> {
-  const { data } = await apiClient.post<ApiResponse<JobView>>(
-    `/jobs/${id}/scan`,
-    input,
-  );
+export async function scanJob(id: string, input: ScanInput): Promise<ApiResponse<JobView>> {
+  const { data } = await apiClient.post<ApiResponse<JobView>>(`/jobs/${id}/scan`, input);
   return data;
 }
 
@@ -83,10 +77,7 @@ export async function pickupJob(
   id: string,
   location: JobTransitionLocation = {},
 ): Promise<ApiResponse<JobView>> {
-  const { data } = await apiClient.post<ApiResponse<JobView>>(
-    `/jobs/${id}/pickup`,
-    location,
-  );
+  const { data } = await apiClient.post<ApiResponse<JobView>>(`/jobs/${id}/pickup`, location);
   return data;
 }
 
@@ -95,10 +86,7 @@ export async function startTransit(
   id: string,
   location: JobTransitionLocation = {},
 ): Promise<ApiResponse<JobView>> {
-  const { data } = await apiClient.post<ApiResponse<JobView>>(
-    `/jobs/${id}/in-transit`,
-    location,
-  );
+  const { data } = await apiClient.post<ApiResponse<JobView>>(`/jobs/${id}/in-transit`, location);
   return data;
 }
 
@@ -108,9 +96,6 @@ export async function pingJobLocation(
   lng: number,
   lat: number,
 ): Promise<ApiResponse<JobView>> {
-  const { data } = await apiClient.post<ApiResponse<JobView>>(
-    `/jobs/${id}/location`,
-    { lng, lat },
-  );
+  const { data } = await apiClient.post<ApiResponse<JobView>>(`/jobs/${id}/location`, { lng, lat });
   return data;
 }

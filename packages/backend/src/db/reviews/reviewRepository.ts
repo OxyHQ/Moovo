@@ -55,7 +55,9 @@ function targetPredicate(kind: ReviewTargetKind, targetId: string) {
 }
 
 /** The column a target id is written to, for a given target type. */
-export function targetColumnFor(kind: ReviewTargetKind): 'listingId' | 'storeId' | 'sellerOxyUserId' {
+export function targetColumnFor(
+  kind: ReviewTargetKind,
+): 'listingId' | 'storeId' | 'sellerOxyUserId' {
   switch (kind) {
     case 'listing':
       return 'listingId';

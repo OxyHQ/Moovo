@@ -1,6 +1,6 @@
-import React from "react";
-import { View, ScrollView, NativeSyntheticEvent, NativeScrollEvent } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React from 'react';
+import { View, ScrollView, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BaseSidebarProps {
   /** Fixed header at top (toggle area) */
@@ -39,7 +39,10 @@ export const BaseSidebar = React.memo(function BaseSidebar({
       </ScrollView>
 
       {/* Fixed footer */}
-      <View className="mt-auto w-full min-w-0 border-t border-border/50 flex-col items-center justify-center" style={{ paddingBottom: insets.bottom }}>
+      <View
+        className="mt-auto w-full min-w-0 border-t border-border/50 flex-col items-center justify-center"
+        style={{ paddingBottom: insets.bottom }}
+      >
         {footer}
       </View>
     </View>

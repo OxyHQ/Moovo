@@ -23,11 +23,7 @@
  */
 
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
-import type {
-  CompanyPermission,
-  CompanyRole,
-  TextTone,
-} from '@moovo/shared-types';
+import type { CompanyPermission, CompanyRole, TextTone } from '@moovo/shared-types';
 import { uuidv7 } from '@oxy.so/db';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { companyMembers, companyServiceAreas, courierCompanies } from '../schema/fleet';
@@ -269,9 +265,7 @@ export async function insertCompanyWithOwner(
         ...(input.textTone === undefined ? {} : { textTone: input.textTone }),
         logoFileId: input.logoFileId ?? null,
         coverFileId: input.coverFileId ?? null,
-        ...(input.defaultCurrency === undefined
-          ? {}
-          : { defaultCurrency: input.defaultCurrency }),
+        ...(input.defaultCurrency === undefined ? {} : { defaultCurrency: input.defaultCurrency }),
       })
       .returning();
     if (!company) throw new Error('Inserting a courier company returned no row');
@@ -373,9 +367,7 @@ export async function findCompanyMember(
   const [row] = await db
     .select()
     .from(companyMembers)
-    .where(
-      and(eq(companyMembers.companyId, companyId), eq(companyMembers.oxyUserId, oxyUserId)),
-    )
+    .where(and(eq(companyMembers.companyId, companyId), eq(companyMembers.oxyUserId, oxyUserId)))
     .limit(1);
   return row ? toMemberValue(row) : null;
 }
@@ -430,8 +422,6 @@ export async function deleteCompanyMember(
 ): Promise<boolean> {
   const result = await db
     .delete(companyMembers)
-    .where(
-      and(eq(companyMembers.companyId, companyId), eq(companyMembers.oxyUserId, oxyUserId)),
-    );
+    .where(and(eq(companyMembers.companyId, companyId), eq(companyMembers.oxyUserId, oxyUserId)));
   return (result.count ?? 0) > 0;
 }

@@ -1,15 +1,15 @@
-import { useRef, useState } from "react";
-import { Modal, View, Pressable, StyleSheet } from "react-native";
+import { useRef, useState } from 'react';
+import { Modal, View, Pressable, StyleSheet } from 'react-native';
 import {
   CameraView,
   useCameraPermissions,
   type BarcodeScanningResult,
   type BarcodeSettings,
-} from "expo-camera";
-import { X } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { decodeQrPayload, type ScanLeg } from "@/lib/job-codes";
+} from 'expo-camera';
+import { X } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { decodeQrPayload, type ScanLeg } from '@/lib/job-codes';
 
 /**
  * Full-screen QR scanner for proving a job leg.
@@ -37,7 +37,7 @@ interface QrScannerProps {
 }
 
 /** The QR barcode types the camera should detect. */
-const BARCODE_SETTINGS: BarcodeSettings = { barcodeTypes: ["qr"] };
+const BARCODE_SETTINGS: BarcodeSettings = { barcodeTypes: ['qr'] };
 
 export function QrScanner({ visible, jobId, leg, onScanned, onClose }: QrScannerProps) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -47,7 +47,7 @@ export function QrScanner({ visible, jobId, leg, onScanned, onClose }: QrScanner
   // parent unmounts the scanner.
   const handledRef = useRef(false);
 
-  const legLabel = leg === "pickup" ? "pickup" : "delivery";
+  const legLabel = leg === 'pickup' ? 'pickup' : 'delivery';
 
   const handleScanned = (result: BarcodeScanningResult) => {
     if (handledRef.current) return;
@@ -57,7 +57,7 @@ export function QrScanner({ visible, jobId, leg, onScanned, onClose }: QrScanner
       return;
     }
     if (decoded.jobId !== jobId || decoded.leg !== leg) {
-      setHint("This QR is for a different job or leg.");
+      setHint('This QR is for a different job or leg.');
       return;
     }
     handledRef.current = true;
@@ -84,14 +84,12 @@ export function QrScanner({ visible, jobId, leg, onScanned, onClose }: QrScanner
           <View className="flex-1 items-center justify-center gap-4 px-8">
             <Text className="text-center text-base text-white">
               {permission?.canAskAgain === false
-                ? "Camera access is blocked. Enable it in settings to scan QR codes."
-                : "Moovo Go needs camera access to scan the QR code."}
+                ? 'Camera access is blocked. Enable it in settings to scan QR codes.'
+                : 'Moovo Go needs camera access to scan the QR code.'}
             </Text>
             {permission?.canAskAgain !== false ? (
               <Button onPress={requestPermission}>
-                <Text className="font-semibold text-primary-foreground">
-                  Allow camera
-                </Text>
+                <Text className="font-semibold text-primary-foreground">Allow camera</Text>
               </Button>
             ) : null}
           </View>

@@ -127,7 +127,9 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
         publishedAt: new Date('2026-01-01'),
         categorySlugs: ['electronics', 'phones'],
       });
-      expect((await searchListingsOffset({ category: 'electronics' }, 1, 10)).listings).toHaveLength(1);
+      expect(
+        (await searchListingsOffset({ category: 'electronics' }, 1, 10)).listings,
+      ).toHaveLength(1);
       expect((await searchListingsOffset({ category: 'absent' }, 1, 10)).listings).toHaveLength(0);
     });
   });
@@ -145,8 +147,18 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
     });
 
     it('orders by price with undated prices last', async () => {
-      await seedListing({ title: 'cheap', owner: 'u1', publishedAt: new Date('2026-01-01'), priceMin: 100 });
-      await seedListing({ title: 'dear', owner: 'u1', publishedAt: new Date('2026-01-01'), priceMin: 900 });
+      await seedListing({
+        title: 'cheap',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-01'),
+        priceMin: 100,
+      });
+      await seedListing({
+        title: 'dear',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-01'),
+        priceMin: 900,
+      });
       await seedListing({ title: 'unpriced', owner: 'u1', publishedAt: new Date('2026-01-01') });
 
       const asc = await searchListingsOffset({ sort: 'price_asc' }, 1, 10);
@@ -201,7 +213,12 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
   describe('only ACTIVE listings are browsable', () => {
     it('excludes a draft', async () => {
       await seedListing({ title: 'live', owner: 'u1', publishedAt: new Date('2026-01-01') });
-      await seedListing({ title: 'draft', owner: 'u1', publishedAt: new Date('2026-01-02'), status: 'draft' });
+      await seedListing({
+        title: 'draft',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-02'),
+        status: 'draft',
+      });
       const page = await searchListingsOffset(ALL, 1, 10);
       expect(page.listings.map((l) => l.title)).toEqual(['live']);
     });
@@ -223,14 +240,14 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
       });
 
       // Stemming: "run" matches "Running".
-      expect((await searchListingsOffset({ q: 'run' }, 1, 10)).listings.map((l) => l.title)).toEqual([
-        'Running shoes',
-      ]);
+      expect(
+        (await searchListingsOffset({ q: 'run' }, 1, 10)).listings.map((l) => l.title),
+      ).toEqual(['Running shoes']);
       // A tag is stored as a VERBATIM lexeme, and matches when it is already
       // its own English stem.
-      expect((await searchListingsOffset({ q: 'garden' }, 1, 10)).listings.map((l) => l.title)).toEqual([
-        'Garden hose',
-      ]);
+      expect(
+        (await searchListingsOffset({ q: 'garden' }, 1, 10)).listings.map((l) => l.title),
+      ).toEqual(['Garden hose']);
       expect((await searchListingsOffset({ q: 'absentword' }, 1, 10)).listings).toHaveLength(0);
     });
 
@@ -283,7 +300,7 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
      * test for — empty array, empty string, a word that is only punctuation —
      * on both sides, and assert the WRONG answer is not returned.
      */
-    it('a listing with NO tags is not matched by another listing\'s tag', async () => {
+    it("a listing with NO tags is not matched by another listing's tag", async () => {
       // The `$all: []` / `@> '{}'` hazard, asserted from the outside.
       //
       // Mongo's `$all: []` matched NOTHING; Postgres' `col @> '{}'` matches
@@ -299,8 +316,18 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
       //
       // This case is what would go red if a tag filter were ever added in the
       // containment shape.
-      await seedListing({ title: 'Tagged thing', owner: 'u1', publishedAt: new Date('2026-01-01'), tags: ['watering'] });
-      await seedListing({ title: 'Untagged thing', owner: 'u1', publishedAt: new Date('2026-01-02'), tags: [] });
+      await seedListing({
+        title: 'Tagged thing',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-01'),
+        tags: ['watering'],
+      });
+      await seedListing({
+        title: 'Untagged thing',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-02'),
+        tags: [],
+      });
 
       const hits = await searchListingsOffset({ q: 'watering' }, 1, 10);
       expect(hits.listings.map((l) => l.title)).toEqual(['Tagged thing']);
@@ -311,7 +338,12 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
     });
 
     it('a blank query browses rather than matching nothing, and a stopword query matches nothing rather than everything', async () => {
-      await seedListing({ title: 'Alpha', owner: 'u1', publishedAt: new Date('2026-01-01'), tags: ['watering'] });
+      await seedListing({
+        title: 'Alpha',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-01'),
+        tags: ['watering'],
+      });
       await seedListing({ title: 'Beta', owner: 'u1', publishedAt: new Date('2026-01-02') });
 
       // `buildConditions` adds the text predicate only for a non-blank `q`, so
@@ -335,12 +367,28 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
       // half alone would never match. The stemming term added by migration
       // `0001` is what makes tag search case-insensitive; before it, a
       // capitalised tag was unfindable.
-      await seedListing({ title: 'Hose', owner: 'u1', publishedAt: new Date('2026-01-01'), tags: ['Garden'] });
-      await seedListing({ title: 'Unrelated', owner: 'u1', publishedAt: new Date('2026-01-02'), tags: ['ladder'] });
+      await seedListing({
+        title: 'Hose',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-01'),
+        tags: ['Garden'],
+      });
+      await seedListing({
+        title: 'Unrelated',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-02'),
+        tags: ['ladder'],
+      });
 
-      expect((await searchListingsOffset({ q: 'garden' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Hose']);
-      expect((await searchListingsOffset({ q: 'GARDEN' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Hose']);
-      expect((await searchListingsOffset({ q: 'Garden' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Hose']);
+      expect(
+        (await searchListingsOffset({ q: 'garden' }, 1, 10)).listings.map((l) => l.title),
+      ).toEqual(['Hose']);
+      expect(
+        (await searchListingsOffset({ q: 'GARDEN' }, 1, 10)).listings.map((l) => l.title),
+      ).toEqual(['Hose']);
+      expect(
+        (await searchListingsOffset({ q: 'Garden' }, 1, 10)).listings.map((l) => l.title),
+      ).toEqual(['Hose']);
     });
 
     it('handles tags containing punctuation and query metacharacters', async () => {
@@ -352,20 +400,50 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
       //       ->  'fish' & 'chip' & 'rat'
       //
       // So a user typing `c++` gets a search, not a 500 and not an injection.
-      await seedListing({ title: 'Compiler', owner: 'u1', publishedAt: new Date('2026-01-01'), tags: ['c++'] });
-      await seedListing({ title: 'Discount', owner: 'u1', publishedAt: new Date('2026-01-02'), tags: ['50%'] });
-      await seedListing({ title: 'Snake', owner: 'u1', publishedAt: new Date('2026-01-03'), tags: ['foo_bar'] });
-      await seedListing({ title: 'Irish', owner: 'u1', publishedAt: new Date('2026-01-04'), tags: ["O'Brien"] });
+      await seedListing({
+        title: 'Compiler',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-01'),
+        tags: ['c++'],
+      });
+      await seedListing({
+        title: 'Discount',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-02'),
+        tags: ['50%'],
+      });
+      await seedListing({
+        title: 'Snake',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-03'),
+        tags: ['foo_bar'],
+      });
+      await seedListing({
+        title: 'Irish',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-04'),
+        tags: ["O'Brien"],
+      });
 
       // Each finds its own listing and only its own.
-      expect((await searchListingsOffset({ q: 'c++' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Compiler']);
-      expect((await searchListingsOffset({ q: '50%' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Discount']);
-      expect((await searchListingsOffset({ q: 'foo_bar' }, 1, 10)).listings.map((l) => l.title)).toEqual(['Snake']);
-      expect((await searchListingsOffset({ q: "O'Brien" }, 1, 10)).listings.map((l) => l.title)).toEqual(['Irish']);
+      expect(
+        (await searchListingsOffset({ q: 'c++' }, 1, 10)).listings.map((l) => l.title),
+      ).toEqual(['Compiler']);
+      expect(
+        (await searchListingsOffset({ q: '50%' }, 1, 10)).listings.map((l) => l.title),
+      ).toEqual(['Discount']);
+      expect(
+        (await searchListingsOffset({ q: 'foo_bar' }, 1, 10)).listings.map((l) => l.title),
+      ).toEqual(['Snake']);
+      expect(
+        (await searchListingsOffset({ q: "O'Brien" }, 1, 10)).listings.map((l) => l.title),
+      ).toEqual(['Irish']);
 
       // Operator syntax is text to be searched for, not a query to be parsed:
       // it neither throws nor returns the whole catalogue.
-      expect((await searchListingsOffset({ q: 'fish & !chips | (rat:*)' }, 1, 10)).listings).toHaveLength(0);
+      expect(
+        (await searchListingsOffset({ q: 'fish & !chips | (rat:*)' }, 1, 10)).listings,
+      ).toHaveLength(0);
     });
 
     /**
@@ -391,9 +469,24 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
   describe('the geo radius filter', () => {
     it('returns listings inside the radius, nearest first, and excludes those outside', async () => {
       // Barcelona, ~1.5 km away, and Madrid (~500 km).
-      await seedListing({ title: 'here', owner: 'u1', publishedAt: new Date('2026-01-01'), coords: { lng: 2.1734, lat: 41.3851 } });
-      await seedListing({ title: 'nearby', owner: 'u1', publishedAt: new Date('2026-01-02'), coords: { lng: 2.1900, lat: 41.3851 } });
-      await seedListing({ title: 'far', owner: 'u1', publishedAt: new Date('2026-01-03'), coords: { lng: -3.7038, lat: 40.4168 } });
+      await seedListing({
+        title: 'here',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-01'),
+        coords: { lng: 2.1734, lat: 41.3851 },
+      });
+      await seedListing({
+        title: 'nearby',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-02'),
+        coords: { lng: 2.19, lat: 41.3851 },
+      });
+      await seedListing({
+        title: 'far',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-03'),
+        coords: { lng: -3.7038, lat: 40.4168 },
+      });
 
       const page = await searchListingsOffset(
         { near: { lng: 2.1734, lat: 41.3851, radiusM: 5_000 } },
@@ -407,26 +500,49 @@ describeIfPostgres('the catalogue read paths on a real server', () => {
     });
 
     it('excludes a listing with no coordinates at all', async () => {
-      await seedListing({ title: 'located', owner: 'u1', publishedAt: new Date('2026-01-01'), coords: { lng: 2.1734, lat: 41.3851 } });
+      await seedListing({
+        title: 'located',
+        owner: 'u1',
+        publishedAt: new Date('2026-01-01'),
+        coords: { lng: 2.1734, lat: 41.3851 },
+      });
       await seedListing({ title: 'nowhere', owner: 'u1', publishedAt: new Date('2026-01-02') });
-      const page = await searchListingsOffset({ near: { lng: 2.1734, lat: 41.3851, radiusM: 5_000 } }, 1, 10);
+      const page = await searchListingsOffset(
+        { near: { lng: 2.1734, lat: 41.3851, radiusM: 5_000 } },
+        1,
+        10,
+      );
       expect(page.listings.map((l) => l.title)).toEqual(['located']);
     });
   });
 
   describe('owner scoping', () => {
-    it('returns one seller\'s listings and not another\'s', async () => {
+    it("returns one seller's listings and not another's", async () => {
       await seedListing({ title: 'mine', owner: 'seller-a', publishedAt: new Date('2026-01-01') });
-      await seedListing({ title: 'theirs', owner: 'seller-b', publishedAt: new Date('2026-01-02') });
+      await seedListing({
+        title: 'theirs',
+        owner: 'seller-b',
+        publishedAt: new Date('2026-01-02'),
+      });
 
-      const page = await listListingsForOwner({ ownerType: 'user', oxyUserId: 'seller-a' }, {}, 1, 10);
+      const page = await listListingsForOwner(
+        { ownerType: 'user', oxyUserId: 'seller-a' },
+        {},
+        1,
+        10,
+      );
       expect(page.listings.map((l) => l.title)).toEqual(['mine']);
       expect(page.total).toBe(1);
     });
 
-    it('includes a seller\'s own drafts, which the public browse excludes', async () => {
+    it("includes a seller's own drafts, which the public browse excludes", async () => {
       await seedListing({ title: 'draft', owner: 'seller-a', publishedAt: null, status: 'draft' });
-      const page = await listListingsForOwner({ ownerType: 'user', oxyUserId: 'seller-a' }, {}, 1, 10);
+      const page = await listListingsForOwner(
+        { ownerType: 'user', oxyUserId: 'seller-a' },
+        {},
+        1,
+        10,
+      );
       expect(page.listings.map((l) => l.title)).toEqual(['draft']);
       expect((await searchListingsOffset(ALL, 1, 10)).listings).toHaveLength(0);
     });

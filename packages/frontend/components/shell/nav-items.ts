@@ -1,4 +1,4 @@
-import { Home, Send, ClipboardList, type LucideIcon } from "lucide-react-native";
+import { Home, Send, ClipboardList, type LucideIcon } from 'lucide-react-native';
 
 /**
  * Canonical navigation model for the Moovo customer shell, shared by the desktop
@@ -27,13 +27,13 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { key: "home", label: "Home", icon: Home, href: "/", available: true },
-  { key: "send", label: "Send", icon: Send, href: "/send", available: true },
+  { key: 'home', label: 'Home', icon: Home, href: '/', available: true },
+  { key: 'send', label: 'Send', icon: Send, href: '/send', available: true },
   {
-    key: "orders",
-    label: "Orders",
+    key: 'orders',
+    label: 'Orders',
     icon: ClipboardList,
-    href: "/orders",
+    href: '/orders',
     available: true,
   },
 ] as const;
@@ -44,11 +44,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
  * other items match their route or any nested sub-route.
  */
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
-  if (item.key === "home") {
+  if (item.key === 'home') {
     return (
-      pathname === "/" ||
-      pathname === "/(app)" ||
-      (pathname.startsWith("/(app)") && pathname.replace("/(app)", "") === "")
+      pathname === '/' ||
+      pathname === '/(app)' ||
+      (pathname.startsWith('/(app)') && pathname.replace('/(app)', '') === '')
     );
   }
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -61,5 +61,5 @@ export function isNavItemActive(item: NavItem, pathname: string): boolean {
  * lives in the nav model alongside {@link isNavItemActive}, not in the bar.
  */
 export function isAuthTabActive(pathname: string): boolean {
-  return pathname.startsWith("/@");
+  return pathname.startsWith('/@');
 }

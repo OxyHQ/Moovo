@@ -1,10 +1,10 @@
-import { Slot, Stack } from "expo-router";
-import { View, Platform } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { AppErrorBoundary } from "@/components/error-boundary";
-import { NavRail } from "@/components/shell/NavRail";
-import { BottomTabBar } from "@/components/shell/BottomTabBar";
-import { useNotificationSetup } from "@/lib/hooks/use-notification-setup";
+import { Slot, Stack } from 'expo-router';
+import { View, Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AppErrorBoundary } from '@/components/error-boundary';
+import { NavRail } from '@/components/shell/NavRail';
+import { BottomTabBar } from '@/components/shell/BottomTabBar';
+import { useNotificationSetup } from '@/lib/hooks/use-notification-setup';
 
 const SCREEN_OPTIONS = { headerShown: false } as const;
 
@@ -18,7 +18,7 @@ export default function AppLayout() {
   // absolute overlay above it (the rail is web-only). No width measuring —
   // native is always the "mobile" tree. `<Stack>` gives real push/pop screen
   // transitions on native.
-  if (Platform.OS !== "web") {
+  if (Platform.OS !== 'web') {
     return (
       <AppErrorBoundary>
         <GestureHandlerRootView style={GESTURE_ROOT_STYLE}>

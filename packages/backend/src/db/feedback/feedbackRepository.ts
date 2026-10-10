@@ -46,10 +46,7 @@ export interface NewFeedback {
 }
 
 /** Read one of the three retained metadata keys, ignoring any other type. */
-function metadataString(
-  metadata: Record<string, unknown> | undefined,
-  key: string,
-): string | null {
+function metadataString(metadata: Record<string, unknown> | undefined, key: string): string | null {
   const value = metadata?.[key];
   return typeof value === 'string' ? value : null;
 }

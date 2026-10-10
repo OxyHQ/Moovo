@@ -1,11 +1,4 @@
-import {
-  Home,
-  Radio,
-  Truck,
-  Users,
-  BarChart3,
-  type LucideIcon,
-} from "lucide-react-native";
+import { Home, Radio, Truck, Users, BarChart3, type LucideIcon } from 'lucide-react-native';
 
 /**
  * Canonical navigation model for the Moovo Hub shell, shared by the desktop
@@ -27,27 +20,27 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { key: "home", label: "Home", icon: Home, href: "/", available: true },
+  { key: 'home', label: 'Home', icon: Home, href: '/', available: true },
   {
-    key: "dispatch",
-    label: "Dispatch",
+    key: 'dispatch',
+    label: 'Dispatch',
     icon: Radio,
-    href: "/dispatch",
+    href: '/dispatch',
     available: true,
   },
-  { key: "fleet", label: "Fleet", icon: Truck, href: "/fleet", available: true },
+  { key: 'fleet', label: 'Fleet', icon: Truck, href: '/fleet', available: true },
   {
-    key: "members",
-    label: "Members",
+    key: 'members',
+    label: 'Members',
     icon: Users,
-    href: "/members",
+    href: '/members',
     available: true,
   },
   {
-    key: "stats",
-    label: "Stats",
+    key: 'stats',
+    label: 'Stats',
     icon: BarChart3,
-    href: "/stats",
+    href: '/stats',
     available: true,
   },
 ] as const;
@@ -57,11 +50,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
  * nav item as active. Home matches the root / group-index variants.
  */
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
-  if (item.key === "home") {
+  if (item.key === 'home') {
     return (
-      pathname === "/" ||
-      pathname === "/(app)" ||
-      (pathname.startsWith("/(app)") && pathname.replace("/(app)", "") === "")
+      pathname === '/' ||
+      pathname === '/(app)' ||
+      (pathname.startsWith('/(app)') && pathname.replace('/(app)', '') === '')
     );
   }
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -73,5 +66,5 @@ export function isNavItemActive(item: NavItem, pathname: string): boolean {
  * tab rather than any nav destination.
  */
 export function isAuthTabActive(pathname: string): boolean {
-  return pathname.startsWith("/@");
+  return pathname.startsWith('/@');
 }

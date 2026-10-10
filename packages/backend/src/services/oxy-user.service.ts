@@ -25,7 +25,9 @@ export interface OxyProfile {
  * map is keyed by the requested user id.
  */
 export async function getProfiles(oxyUserIds: string[]): Promise<Map<string, OxyProfile>> {
-  const uniqueIds = [...new Set(oxyUserIds.filter((id) => typeof id === 'string' && id.length > 0))];
+  const uniqueIds = [
+    ...new Set(oxyUserIds.filter((id) => typeof id === 'string' && id.length > 0)),
+  ];
   const map = new Map<string, OxyProfile>();
 
   if (uniqueIds.length === 0) {
@@ -43,7 +45,10 @@ export async function getProfiles(oxyUserIds: string[]): Promise<Map<string, Oxy
           avatar: user.avatar,
         });
       } catch (err) {
-        log.general.warn({ err, oxyUserId: id }, 'Failed to load Oxy profile (omitting from batch)');
+        log.general.warn(
+          { err, oxyUserId: id },
+          'Failed to load Oxy profile (omitting from batch)',
+        );
       }
     }),
   );

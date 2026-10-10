@@ -3,8 +3,8 @@ import type {
   InviteCompanyMemberInput,
   UpdateCompanyMemberInput,
   ApiResponse,
-} from "@moovo/shared-types";
-import apiClient from "./client";
+} from '@moovo/shared-types';
+import apiClient from './client';
 
 /**
  * Company members API client.
@@ -22,15 +22,13 @@ import apiClient from "./client";
 /** Unwrap an `ApiResponse<T>` payload or throw the API's error message. */
 function unwrap<T>(res: ApiResponse<T>): T {
   if (!res.success || res.data === undefined) {
-    throw new Error(res.message ?? res.error ?? "Request failed");
+    throw new Error(res.message ?? res.error ?? 'Request failed');
   }
   return res.data;
 }
 
 /** `GET /admin/companies/:companyId/members` — list the company's members. */
-export async function fetchMembers(
-  companyId: string,
-): Promise<CompanyMember[]> {
+export async function fetchMembers(companyId: string): Promise<CompanyMember[]> {
   const { data } = await apiClient.get<ApiResponse<CompanyMember[]>>(
     `/admin/companies/${companyId}/members`,
   );
@@ -63,10 +61,7 @@ export async function updateMember(
 }
 
 /** `DELETE /admin/companies/:companyId/members/:oxyUserId` — remove a member. */
-export async function removeMember(
-  companyId: string,
-  oxyUserId: string,
-): Promise<CompanyMember[]> {
+export async function removeMember(companyId: string, oxyUserId: string): Promise<CompanyMember[]> {
   const { data } = await apiClient.delete<ApiResponse<CompanyMember[]>>(
     `/admin/companies/${companyId}/members/${oxyUserId}`,
   );

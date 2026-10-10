@@ -1,11 +1,5 @@
-import {
-  Bike,
-  type LucideIcon,
-  Truck,
-  Car,
-  Package,
-} from "lucide-react-native";
-import type { VehicleType } from "@moovo/shared-types";
+import { Bike, type LucideIcon, Truck, Car, Package } from 'lucide-react-native';
+import type { VehicleType } from '@moovo/shared-types';
 
 /**
  * Presentation metadata for the courier vehicle types (PURE — no I/O).
@@ -17,20 +11,20 @@ import type { VehicleType } from "@moovo/shared-types";
 
 /** All selectable vehicle types in display order. */
 export const VEHICLE_TYPES: readonly VehicleType[] = [
-  "bike",
-  "scooter",
-  "car",
-  "van",
-  "truck",
+  'bike',
+  'scooter',
+  'car',
+  'van',
+  'truck',
 ] as const;
 
 /** Human label for each vehicle type. */
 export const VEHICLE_LABELS: Record<VehicleType, string> = {
-  bike: "Bike",
-  scooter: "Scooter",
-  car: "Car",
-  van: "Van",
-  truck: "Truck",
+  bike: 'Bike',
+  scooter: 'Scooter',
+  car: 'Car',
+  van: 'Van',
+  truck: 'Truck',
 };
 
 /** Icon for each vehicle type (lucide). */

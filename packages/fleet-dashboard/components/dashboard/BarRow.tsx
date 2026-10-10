@@ -1,5 +1,5 @@
-import { View } from "react-native";
-import { Text } from "@/components/ui/text";
+import { View } from 'react-native';
+import { Text } from '@/components/ui/text';
 
 interface BarRowProps {
   /** Row label. */
@@ -23,17 +23,12 @@ export function BarRow({ label, value, max }: BarRowProps) {
         <Text className="text-sm text-surface-foreground" numberOfLines={1}>
           {label}
         </Text>
-        <Text className="text-sm font-semibold text-surface-foreground">
-          {value}
-        </Text>
+        <Text className="text-sm font-semibold text-surface-foreground">{value}</Text>
       </View>
       <View className="h-2 overflow-hidden rounded-full bg-muted">
         {/* Width is a runtime percentage from data — no static class can encode
             an arbitrary percent, so an inline width is the correct tool here. */}
-        <View
-          className="h-full rounded-full bg-primary"
-          style={{ width: `${pct}%` }}
-        />
+        <View className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
       </View>
     </View>
   );

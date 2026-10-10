@@ -23,7 +23,12 @@ const router = Router();
 
 router.use(authenticateToken);
 
-router.post('/', makeRateLimiter('shipments'), validateBody(createShipmentSchema), createShipmentHandler);
+router.post(
+  '/',
+  makeRateLimiter('shipments'),
+  validateBody(createShipmentSchema),
+  createShipmentHandler,
+);
 router.get('/', makeRateLimiter('shipments'), listMyShipments);
 router.get('/:id', makeRateLimiter('shipments'), validateEntityId('id'), getMyShipment);
 router.get('/:id/quotes', makeRateLimiter('shipments'), validateEntityId('id'), getShipmentQuotes);
@@ -34,6 +39,11 @@ router.post(
   validateBody(bookShipmentSchema),
   bookShipmentHandler,
 );
-router.post('/:id/cancel', makeRateLimiter('shipments'), validateEntityId('id'), cancelShipmentHandler);
+router.post(
+  '/:id/cancel',
+  makeRateLimiter('shipments'),
+  validateEntityId('id'),
+  cancelShipmentHandler,
+);
 
 export default router;

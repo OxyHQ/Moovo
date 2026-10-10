@@ -96,16 +96,14 @@ export function useNotificationSetup() {
 
   // ── Notification tap handler (deep-link) ───────────────────────
   useEffect(() => {
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        if (!isAuthenticated) return;
-        const data = response.notification.request.content.data;
-        // Notifications may carry an in-app `route` to deep-link to.
-        if (typeof data?.route === 'string') {
-          router.push(data.route as Parameters<typeof router.push>[0]);
-        }
-      },
-    );
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (!isAuthenticated) return;
+      const data = response.notification.request.content.data;
+      // Notifications may carry an in-app `route` to deep-link to.
+      if (typeof data?.route === 'string') {
+        router.push(data.route as Parameters<typeof router.push>[0]);
+      }
+    });
 
     return () => subscription.remove();
   }, [router, isAuthenticated]);

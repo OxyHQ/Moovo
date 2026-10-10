@@ -1,24 +1,24 @@
-import { View, ScrollView, ActivityIndicator, Pressable } from "react-native";
-import Head from "expo-router/head";
-import { useRouter } from "expo-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useOxy, openAccountDialog } from "@oxy.so/services";
-import type { Vehicle } from "@moovo/shared-types";
-import { Plus, Check, Trash2 } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScreenHeader } from "@/components/courier/ScreenHeader";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { queryKeys } from "@/lib/hooks/query-keys";
+import { View, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import Head from 'expo-router/head';
+import { useRouter } from 'expo-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOxy, openAccountDialog } from '@oxy.so/services';
+import type { Vehicle } from '@moovo/shared-types';
+import { Plus, Check, Trash2 } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ScreenHeader } from '@/components/courier/ScreenHeader';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { queryKeys } from '@/lib/hooks/query-keys';
 import {
   fetchCourierVehicles,
   fetchCourierMe,
   setActiveVehicle,
   deleteCourierVehicle,
-} from "@/lib/api/courier";
-import { VEHICLE_LABELS, VEHICLE_ICONS } from "@/components/courier/vehicle-meta";
-import { errorMessage } from "@/lib/api/errors";
+} from '@/lib/api/courier';
+import { VEHICLE_LABELS, VEHICLE_ICONS } from '@/components/courier/vehicle-meta';
+import { errorMessage } from '@/lib/api/errors';
 
 /** A single vehicle row with capability, active toggle, and delete. */
 function VehicleRow({
@@ -38,7 +38,7 @@ function VehicleRow({
   const Icon = VEHICLE_ICONS[vehicle.type];
 
   return (
-    <Card className={active ? "border-primary" : undefined}>
+    <Card className={active ? 'border-primary' : undefined}>
       <CardContent className="gap-3 pt-5">
         <View className="flex-row items-center gap-3">
           <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
@@ -50,7 +50,7 @@ function VehicleRow({
             </Text>
             <Text className="text-sm capitalize text-muted-foreground">
               {VEHICLE_LABELS[vehicle.type]}
-              {vehicle.plate ? ` · ${vehicle.plate}` : ""}
+              {vehicle.plate ? ` · ${vehicle.plate}` : ''}
             </Text>
           </View>
           {active ? (
@@ -67,7 +67,7 @@ function VehicleRow({
           </Text>
           <Text className="text-xs text-muted-foreground">·</Text>
           <Text className="text-xs capitalize text-muted-foreground">
-            {vehicle.eligibleJobTypes.join(", ") || "no job types"}
+            {vehicle.eligibleJobTypes.join(', ') || 'no job types'}
           </Text>
         </View>
 
@@ -82,9 +82,7 @@ function VehicleRow({
               disabled={busy}
               className="flex-1"
             >
-              <Text className="text-sm font-medium text-foreground">
-                Set active
-              </Text>
+              <Text className="text-sm font-medium text-foreground">Set active</Text>
             </Button>
           )}
           <Pressable
@@ -160,12 +158,10 @@ function VehiclesBody() {
 
   return (
     <View className="gap-4 p-4">
-      <Button onPress={() => router.push("/vehicles/new")} size="lg">
+      <Button onPress={() => router.push('/vehicles/new')} size="lg">
         <View className="flex-row items-center gap-2">
           <Plus size={18} color={colors.primaryForeground} />
-          <Text className="text-base font-semibold text-primary-foreground">
-            Add vehicle
-          </Text>
+          <Text className="text-base font-semibold text-primary-foreground">Add vehicle</Text>
         </View>
       </Button>
 
@@ -175,7 +171,7 @@ function VehiclesBody() {
         </View>
       ) : vehiclesQuery.isError ? (
         <Text className="py-10 text-center text-sm text-muted-foreground">
-          {errorMessage(vehiclesQuery.error, "Could not load vehicles")}
+          {errorMessage(vehiclesQuery.error, 'Could not load vehicles')}
         </Text>
       ) : vehicles.length === 0 ? (
         <Text className="py-10 text-center text-sm text-muted-foreground">

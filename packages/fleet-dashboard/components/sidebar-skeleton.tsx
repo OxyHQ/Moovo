@@ -1,5 +1,5 @@
-import { View } from "react-native";
-import { Skeleton } from "@/components/ui/skeleton";
+import { View } from 'react-native';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function SidebarSkeleton() {
   return (

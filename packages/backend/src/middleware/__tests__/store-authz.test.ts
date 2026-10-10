@@ -23,7 +23,10 @@ import {
 } from '../store-authz.js';
 import type { StoreMemberRecord } from '../../db/stores/storeRepository.js';
 
-function member(role: StoreMemberRecord['role'], permissions: StorePermission[] = []): StoreMemberRecord {
+function member(
+  role: StoreMemberRecord['role'],
+  permissions: StorePermission[] = [],
+): StoreMemberRecord {
   return { oxyUserId: 'u1', role, permissions, joinedAt: new Date() };
 }
 
@@ -31,12 +34,18 @@ function mockReq(membership?: StoreMemberRecord): Request {
   return { storeMembership: membership } as unknown as Request;
 }
 
-function mockRes(): Response & { status: ReturnType<typeof vi.fn>; json: ReturnType<typeof vi.fn> } {
+function mockRes(): Response & {
+  status: ReturnType<typeof vi.fn>;
+  json: ReturnType<typeof vi.fn>;
+} {
   const res = {
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
   };
-  return res as unknown as Response & { status: ReturnType<typeof vi.fn>; json: ReturnType<typeof vi.fn> };
+  return res as unknown as Response & {
+    status: ReturnType<typeof vi.fn>;
+    json: ReturnType<typeof vi.fn>;
+  };
 }
 
 describe('ROLE_PERMISSIONS matrix', () => {
@@ -70,7 +79,7 @@ describe('ROLE_PERMISSIONS matrix', () => {
 });
 
 describe('effectivePermissions', () => {
-  it('unions a member\'s explicit grants with their role defaults', () => {
+  it("unions a member's explicit grants with their role defaults", () => {
     const staffPlus = member('staff', ['members:manage']);
     const effective = effectivePermissions(staffPlus);
     expect(effective.has('members:manage')).toBe(true); // explicit grant

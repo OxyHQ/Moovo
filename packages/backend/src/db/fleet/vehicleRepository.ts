@@ -60,11 +60,7 @@ export type VehicleStatus = 'active' | 'inactive';
 export function toVehicleRecord(row: VehicleRow): VehicleRecord {
   const capacity: VehicleCapacityValue = { maxWeightKg: row.maxWeightKg };
   if (row.maxVolumeL !== null) capacity.maxVolumeL = row.maxVolumeL;
-  if (
-    row.maxDimsL !== null &&
-    row.maxDimsW !== null &&
-    row.maxDimsH !== null
-  ) {
+  if (row.maxDimsL !== null && row.maxDimsW !== null && row.maxDimsH !== null) {
     capacity.maxDimsCm = {
       l: row.maxDimsL,
       w: row.maxDimsW,
@@ -173,9 +169,7 @@ export async function listVehiclesForCourier(
   const rows = await db
     .select()
     .from(vehicles)
-    .where(
-      and(eq(vehicles.ownerType, 'courier'), eq(vehicles.courierOxyUserId, oxyUserId)),
-    )
+    .where(and(eq(vehicles.ownerType, 'courier'), eq(vehicles.courierOxyUserId, oxyUserId)))
     // Newest first, the source's `.sort({createdAt: -1})`. `id` breaks ties so
     // the order is total; it is uuid v7 and means nothing chronological here.
     .orderBy(desc(vehicles.createdAt), desc(vehicles.id));

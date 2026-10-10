@@ -9,10 +9,7 @@
  * deeply frozen so no code can mutate config at runtime.
  */
 
-import {
-  MODERATION_ENFORCEMENT_MODES,
-  type ModerationEnforcementMode,
-} from '@moovo/shared-types';
+import { MODERATION_ENFORCEMENT_MODES, type ModerationEnforcementMode } from '@moovo/shared-types';
 
 /**
  * Parse an integer environment variable, falling back to `fallback` when the

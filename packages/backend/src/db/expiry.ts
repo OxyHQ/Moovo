@@ -30,7 +30,11 @@
  * in the only case a backstop matters. See its column comment.
  */
 
-import { sweepAllExpiredRows, type ExpirySweepResult, type ExpirySweepTarget } from '@oxy.so/db/expiry';
+import {
+  sweepAllExpiredRows,
+  type ExpirySweepResult,
+  type ExpirySweepTarget,
+} from '@oxy.so/db/expiry';
 import { getDb } from './postgres';
 import { log } from '../lib/logger.js';
 import { jobOffers, quotes } from './schema/transport';
@@ -155,7 +159,7 @@ export const UNSWEPT_GROWING_TABLES: readonly { table: string; why: string }[] =
   {
     table: 'job_location_pings',
     why:
-      "The source capped this trail with `$push … $slice: -N`, which was a " +
+      'The source capped this trail with `$push … $slice: -N`, which was a ' +
       'MONGO DOCUMENT-SIZE concern rather than a retention policy — a row has ' +
       'no such limit, so the port moved the cap to the READ ' +
       '(`listRecentLocationPings`) and keeps every ping. Registering it here ' +

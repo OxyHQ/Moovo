@@ -144,7 +144,9 @@ function SignedOutPrompt() {
 /** The signed-in orders list: open shipments + booked jobs, merged by recency. */
 function OrdersList() {
   const { data: jobsPage, isLoading: jobsLoading } = useMyJobs({ limit: PAGE_LIMIT });
-  const { data: shipmentsPage, isLoading: shipmentsLoading } = useMyShipments({ limit: PAGE_LIMIT });
+  const { data: shipmentsPage, isLoading: shipmentsLoading } = useMyShipments({
+    limit: PAGE_LIMIT,
+  });
 
   // Booked shipments live as jobs, so drop them here to avoid showing the same
   // order twice (the job is the authoritative, trackable record once booked).
@@ -200,9 +202,7 @@ function OrdersBody() {
         </Text>
       </View>
 
-      <View className="px-4 pt-2">
-        {isAuthenticated ? <OrdersList /> : <SignedOutPrompt />}
-      </View>
+      <View className="px-4 pt-2">{isAuthenticated ? <OrdersList /> : <SignedOutPrompt />}</View>
 
       <Footer />
     </>

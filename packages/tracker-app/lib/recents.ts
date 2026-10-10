@@ -66,9 +66,7 @@ export async function rememberLookup(
 }
 
 export async function forgetLookup(trackingNumber: string): Promise<RecentLookup[]> {
-  const next = (await readRecents()).filter(
-    (item) => item.trackingNumber !== trackingNumber,
-  );
+  const next = (await readRecents()).filter((item) => item.trackingNumber !== trackingNumber);
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   return next;
 }

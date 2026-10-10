@@ -16,12 +16,7 @@ import type {
   ShipmentStatus,
   ShipmentType,
 } from '@moovo/shared-types';
-import {
-  createShipment,
-  listMine,
-  getMine,
-  cancel,
-} from '../services/shipment.service.js';
+import { createShipment, listMine, getMine, cancel } from '../services/shipment.service.js';
 import { listQuotes } from '../services/quote.service.js';
 import { bookShipment } from '../services/job.service.js';
 import {
@@ -64,7 +59,8 @@ export async function listMyShipments(req: Request, res: Response): Promise<void
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     const { page, limit } = parsePagination(req.query);
-    const status = typeof req.query.status === 'string' ? (req.query.status as ShipmentStatus) : undefined;
+    const status =
+      typeof req.query.status === 'string' ? (req.query.status as ShipmentStatus) : undefined;
     const type = typeof req.query.type === 'string' ? (req.query.type as ShipmentType) : undefined;
     const { data, total } = await listMine(oxyUserId, { page, limit, status, type });
     sendPaginated(res, await summarizeShipments(data), buildPagination(page, limit, total));

@@ -32,9 +32,7 @@ function unwrap<T>(body: ApiResponse<T>): T {
 
 /** The carrier catalogue, for the picker. */
 export async function fetchCarriers(): Promise<TrackingCarrierSummary[]> {
-  const { data } = await apiClient.get<ApiResponse<TrackingCarrierSummary[]>>(
-    '/tracking/carriers',
-  );
+  const { data } = await apiClient.get<ApiResponse<TrackingCarrierSummary[]>>('/tracking/carriers');
   return unwrap(data);
 }
 
@@ -61,10 +59,7 @@ export async function lookupParcel(input: {
   carrierKey?: string;
   destinationPostalCode?: string;
 }): Promise<PublicParcelLookup> {
-  const { data } = await apiClient.post<ApiResponse<PublicParcelLookup>>(
-    '/tracking/lookup',
-    input,
-  );
+  const { data } = await apiClient.post<ApiResponse<PublicParcelLookup>>('/tracking/lookup', input);
   return unwrap(data);
 }
 
@@ -82,10 +77,7 @@ export async function fetchMyParcels(params: {
 
 /** Subscribe to a parcel. This is the only thing that arms the poller. */
 export async function trackParcel(input: TrackParcelInput): Promise<TrackedParcel> {
-  const { data } = await apiClient.post<ApiResponse<TrackedParcel>>(
-    '/tracking/parcels',
-    input,
-  );
+  const { data } = await apiClient.post<ApiResponse<TrackedParcel>>('/tracking/parcels', input);
   return unwrap(data);
 }
 
@@ -108,9 +100,7 @@ export async function updateParcel(
 }
 
 export async function untrackParcel(subscriptionId: string): Promise<void> {
-  await apiClient.delete<ApiResponse<{ removed: boolean }>>(
-    `/tracking/parcels/${subscriptionId}`,
-  );
+  await apiClient.delete<ApiResponse<{ removed: boolean }>>(`/tracking/parcels/${subscriptionId}`);
 }
 
 /**

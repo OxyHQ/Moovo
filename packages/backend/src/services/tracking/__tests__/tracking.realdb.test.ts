@@ -221,7 +221,10 @@ describeIfPostgres('the tracking write path', () => {
         carrierKey: 'ups',
         trackingNumber: UPS_NUMBER,
       });
-      const event = { occurredAt: new Date('2026-03-01T09:00:00.000Z'), status: 'in_transit' as const };
+      const event = {
+        occurredAt: new Date('2026-03-01T09:00:00.000Z'),
+        status: 'in_transit' as const,
+      };
       const rows = await ingestCheckpoints(parcel.id, [event, event, event]);
       expect(rows).toHaveLength(1);
     });
@@ -293,9 +296,9 @@ describeIfPostgres('the tracking write path', () => {
     // unauthenticated route, and `requireCarrier` only ever checked that a row
     // exists and is enabled.
     it('refuses an anonymous lookup that names it', async () => {
-      await expect(
-        lookupParcel({ number: 'MOOVOFAKE0001', carrierKey: 'moovo' }),
-      ).rejects.toThrow(/not a carrier you can select/i);
+      await expect(lookupParcel({ number: 'MOOVOFAKE0001', carrierKey: 'moovo' })).rejects.toThrow(
+        /not a carrier you can select/i,
+      );
     });
 
     it('refuses a subscribe that names it', async () => {

@@ -25,9 +25,7 @@ export function LanguageSelector() {
         <Globe2 size={20} className="text-primary" />
         <Text className="text-base font-semibold">{t('settings.appLanguage.title')}</Text>
       </View>
-      <Text className="text-sm text-muted-foreground">
-        {t('settings.appLanguage.description')}
-      </Text>
+      <Text className="text-sm text-muted-foreground">{t('settings.appLanguage.description')}</Text>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger>
           <Pressable className="border border-border rounded-lg px-4 py-3 bg-background flex-row items-center justify-between">

@@ -80,6 +80,8 @@ describe('capability.service isEligible', () => {
 
   it('truck can serve a large move job', () => {
     const truckCap = computeVehicleCapability('truck');
-    expect(isEligible(truckCap, { jobType: 'move', sizeClass: 'large', weightKg: 3000 })).toBe(true);
+    expect(isEligible(truckCap, { jobType: 'move', sizeClass: 'large', weightKg: 3000 })).toBe(
+      true,
+    );
   });
 });

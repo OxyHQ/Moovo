@@ -1,6 +1,6 @@
-import { View } from "react-native";
-import { Text } from "@/components/ui/text";
-import type { FleetMapProps } from "./map-types";
+import { View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import type { FleetMapProps } from './map-types';
 
 /**
  * Default (platform-agnostic) Map — a clean no-op the bundler NEVER ships:
@@ -20,4 +20,4 @@ export function FleetMap({ height = 320 }: FleetMapProps) {
   );
 }
 
-export type { FleetMapProps } from "./map-types";
+export type { FleetMapProps } from './map-types';

@@ -24,10 +24,7 @@
 import type { JobOfferView, FiatCurrency, JobType, SizeClass } from '@moovo/shared-types';
 import { findJobById, setDispatchAttempts } from '../db/transport/jobRepository.js';
 import type { JobRecord } from '../db/transport/jobShape.js';
-import {
-  insertJobOffer,
-  listCourierIdsWithLiveOffer,
-} from '../db/transport/jobOfferRepository.js';
+import { insertJobOffer, listCourierIdsWithLiveOffer } from '../db/transport/jobOfferRepository.js';
 import {
   findDispatchCandidates,
   type CourierProfileRow,
@@ -186,7 +183,10 @@ export async function dispatchJob(jobId: string): Promise<DispatchResult> {
   job = { ...job, dispatchAttempts: wave };
 
   if (candidates.length === 0) {
-    log.general.info({ jobId, wave, radiusM }, 'Dispatch wave found no candidates — leaving requested');
+    log.general.info(
+      { jobId, wave, radiusM },
+      'Dispatch wave found no candidates — leaving requested',
+    );
     return { offered: 0, wave };
   }
 
@@ -199,7 +199,10 @@ export async function dispatchJob(jobId: string): Promise<DispatchResult> {
       job = await transition(job, 'offered', { note: 'dispatched to couriers' });
     } catch (err) {
       // A concurrent accept/cancel won the race — abandon this wave cleanly.
-      log.general.warn({ err, jobId }, 'Dispatch wave aborted: job changed status during transition');
+      log.general.warn(
+        { err, jobId },
+        'Dispatch wave aborted: job changed status during transition',
+      );
       return { offered: 0, wave };
     }
   }
@@ -251,7 +254,10 @@ export async function dispatchJob(jobId: string): Promise<DispatchResult> {
         data: { jobId: job.id, offerId: created.id, expiresAt: expiresAt.toISOString() },
       });
     } catch (err) {
-      log.general.warn({ err, jobId, courierOxyUserId }, 'Failed to create/emit a job offer (skipping candidate)');
+      log.general.warn(
+        { err, jobId, courierOxyUserId },
+        'Failed to create/emit a job offer (skipping candidate)',
+      );
     }
   }
 

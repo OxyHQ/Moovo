@@ -48,7 +48,13 @@ const SAFE = {
 
 /** A place as a caller may legally describe it. */
 function endpoint(overrides: Partial<CoarsePlace> = {}): CoarsePlace {
-  return { city: SAFE.city, region: SAFE.region, country: SAFE.country, notes: SAFE.notes, ...overrides };
+  return {
+    city: SAFE.city,
+    region: SAFE.region,
+    country: SAFE.country,
+    notes: SAFE.notes,
+    ...overrides,
+  };
 }
 
 /**

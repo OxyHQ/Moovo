@@ -28,13 +28,7 @@ function showsCodes(status: JobView['status']): boolean {
 }
 
 /** An address summary block for an endpoint snapshot. */
-function EndpointBlock({
-  label,
-  endpoint,
-}: {
-  label: string;
-  endpoint: JobEndpointSnapshot;
-}) {
+function EndpointBlock({ label, endpoint }: { label: string; endpoint: JobEndpointSnapshot }) {
   const { colors } = useColorScheme();
   const { address } = endpoint;
   const line2 = [address.postalCode, address.city, address.region].filter(Boolean).join(', ');
@@ -153,9 +147,7 @@ export default function JobTrackingScreen() {
           </View>
 
           {/* Courier (once assigned). */}
-          {job.courierOxyUserId ? (
-            <CourierInfo courierOxyUserId={job.courierOxyUserId} />
-          ) : null}
+          {job.courierOxyUserId ? <CourierInfo courierOxyUserId={job.courierOxyUserId} /> : null}
 
           {/* QR codes for pickup/dropoff handoff (owner-scoped, active job). */}
           {showsCodes(job.status) && (job.pickupCode || job.dropoffCode) ? (

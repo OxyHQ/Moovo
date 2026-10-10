@@ -32,10 +32,7 @@ import {
 import type { ProviderQuote } from '@moovo/shared-types';
 import { getDb } from '../db/postgres.js';
 import type { ShipmentRecord } from '../db/transport/shipmentShape.js';
-import {
-  markShipmentQuoted,
-  updateShipmentDistance,
-} from '../db/transport/shipmentRepository.js';
+import { markShipmentQuoted, updateShipmentDistance } from '../db/transport/shipmentRepository.js';
 import {
   insertQuotes,
   listActiveQuotesForShipment,

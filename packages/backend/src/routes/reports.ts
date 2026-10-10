@@ -18,11 +18,7 @@ import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { isLiveEntityId } from '@oxy.so/db';
 import { getRequiredOxyUserId } from '@oxy.so/core/server';
-import {
-  REPORTED_TYPES,
-  REPORT_CATEGORIES,
-  type ReportReceiptDTO,
-} from '@moovo/shared-types';
+import { REPORTED_TYPES, REPORT_CATEGORIES, type ReportReceiptDTO } from '@moovo/shared-types';
 import { authenticateToken } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import { makeRateLimiter } from '../lib/rate-limit.js';

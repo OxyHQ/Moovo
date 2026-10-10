@@ -1,16 +1,16 @@
-import { View, Pressable } from "react-native";
-import { Image } from "expo-image";
-import { ChevronRight } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { useColorScheme } from "@/lib/useColorScheme";
-import type { Category, CategoryTile } from "@moovo/shared-types";
+import { View, Pressable } from 'react-native';
+import { Image } from 'expo-image';
+import { ChevronRight } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { useColorScheme } from '@/lib/useColorScheme';
+import type { Category, CategoryTile } from '@moovo/shared-types';
 
 /** Diameter (px) of the header's circular chevron affordance. */
 const CHEVRON_CIRCLE_SIZE = 30;
 /** Chevron icon size (px). */
 const CHEVRON_ICON_SIZE = 20;
 /** White inverse label over a tile image (documented allowed constant). */
-const LABEL_COLOR = "#FFFFFF";
+const LABEL_COLOR = '#FFFFFF';
 /**
  * Square grid-card edge length (px), matching the carousel slot width. Set
  * explicitly (rather than via `aspect-square`) so the 2×2 rows and cells always
@@ -35,11 +35,7 @@ export interface CategoryCardProps {
  * link; each grid tile is a separate sibling link (never nested inside another),
  * so web renders no `<a>`/`<button>` inside another.
  */
-export function CategoryCard({
-  category,
-  onPressCategory,
-  onPressTile,
-}: CategoryCardProps) {
+export function CategoryCard({ category, onPressCategory, onPressTile }: CategoryCardProps) {
   const { colors } = useColorScheme();
   // Defensive: tolerate a partial/in-transition category payload.
   const tiles = category.subcategories ?? [];
@@ -72,37 +68,18 @@ export function CategoryCard({
         <View className="h-full w-full gap-0.5">
           {/* Row 1 */}
           <View className="flex-1 flex-row gap-0.5">
-            <CategoryTileCell
-              categoryId={category.id}
-              tile={tiles[0]}
-              onPressTile={onPressTile}
-            />
-            <CategoryTileCell
-              categoryId={category.id}
-              tile={tiles[1]}
-              onPressTile={onPressTile}
-            />
+            <CategoryTileCell categoryId={category.id} tile={tiles[0]} onPressTile={onPressTile} />
+            <CategoryTileCell categoryId={category.id} tile={tiles[1]} onPressTile={onPressTile} />
           </View>
           {/* Row 2 */}
           <View className="flex-1 flex-row gap-0.5">
-            <CategoryTileCell
-              categoryId={category.id}
-              tile={tiles[2]}
-              onPressTile={onPressTile}
-            />
-            <CategoryTileCell
-              categoryId={category.id}
-              tile={tiles[3]}
-              onPressTile={onPressTile}
-            />
+            <CategoryTileCell categoryId={category.id} tile={tiles[2]} onPressTile={onPressTile} />
+            <CategoryTileCell categoryId={category.id} tile={tiles[3]} onPressTile={onPressTile} />
           </View>
         </View>
 
         {/* 1px inset border over the grid card (non-interactive). */}
-        <View
-          pointerEvents="none"
-          className="absolute inset-0 rounded-2xl border border-border"
-        />
+        <View pointerEvents="none" className="absolute inset-0 rounded-2xl border border-border" />
       </View>
     </View>
   );
@@ -120,11 +97,7 @@ interface CategoryTileCellProps {
  * so the grid never collapses. Per-tile `group` so the image scales on hover
  * on web only.
  */
-function CategoryTileCell({
-  categoryId,
-  tile,
-  onPressTile,
-}: CategoryTileCellProps) {
+function CategoryTileCell({ categoryId, tile, onPressTile }: CategoryTileCellProps) {
   if (!tile) {
     return <View className="flex-1 bg-secondary" />;
   }
@@ -146,7 +119,7 @@ function CategoryTileCell({
           className="text-[13px] font-bold"
           style={{
             color: LABEL_COLOR,
-            textShadowColor: "rgba(0,0,0,0.5)",
+            textShadowColor: 'rgba(0,0,0,0.5)',
             textShadowOffset: { width: 0, height: 1 },
             textShadowRadius: 3,
           }}

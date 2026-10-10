@@ -1,9 +1,5 @@
 import * as React from 'react';
-import {
-  Modal,
-  View,
-  Pressable,
-} from 'react-native';
+import { Modal, View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { cn } from '@/lib/utils';
@@ -57,53 +53,52 @@ interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof View>
   closeButton?: boolean;
 }
 
-const DialogContent = React.forwardRef<
-  React.ElementRef<typeof View>,
-  DialogContentProps
->(({ className, overlayClassName, showCloseButton, closeButton, children, ...props }, ref) => {
-  const { open, onOpenChange } = React.useContext(DialogContext);
-  const shouldShowClose = showCloseButton ?? closeButton ?? true;
-  const insets = useSafeAreaInsets();
+const DialogContent = React.forwardRef<React.ElementRef<typeof View>, DialogContentProps>(
+  ({ className, overlayClassName, showCloseButton, closeButton, children, ...props }, ref) => {
+    const { open, onOpenChange } = React.useContext(DialogContext);
+    const shouldShowClose = showCloseButton ?? closeButton ?? true;
+    const insets = useSafeAreaInsets();
 
-  return (
-    <Modal
-      visible={open}
-      transparent
-      animationType="fade"
-      onRequestClose={() => onOpenChange?.(false)}
-      statusBarTranslucent
-    >
-      <Pressable
-        className={cn(
-          'flex-1 items-center justify-center bg-black/50 px-4 sm:px-0',
-          overlayClassName
-        )}
-        style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
-        onPress={() => onOpenChange?.(false)}
+    return (
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => onOpenChange?.(false)}
+        statusBarTranslucent
       >
         <Pressable
-          ref={ref}
           className={cn(
-            'w-full max-w-lg gap-4 rounded-lg border border-border bg-background p-6 shadow-lg',
-            className
+            'flex-1 items-center justify-center bg-black/50 px-4 sm:px-0',
+            overlayClassName,
           )}
-          onPress={(e) => e.stopPropagation()}
-          {...props}
+          style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
+          onPress={() => onOpenChange?.(false)}
         >
-          {shouldShowClose && (
-            <Pressable
-              className="absolute right-4 top-4 z-10 rounded-sm opacity-70 active:opacity-100"
-              onPress={() => onOpenChange?.(false)}
-            >
-              <X size={16} className="text-muted-foreground" />
-            </Pressable>
-          )}
-          {children}
+          <Pressable
+            ref={ref}
+            className={cn(
+              'w-full max-w-lg gap-4 rounded-lg border border-border bg-background p-6 shadow-lg',
+              className,
+            )}
+            onPress={(e) => e.stopPropagation()}
+            {...props}
+          >
+            {shouldShowClose && (
+              <Pressable
+                className="absolute right-4 top-4 z-10 rounded-sm opacity-70 active:opacity-100"
+                onPress={() => onOpenChange?.(false)}
+              >
+                <X size={16} className="text-muted-foreground" />
+              </Pressable>
+            )}
+            {children}
+          </Pressable>
         </Pressable>
-      </Pressable>
-    </Modal>
-  );
-});
+      </Modal>
+    );
+  },
+);
 
 DialogContent.displayName = 'DialogContent';
 
@@ -141,13 +136,7 @@ const DialogDescription = React.forwardRef<
   React.ElementRef<typeof Text>,
   React.ComponentPropsWithoutRef<typeof Text>
 >(({ className, ...props }, ref) => {
-  return (
-    <Text
-      ref={ref}
-      className={cn('text-sm text-muted-foreground', className)}
-      {...props}
-    />
-  );
+  return <Text ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />;
 });
 
 DialogDescription.displayName = 'DialogDescription';

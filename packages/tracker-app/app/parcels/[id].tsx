@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  View,
+} from 'react-native';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,12 +20,7 @@ import { Timeline } from '@/components/Timeline';
 import { apiErrorMessage } from '@/lib/api/client';
 import { fetchParcel, refreshParcel, untrackParcel, updateParcel } from '@/lib/api/tracking';
 import { queryClient } from '@/lib/query-client';
-import {
-  JOB_STATUS_LABELS,
-  STATUS_HINTS,
-  formatCheckpointTime,
-  formatDate,
-} from '@/lib/status';
+import { JOB_STATUS_LABELS, STATUS_HINTS, formatCheckpointTime, formatDate } from '@/lib/status';
 
 /**
  * One saved parcel.
@@ -212,8 +215,8 @@ export default function ParcelDetailScreen() {
                       <Timeline checkpoints={detail.data.checkpoints} />
                       {refreshRequested ? (
                         <Text className="mt-2 px-1 text-xs text-muted-foreground">
-                          Hemos pedido una consulta al transportista. Vuelve a abrir esta
-                          pantalla en unos minutos para ver los movimientos nuevos.
+                          Hemos pedido una consulta al transportista. Vuelve a abrir esta pantalla
+                          en unos minutos para ver los movimientos nuevos.
                         </Text>
                       ) : null}
                     </>
@@ -223,8 +226,8 @@ export default function ParcelDetailScreen() {
                     // the carrier's silence, and must not be dressed as one.
                     <View className="rounded-2xl border border-border bg-card p-5">
                       <Text className="text-sm text-muted-foreground">
-                        Moovo todavía no recibe el estado de {parcel.carrier.name}. El recorrido
-                        de este envío está en su web.
+                        Moovo todavía no recibe el estado de {parcel.carrier.name}. El recorrido de
+                        este envío está en su web.
                       </Text>
                     </View>
                   )}

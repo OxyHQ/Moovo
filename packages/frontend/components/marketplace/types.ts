@@ -1,4 +1,4 @@
-import type { CurrencyCode, Money } from "@moovo/shared-types";
+import type { CurrencyCode, Money } from '@moovo/shared-types';
 
 /**
  * Product cards consume the canonical server-serialized `ProductSummary` DTO
@@ -6,13 +6,13 @@ import type { CurrencyCode, Money } from "@moovo/shared-types";
  * view-model duplication. Re-exported here so marketplace components import the
  * card type from a single place alongside their formatting helpers.
  */
-export type { ProductSummary } from "@moovo/shared-types";
+export type { ProductSummary } from '@moovo/shared-types';
 
 /** ISO-4217 currency code → display symbol. */
 const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
-  USD: "$",
-  EUR: "€",
-  GBP: "£",
+  USD: '$',
+  EUR: '€',
+  GBP: '£',
 };
 
 /** Number of minor units in one major unit (cents per dollar/euro/pound). */

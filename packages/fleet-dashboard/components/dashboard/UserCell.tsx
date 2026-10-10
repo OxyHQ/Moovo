@@ -1,7 +1,7 @@
-import { View } from "react-native";
-import { Avatar } from "@oxy.so/bloom/avatar";
-import { Text } from "@/components/ui/text";
-import { useUserProfile } from "@/lib/hooks/use-user-profile";
+import { View } from 'react-native';
+import { Avatar } from '@oxy.so/bloom/avatar';
+import { Text } from '@/components/ui/text';
+import { useUserProfile } from '@/lib/hooks/use-user-profile';
 
 interface UserCellProps {
   /** Oxy user id to resolve into a display name + avatar. */
@@ -22,22 +22,15 @@ interface UserCellProps {
 export function UserCell({ oxyUserId, size = 36, subtitle }: UserCellProps) {
   const { data: user, isPending } = useUserProfile(oxyUserId);
 
-  const displayName = user?.name.displayName ?? "";
+  const displayName = user?.name.displayName ?? '';
   const username = user?.username;
 
   return (
     <View className="min-w-0 flex-row items-center gap-3">
-      <Avatar
-        source={user?.avatar ?? undefined}
-        name={displayName || username}
-        size={size}
-      />
+      <Avatar source={user?.avatar ?? undefined} name={displayName || username} size={size} />
       <View className="min-w-0 flex-1">
-        <Text
-          className="text-sm font-semibold text-surface-foreground"
-          numberOfLines={1}
-        >
-          {isPending ? "…" : displayName || oxyUserId}
+        <Text className="text-sm font-semibold text-surface-foreground" numberOfLines={1}>
+          {isPending ? '…' : displayName || oxyUserId}
         </Text>
         {subtitle ? (
           <Text className="text-xs text-muted-foreground" numberOfLines={1}>

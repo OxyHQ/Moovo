@@ -1,9 +1,5 @@
-import type {
-  Vehicle,
-  CreateVehicleInput,
-  ApiResponse,
-} from "@moovo/shared-types";
-import apiClient from "./client";
+import type { Vehicle, CreateVehicleInput, ApiResponse } from '@moovo/shared-types';
+import apiClient from './client';
 
 /**
  * Company vehicles (fleet) API client.
@@ -16,7 +12,7 @@ import apiClient from "./client";
 /** Unwrap an `ApiResponse<T>` payload or throw the API's error message. */
 function unwrap<T>(res: ApiResponse<T>): T {
   if (!res.success || res.data === undefined) {
-    throw new Error(res.message ?? res.error ?? "Request failed");
+    throw new Error(res.message ?? res.error ?? 'Request failed');
   }
   return res.data;
 }
@@ -26,7 +22,7 @@ function unwrap<T>(res: ApiResponse<T>): T {
  * any subset of the create fields plus the lifecycle `status`.
  */
 export type UpdateVehicleBody = Partial<CreateVehicleInput> & {
-  status?: Vehicle["status"];
+  status?: Vehicle['status'];
 };
 
 /** `GET /admin/companies/:companyId/vehicles` — the company's vehicles. */
@@ -63,10 +59,7 @@ export async function updateVehicle(
 }
 
 /** `DELETE /admin/companies/:companyId/vehicles/:id` — remove a company vehicle. */
-export async function deleteVehicle(
-  companyId: string,
-  vehicleId: string,
-): Promise<{ id: string }> {
+export async function deleteVehicle(companyId: string, vehicleId: string): Promise<{ id: string }> {
   const { data } = await apiClient.delete<ApiResponse<{ id: string }>>(
     `/admin/companies/${companyId}/vehicles/${vehicleId}`,
   );

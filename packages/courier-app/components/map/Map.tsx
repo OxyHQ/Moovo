@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { useEffect, useRef } from 'react';
+import { View } from 'react-native';
 import {
   Map as MapLibreMap,
   Marker as MapLibreMarker,
@@ -7,9 +7,9 @@ import {
   LngLatBounds,
   type LngLatBoundsLike,
   type StyleSpecification,
-} from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
-import { cn } from "@/lib/utils";
+} from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { cn } from '@/lib/utils';
 import {
   type JobMapProps,
   type LngLat,
@@ -17,7 +17,7 @@ import {
   OSM_ATTRIBUTION,
   OSM_TILE_URL,
   DEFAULT_ZOOM,
-} from "./Map.types";
+} from './Map.types';
 
 /**
  * Web job map (maplibre-gl + free OpenStreetMap raster tiles, NO API key).
@@ -34,17 +34,17 @@ const RASTER_STYLE: StyleSpecification = {
   version: 8,
   sources: {
     osm: {
-      type: "raster",
+      type: 'raster',
       tiles: [OSM_TILE_URL],
       tileSize: 256,
       attribution: OSM_ATTRIBUTION,
     },
   },
-  layers: [{ id: "osm", type: "raster", source: "osm" }],
+  layers: [{ id: 'osm', type: 'raster', source: 'osm' }],
 };
 
 /** Id of the route line source + layer. */
-const ROUTE_LAYER_ID = "job-route";
+const ROUTE_LAYER_ID = 'job-route';
 
 function toBounds(points: LngLat[]): LngLatBoundsLike {
   const bounds = new LngLatBounds(points[0], points[0]);
@@ -71,7 +71,7 @@ export default function JobMap({ markers, route, className }: JobMapProps) {
       zoom: DEFAULT_ZOOM,
       attributionControl: { compact: true },
     });
-    map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
     mapRef.current = map;
 
     return () => {
@@ -90,18 +90,16 @@ export default function JobMap({ markers, route, className }: JobMapProps) {
     const render = () => {
       for (const marker of markersRef.current) marker.remove();
       markersRef.current = markers.map((m) => {
-        const el = document.createElement("div");
-        el.style.width = "16px";
-        el.style.height = "16px";
-        el.style.borderRadius = "9999px";
-        el.style.border = "2px solid #ffffff";
+        const el = document.createElement('div');
+        el.style.width = '16px';
+        el.style.height = '16px';
+        el.style.borderRadius = '9999px';
+        el.style.border = '2px solid #ffffff';
         el.style.backgroundColor = MARKER_COLORS[m.kind];
-        el.style.boxShadow = "0 1px 4px rgba(0,0,0,0.35)";
-        el.setAttribute("aria-label", m.label);
-        el.setAttribute("title", m.label);
-        return new MapLibreMarker({ element: el })
-          .setLngLat(m.coordinate)
-          .addTo(map);
+        el.style.boxShadow = '0 1px 4px rgba(0,0,0,0.35)';
+        el.setAttribute('aria-label', m.label);
+        el.setAttribute('title', m.label);
+        return new MapLibreMarker({ element: el }).setLngLat(m.coordinate).addTo(map);
       });
 
       const existing = map.getLayer(ROUTE_LAYER_ID);
@@ -111,26 +109,27 @@ export default function JobMap({ markers, route, className }: JobMapProps) {
       }
       if (route && route.length >= 2) {
         map.addSource(ROUTE_LAYER_ID, {
-          type: "geojson",
+          type: 'geojson',
           data: {
-            type: "Feature",
+            type: 'Feature',
             properties: {},
-            geometry: { type: "LineString", coordinates: route },
+            geometry: { type: 'LineString', coordinates: route },
           },
         });
         map.addLayer({
           id: ROUTE_LAYER_ID,
-          type: "line",
+          type: 'line',
           source: ROUTE_LAYER_ID,
-          layout: { "line-join": "round", "line-cap": "round" },
-          paint: { "line-color": MARKER_COLORS.courier, "line-width": 3, "line-dasharray": [2, 1.5] },
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': MARKER_COLORS.courier,
+            'line-width': 3,
+            'line-dasharray': [2, 1.5],
+          },
         });
       }
 
-      const fitPoints: LngLat[] = [
-        ...markers.map((m) => m.coordinate),
-        ...(route ?? []),
-      ];
+      const fitPoints: LngLat[] = [...markers.map((m) => m.coordinate), ...(route ?? [])];
       if (fitPoints.length === 1) {
         map.jumpTo({ center: fitPoints[0], zoom: DEFAULT_ZOOM });
       } else if (fitPoints.length > 1) {
@@ -141,14 +140,14 @@ export default function JobMap({ markers, route, className }: JobMapProps) {
     if (map.isStyleLoaded()) {
       render();
     } else {
-      map.once("load", render);
+      map.once('load', render);
     }
   }, [markers, route]);
 
   return (
     <View
       ref={containerRef}
-      className={cn("h-full w-full overflow-hidden rounded-2xl", className)}
+      className={cn('h-full w-full overflow-hidden rounded-2xl', className)}
     />
   );
 }

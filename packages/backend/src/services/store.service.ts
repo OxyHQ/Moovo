@@ -102,10 +102,7 @@ export async function listStoresForUser(oxyUserId: string): Promise<StoreRecord[
 }
 
 /** Update a store's profile/policy fields. Returns the updated store. */
-export async function updateStore(
-  storeId: string,
-  patch: UpdateStoreInput,
-): Promise<StoreRecord> {
+export async function updateStore(storeId: string, patch: UpdateStoreInput): Promise<StoreRecord> {
   const columns: StorePatch = {};
   if (patch.name !== undefined) columns.name = patch.name;
   if (patch.description !== undefined) columns.description = patch.description;

@@ -137,10 +137,7 @@ function ParcelStep() {
           <Text className="text-sm font-medium text-foreground">Fragile</Text>
           <Text className="text-xs text-muted-foreground">Handle with extra care</Text>
         </View>
-        <Switch
-          value={parcel.fragile}
-          onValueChange={(fragile) => patchParcel({ fragile })}
-        />
+        <Switch value={parcel.fragile} onValueChange={(fragile) => patchParcel({ fragile })} />
       </View>
 
       {/* `colors` referenced so the step reads theme without hardcoded values. */}
@@ -308,11 +305,7 @@ export default function SendScreen() {
             <Text
               className={`text-base font-semibold ${canProceed && !createShipment.isPending ? 'text-primary-foreground' : 'text-muted-foreground'}`}
             >
-              {createShipment.isPending
-                ? 'Creating…'
-                : isLast
-                  ? 'Get quotes'
-                  : 'Continue'}
+              {createShipment.isPending ? 'Creating…' : isLast ? 'Get quotes' : 'Continue'}
             </Text>
             {!isLast ? (
               <ArrowRight

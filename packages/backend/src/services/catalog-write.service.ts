@@ -193,7 +193,9 @@ function variantTitleFromOptions(optionValues: { name: string; value: string }[]
  * Each variant carries its own option assignments, price, and inventory; the
  * `CreateStoreProductInput` contract requires at least one.
  */
-function resolveStoreVariants(input: CreateStoreProductInput): Omit<NewProductVariant, 'listingId'>[] {
+function resolveStoreVariants(
+  input: CreateStoreProductInput,
+): Omit<NewProductVariant, 'listingId'>[] {
   if (input.variants.length === 0) {
     // No explicit variants: a store product MUST still produce at least one.
     throw validationError('A store product must include at least one variant');
@@ -275,10 +277,7 @@ export async function createStoreProduct(
  * variant. Recomputes facets afterwards. Returns nothing; callers re-hydrate
  * the listing for the response.
  */
-export async function updateListing(
-  listingId: string,
-  patch: UpdateListingInput,
-): Promise<void> {
+export async function updateListing(listingId: string, patch: UpdateListingInput): Promise<void> {
   const row = await findListingById(listingId);
   if (!row) {
     throw notFound('Listing not found');

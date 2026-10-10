@@ -115,7 +115,9 @@ describe('toSnapshot', () => {
   it('THROWS on any other error rather than expiring a parcel that exists', () => {
     // The safe direction. A retry costs a call; a wrong `notFound` expires
     // somebody's real parcel and there is no error anywhere to explain it.
-    expect(() => toSnapshot({ error: { code: 'SYSTEM.UNAVAILABLE' } })).toThrow(/FedEx returned an error/);
+    expect(() => toSnapshot({ error: { code: 'SYSTEM.UNAVAILABLE' } })).toThrow(
+      /FedEx returned an error/,
+    );
     expect(() => toSnapshot({ error: {} })).toThrow(/FedEx returned an error/);
   });
 

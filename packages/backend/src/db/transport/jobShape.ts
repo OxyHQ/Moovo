@@ -27,12 +27,7 @@
  * earn it: a `PriceBreakdown` is read as a unit and never compared across rows.
  */
 
-import type {
-  FulfillmentType,
-  JobStatus,
-  PriceBreakdown,
-  ShipmentType,
-} from '@moovo/shared-types';
+import type { FulfillmentType, JobStatus, PriceBreakdown, ShipmentType } from '@moovo/shared-types';
 import type { jobs, jobLocationPings, jobStatusEvents } from '../schema/transport';
 import type {
   ParcelDetailsValue,
@@ -166,9 +161,7 @@ function toPoint(longitude: number, latitude: number): ShipmentGeoPointValue {
 }
 
 /** Flatten one endpoint into the eleven columns that store it. */
-function endpointColumns(
-  endpoint: ShipmentEndpointValue,
-): {
+function endpointColumns(endpoint: ShipmentEndpointValue): {
   latitude: number;
   longitude: number;
   line1: string;
@@ -347,13 +340,9 @@ export function toJobRecord(row: JobRow): JobRecord {
       : {
           proofOfDelivery: {
             ...(row.podPhotoFileId === null ? {} : { photoFileId: row.podPhotoFileId }),
-            ...(row.podSignatureFileId === null
-              ? {}
-              : { signatureFileId: row.podSignatureFileId }),
+            ...(row.podSignatureFileId === null ? {} : { signatureFileId: row.podSignatureFileId }),
             ...(row.podNote === null ? {} : { note: row.podNote }),
-            ...(row.podRecipientName === null
-              ? {}
-              : { recipientName: row.podRecipientName }),
+            ...(row.podRecipientName === null ? {} : { recipientName: row.podRecipientName }),
             at: row.podAt,
           },
         }),

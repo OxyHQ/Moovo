@@ -21,7 +21,12 @@ import {
  */
 const router = Router({ mergeParams: true });
 
-router.get('/', requireStorePermission('orders:read'), validateQuery(orderListQuerySchema), listStoreOrders);
+router.get(
+  '/',
+  requireStorePermission('orders:read'),
+  validateQuery(orderListQuerySchema),
+  listStoreOrders,
+);
 router.get('/stats', requireStorePermission('stats:read'), getStoreStats);
 router.get('/:id', requireStorePermission('orders:read'), validateEntityId('id'), getStoreOrder);
 router.patch(

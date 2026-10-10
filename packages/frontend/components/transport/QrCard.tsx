@@ -27,7 +27,10 @@ export function QrCard({
       <View className="rounded-xl bg-white p-3">
         <QRCode value={code} size={size} color="#000000" backgroundColor="#ffffff" />
       </View>
-      <Text className="text-center font-mono text-xs tracking-widest text-muted-foreground" selectable>
+      <Text
+        className="text-center font-mono text-xs tracking-widest text-muted-foreground"
+        selectable
+      >
         {code}
       </Text>
       <Text className="text-center text-xs text-muted-foreground">

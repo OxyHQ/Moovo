@@ -3,8 +3,8 @@ import type {
   CreateCompanyInput,
   UpdateCompanyInput,
   ApiResponse,
-} from "@moovo/shared-types";
-import apiClient from "./client";
+} from '@moovo/shared-types';
+import apiClient from './client';
 
 /**
  * Companies API client (fleet admin).
@@ -20,35 +20,26 @@ import apiClient from "./client";
 /** Unwrap an `ApiResponse<T>` payload or throw the API's error message. */
 function unwrap<T>(res: ApiResponse<T>): T {
   if (!res.success || res.data === undefined) {
-    throw new Error(res.message ?? res.error ?? "Request failed");
+    throw new Error(res.message ?? res.error ?? 'Request failed');
   }
   return res.data;
 }
 
 /** `GET /admin/companies` — the companies the operator can administer. */
 export async function fetchCompanies(): Promise<Company[]> {
-  const { data } = await apiClient.get<ApiResponse<Company[]>>(
-    "/admin/companies",
-  );
+  const { data } = await apiClient.get<ApiResponse<Company[]>>('/admin/companies');
   return unwrap(data);
 }
 
 /** `GET /admin/companies/:companyId` — a single company the caller is a member of. */
 export async function fetchCompany(companyId: string): Promise<Company> {
-  const { data } = await apiClient.get<ApiResponse<Company>>(
-    `/admin/companies/${companyId}`,
-  );
+  const { data } = await apiClient.get<ApiResponse<Company>>(`/admin/companies/${companyId}`);
   return unwrap(data);
 }
 
 /** `POST /admin/companies` — create a company; the caller becomes its owner. */
-export async function createCompany(
-  input: CreateCompanyInput,
-): Promise<Company> {
-  const { data } = await apiClient.post<ApiResponse<Company>>(
-    "/admin/companies",
-    input,
-  );
+export async function createCompany(input: CreateCompanyInput): Promise<Company> {
+  const { data } = await apiClient.post<ApiResponse<Company>>('/admin/companies', input);
   return unwrap(data);
 }
 

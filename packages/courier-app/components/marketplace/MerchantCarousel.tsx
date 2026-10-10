@@ -1,11 +1,11 @@
-import { View } from "react-native";
-import { Text } from "@/components/ui/text";
-import { Carousel } from "./Carousel";
-import { MerchantCard } from "./MerchantCard";
-import type { MerchantSummary } from "@moovo/shared-types";
+import { View } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { Carousel } from './Carousel';
+import { MerchantCard } from './MerchantCard';
+import type { MerchantSummary } from '@moovo/shared-types';
 
 /** Fixed merchant-card slot width via Tailwind class (no JS measuring). */
-const MERCHANT_SLOT_CLASS = "w-[330px] mr-3";
+const MERCHANT_SLOT_CLASS = 'w-[330px] mr-3';
 
 export interface MerchantCarouselProps {
   title: string;

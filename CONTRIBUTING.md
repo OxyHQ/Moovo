@@ -62,7 +62,7 @@ Vitest. Place test files next to the source as `*.test.ts`. `packages/backend` i
 CI runs the following on every pull request, and each line runs locally as written:
 
 ```bash
-bun run --filter @moovo/backend lint
+bunx biome ci .
 bun run --filter @moovo/backend typecheck
 bun run --filter @moovo/backend test
 bun run build:backend

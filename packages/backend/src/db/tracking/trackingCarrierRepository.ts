@@ -70,7 +70,10 @@ export async function findTrackingCarriersByKeys(
   db: DatabaseOrTransaction = getDb(),
 ): Promise<TrackingCarrierRow[]> {
   if (keys.length === 0) return [];
-  return await db.select().from(trackingCarriers).where(inArray(trackingCarriers.key, [...keys]));
+  return await db
+    .select()
+    .from(trackingCarriers)
+    .where(inArray(trackingCarriers.key, [...keys]));
 }
 
 /**

@@ -24,7 +24,10 @@ import { validateEntityId } from '../validate.js';
 /** A real ObjectId hex — the shape every pre-cutover row still carries. */
 const OBJECT_ID = '507f1f77bcf86cd799439011';
 
-function mockRes(): Response & { status: ReturnType<typeof vi.fn>; json: ReturnType<typeof vi.fn> } {
+function mockRes(): Response & {
+  status: ReturnType<typeof vi.fn>;
+  json: ReturnType<typeof vi.fn>;
+} {
   const res = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
   return res as unknown as Response & {
     status: ReturnType<typeof vi.fn>;

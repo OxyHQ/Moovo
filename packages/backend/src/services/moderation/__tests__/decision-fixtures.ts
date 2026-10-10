@@ -70,9 +70,7 @@ export function decision(overrides: DecisionOverrides = {}): Decision {
     jury: jury(),
     policyVersions: policyVersions(),
     // Required on every revision after the first, forbidden on the first.
-    ...(revision > 1
-      ? { supersedesDecisionId: overrides.supersedesDecisionId ?? 'dec_prev' }
-      : {}),
+    ...(revision > 1 ? { supersedesDecisionId: overrides.supersedesDecisionId ?? 'dec_prev' } : {}),
     publishedAt: new Date().toISOString(),
   };
 }

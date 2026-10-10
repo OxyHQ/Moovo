@@ -40,7 +40,10 @@ function toMemberDTO(member: CompanyMemberValue): CompanyMember {
 }
 
 /** Read the loaded company + acting membership, or respond 500 if missing. */
-function loaded(req: Request, res: Response): { company: CourierCompanyRecord; actor: CompanyMemberValue } | null {
+function loaded(
+  req: Request,
+  res: Response,
+): { company: CourierCompanyRecord; actor: CompanyMemberValue } | null {
   const company = req.company;
   const actor = req.companyMembership;
   if (!company || !actor) {

@@ -20,7 +20,12 @@ import {
 const router = Router({ mergeParams: true });
 
 router.get('/', requireStorePermission('members:manage'), listMembers);
-router.post('/', requireStorePermission('members:manage'), validateBody(inviteMemberSchema), addMember);
+router.post(
+  '/',
+  requireStorePermission('members:manage'),
+  validateBody(inviteMemberSchema),
+  addMember,
+);
 router.patch(
   '/:oxyUserId',
   requireStorePermission('members:manage'),

@@ -134,10 +134,7 @@ async function handle(req: Request, res: Response): Promise<void> {
       : null;
 
   await getDb().transaction(async (tx) => {
-    const claimed = await claimTrackingWebhookEvent(
-      { id: eventId, carrierKey, payload },
-      tx,
-    );
+    const claimed = await claimTrackingWebhookEvent({ id: eventId, carrierKey, payload }, tx);
     // The empty result IS the answer "somebody else has this event". 202 either
     // way: a carrier retrying a delivery we already hold must see success, or
     // it will keep retrying forever.
@@ -170,16 +167,12 @@ export function createTrackingWebhookRoutes(): Router | null {
   // Scoped to THIS path. See the header: mounting it at `/webhooks` would put a
   // Buffer on `req.rawBody` and silently disarm the CrowdSource router's
   // late-mount refusal.
-  router.post(
-    '/tracking/:carrierKey',
-    raw({ type: '*/*', limit: MAX_BODY_BYTES }),
-    (req, res) => {
-      void handle(req, res).catch((error: unknown) => {
-        log.general.error({ err: error }, '[TrackingWebhook] delivery handler failed');
-        if (!res.headersSent) res.status(500).json({ error: 'Webhook processing failed' });
-      });
-    },
-  );
+  router.post('/tracking/:carrierKey', raw({ type: '*/*', limit: MAX_BODY_BYTES }), (req, res) => {
+    void handle(req, res).catch((error: unknown) => {
+      log.general.error({ err: error }, '[TrackingWebhook] delivery handler failed');
+      if (!res.headersSent) res.status(500).json({ error: 'Webhook processing failed' });
+    });
+  });
 
   log.general.info({ carriers }, '[TrackingWebhook] mounted');
   return router;

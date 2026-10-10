@@ -1,9 +1,4 @@
-import type {
-  Company,
-  CompanyMember,
-  CompanyPermission,
-  CompanyRole,
-} from "@moovo/shared-types";
+import type { Company, CompanyMember, CompanyPermission, CompanyRole } from '@moovo/shared-types';
 
 /**
  * Company permission model — a faithful client mirror of the backend's
@@ -14,25 +9,23 @@ import type {
  */
 
 const ALL_PERMISSIONS: readonly CompanyPermission[] = [
-  "company:manage",
-  "members:manage",
-  "fleet:write",
-  "jobs:read",
-  "jobs:dispatch",
-  "stats:read",
+  'company:manage',
+  'members:manage',
+  'fleet:write',
+  'jobs:read',
+  'jobs:dispatch',
+  'stats:read',
 ];
 
 /** Default permission set granted by each role (mirrors `ROLE_PERMISSIONS`). */
 const ROLE_PERMISSIONS: Record<CompanyRole, readonly CompanyPermission[]> = {
   owner: ALL_PERMISSIONS,
-  dispatcher: ALL_PERMISSIONS.filter((p) => p !== "company:manage"),
-  driver: ["jobs:read"],
+  dispatcher: ALL_PERMISSIONS.filter((p) => p !== 'company:manage'),
+  driver: ['jobs:read'],
 };
 
 /** A member's effective permissions: role defaults ∪ explicit grants. */
-export function effectivePermissions(
-  member: CompanyMember,
-): Set<CompanyPermission> {
+export function effectivePermissions(member: CompanyMember): Set<CompanyPermission> {
   const effective = new Set<CompanyPermission>(ROLE_PERMISSIONS[member.role]);
   for (const perm of member.permissions) {
     effective.add(perm);
@@ -41,10 +34,7 @@ export function effectivePermissions(
 }
 
 /** Whether `member` holds `perm` (role defaults ∪ explicit grants). */
-export function hasPermission(
-  member: CompanyMember | undefined,
-  perm: CompanyPermission,
-): boolean {
+export function hasPermission(member: CompanyMember | undefined, perm: CompanyPermission): boolean {
   if (!member) return false;
   return effectivePermissions(member).has(perm);
 }
@@ -60,5 +50,5 @@ export function findMembership(
 
 /** Number of owners in a company (used to enforce the last-owner rule in the UI). */
 export function ownerCount(company: Company): number {
-  return company.members.filter((m) => m.role === "owner").length;
+  return company.members.filter((m) => m.role === 'owner').length;
 }

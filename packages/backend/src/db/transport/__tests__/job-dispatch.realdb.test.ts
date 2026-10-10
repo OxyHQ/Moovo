@@ -311,7 +311,12 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
       const read = await findJobById(id);
 
       expect(read?.pickupSnapshot).toEqual(input.pickupSnapshot);
-      expect(read?.parcelSnapshot).toEqual({ weightKg: 1, sizeClass: 'small', pieces: 1, fragile: false });
+      expect(read?.parcelSnapshot).toEqual({
+        weightKg: 1,
+        sizeClass: 'small',
+        pieces: 1,
+        fragile: false,
+      });
       expect(read).not.toHaveProperty('providerRef');
       expect(read).not.toHaveProperty('courierOxyUserId');
       expect(read).not.toHaveProperty('proofOfDelivery');
@@ -362,17 +367,21 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
     it('refuses an external-provider job with no providerRef', async () => {
       await expect(
         createJob(minimalJob({ fulfillmentType: 'external_provider' })),
-      ).rejects.toSatisfy((err: unknown) => violatedConstraint(err) === 'jobs_fulfillment_shape_check');
+      ).rejects.toSatisfy(
+        (err: unknown) => violatedConstraint(err) === 'jobs_fulfillment_shape_check',
+      );
     });
 
     it('refuses a moovo_courier job carrying a providerRef', async () => {
-      await expect(
-        createJob(minimalJob({ providerRef: 'carrier-ref-1' })),
-      ).rejects.toSatisfy((err: unknown) => violatedConstraint(err) === 'jobs_fulfillment_shape_check');
+      await expect(createJob(minimalJob({ providerRef: 'carrier-ref-1' }))).rejects.toSatisfy(
+        (err: unknown) => violatedConstraint(err) === 'jobs_fulfillment_shape_check',
+      );
     });
 
     it('refuses an external-provider job that also names a courier', async () => {
-      const id = await createJob(minimalJob({ fulfillmentType: 'external_provider', providerRef: 'ref-1' }));
+      const id = await createJob(
+        minimalJob({ fulfillmentType: 'external_provider', providerRef: 'ref-1' }),
+      );
       await expect(
         client()`UPDATE jobs SET courier_oxy_user_id = 'c1' WHERE id = ${id}`,
       ).rejects.toSatisfy((err: unknown) => err !== undefined);
@@ -689,9 +698,21 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
     it('returns the audit trail oldest first, by its own timestamps', async () => {
       const id = await createJob(minimalJob());
       // Written out of order on purpose: the reader must sort, not echo.
-      await insertJobStatusEvent({ jobId: id, status: 'accepted', at: new Date('2026-07-01T10:02:00Z') });
-      await insertJobStatusEvent({ jobId: id, status: 'requested', at: new Date('2026-07-01T10:00:00Z') });
-      await insertJobStatusEvent({ jobId: id, status: 'offered', at: new Date('2026-07-01T10:01:00Z') });
+      await insertJobStatusEvent({
+        jobId: id,
+        status: 'accepted',
+        at: new Date('2026-07-01T10:02:00Z'),
+      });
+      await insertJobStatusEvent({
+        jobId: id,
+        status: 'requested',
+        at: new Date('2026-07-01T10:00:00Z'),
+      });
+      await insertJobStatusEvent({
+        jobId: id,
+        status: 'offered',
+        at: new Date('2026-07-01T10:01:00Z'),
+      });
 
       const trail = await listJobStatusEvents(id);
 
@@ -722,7 +743,11 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
 
     it('omits a location entirely rather than emitting a half point', async () => {
       const id = await createJob(minimalJob());
-      await insertJobStatusEvent({ jobId: id, status: 'offered', at: new Date('2026-07-01T10:00:00Z') });
+      await insertJobStatusEvent({
+        jobId: id,
+        status: 'offered',
+        at: new Date('2026-07-01T10:00:00Z'),
+      });
 
       const [event] = await listJobStatusEvents(id);
 
@@ -766,14 +791,24 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
         new Date(Date.UTC(2026, 6, 1, 10, 7)),
       ]);
       // Nothing was pruned to produce that window.
-      const [row] = await client()<{ total: string }[]>`SELECT count(*) AS total FROM job_location_pings`;
+      const [row] = await client()<
+        { total: string }[]
+      >`SELECT count(*) AS total FROM job_location_pings`;
       expect(Number(row?.total)).toBe(8);
     });
 
     it('loads both trails onto one job', async () => {
       const id = await createJob(minimalJob());
-      await insertJobStatusEvent({ jobId: id, status: 'requested', at: new Date('2026-07-01T10:00:00Z') });
-      await insertLocationPing(id, { longitude: BARCELONA[0], latitude: BARCELONA[1], at: new Date() });
+      await insertJobStatusEvent({
+        jobId: id,
+        status: 'requested',
+        at: new Date('2026-07-01T10:00:00Z'),
+      });
+      await insertLocationPing(id, {
+        longitude: BARCELONA[0],
+        latitude: BARCELONA[1],
+        at: new Date(),
+      });
 
       const job = await findJobWithHistory(id, 100);
 

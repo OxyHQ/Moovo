@@ -30,7 +30,12 @@ import {
 const router = Router({ mergeParams: true });
 
 router.get('/', requireStorePermission('products:read'), listProducts);
-router.post('/', requireStorePermission('products:write'), validateBody(createStoreProductSchema), createProduct);
+router.post(
+  '/',
+  requireStorePermission('products:write'),
+  validateBody(createStoreProductSchema),
+  createProduct,
+);
 
 router.get('/:id', requireStorePermission('products:read'), validateEntityId('id'), getProduct);
 router.patch(
@@ -40,7 +45,12 @@ router.patch(
   validateBody(updateListingSchema),
   patchProduct,
 );
-router.delete('/:id', requireStorePermission('products:write'), validateEntityId('id'), deleteProduct);
+router.delete(
+  '/:id',
+  requireStorePermission('products:write'),
+  validateEntityId('id'),
+  deleteProduct,
+);
 
 // Variants.
 router.post(

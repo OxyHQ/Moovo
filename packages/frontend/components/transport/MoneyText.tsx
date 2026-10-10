@@ -20,7 +20,11 @@ export function MoneyText({
 }) {
   const fiat = formatFiat(money);
   const fairClass =
-    size === 'lg' ? 'text-2xl font-bold' : size === 'sm' ? 'text-sm font-semibold' : 'text-base font-semibold';
+    size === 'lg'
+      ? 'text-2xl font-bold'
+      : size === 'sm'
+        ? 'text-sm font-semibold'
+        : 'text-base font-semibold';
   const fiatClass = size === 'lg' ? 'text-sm' : 'text-xs';
 
   return (

@@ -38,8 +38,7 @@ export function haversineMeters(a: LngLat, b: LngLat): number {
 
   const sinHalfDLat = Math.sin(dLat / 2);
   const sinHalfDLng = Math.sin(dLng / 2);
-  const h =
-    sinHalfDLat * sinHalfDLat + Math.cos(lat1) * Math.cos(lat2) * sinHalfDLng * sinHalfDLng;
+  const h = sinHalfDLat * sinHalfDLat + Math.cos(lat1) * Math.cos(lat2) * sinHalfDLng * sinHalfDLng;
   const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
   return EARTH_RADIUS_M * c;
 }
@@ -48,16 +47,10 @@ export function haversineMeters(a: LngLat, b: LngLat): number {
  * Great-circle distance in metres between two GeoJSON `[lng, lat]` coordinate
  * arrays, rounded to whole metres. Throws on a malformed coordinate pair.
  */
-export function distanceMetersBetween(
-  from: readonly number[],
-  to: readonly number[],
-): number {
+export function distanceMetersBetween(from: readonly number[], to: readonly number[]): number {
   if (from.length < 2 || to.length < 2) {
     throw new Error('Both coordinates must be [lng, lat] pairs');
   }
-  const meters = haversineMeters(
-    { lng: from[0], lat: from[1] },
-    { lng: to[0], lat: to[1] },
-  );
+  const meters = haversineMeters({ lng: from[0], lat: from[1] }, { lng: to[0], lat: to[1] });
   return Math.round(meters);
 }

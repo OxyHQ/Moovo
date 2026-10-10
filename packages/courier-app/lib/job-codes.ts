@@ -9,10 +9,10 @@
  */
 
 /** Namespace prefix of the QR payload (matches the backend `QR_PREFIX`). */
-export const QR_PREFIX = "moovo:job:";
+export const QR_PREFIX = 'moovo:job:';
 
 /** The two legs a code can prove. */
-export type ScanLeg = "pickup" | "dropoff";
+export type ScanLeg = 'pickup' | 'dropoff';
 
 /** A decoded QR payload. */
 export interface DecodedQrPayload {
@@ -25,7 +25,7 @@ export interface DecodedQrPayload {
 }
 
 function isScanLeg(value: string): value is ScanLeg {
-  return value === "pickup" || value === "dropoff";
+  return value === 'pickup' || value === 'dropoff';
 }
 
 /**
@@ -35,17 +35,17 @@ function isScanLeg(value: string): value is ScanLeg {
  * This is a faithful port of the backend `decodeQrPayload`.
  */
 export function decodeQrPayload(payload: string): DecodedQrPayload | null {
-  if (typeof payload !== "string" || !payload.startsWith(QR_PREFIX)) {
+  if (typeof payload !== 'string' || !payload.startsWith(QR_PREFIX)) {
     return null;
   }
   const rest = payload.slice(QR_PREFIX.length);
-  const firstSep = rest.indexOf(":");
+  const firstSep = rest.indexOf(':');
   if (firstSep <= 0) {
     return null;
   }
   const jobId = rest.slice(0, firstSep);
   const afterJob = rest.slice(firstSep + 1);
-  const secondSep = afterJob.indexOf(":");
+  const secondSep = afterJob.indexOf(':');
   if (secondSep <= 0) {
     return null;
   }

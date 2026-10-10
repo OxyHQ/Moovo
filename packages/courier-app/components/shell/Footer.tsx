@@ -1,9 +1,9 @@
-import React from "react";
-import { View, Pressable } from "react-native";
-import { Text } from "@/components/ui/text";
-import { Logo } from "@/components/Logo";
+import React from 'react';
+import { View, Pressable } from 'react-native';
+import { Text } from '@/components/ui/text';
+import { Logo } from '@/components/Logo';
 
-const FOOTER_LINKS = ["About", "Help", "Privacy", "Terms"] as const;
+const FOOTER_LINKS = ['About', 'Help', 'Privacy', 'Terms'] as const;
 
 /* ================================================================
    Footer — light footer for the home scroll

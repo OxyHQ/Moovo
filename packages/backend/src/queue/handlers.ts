@@ -40,7 +40,10 @@ const EVENT_TO_BUYER_TYPE: Record<OrderEvent, NotificationType> = {
 /** Human title/body for the buyer notification per event. */
 const BUYER_COPY: Record<OrderEvent, { title: string; body: string }> = {
   placed: { title: 'Order placed', body: 'Your order has been placed.' },
-  paid: { title: 'Payment received', body: 'Your payment was received and your order is confirmed.' },
+  paid: {
+    title: 'Payment received',
+    body: 'Your payment was received and your order is confirmed.',
+  },
   shipped: { title: 'Order shipped', body: 'Your order is on its way.' },
   delivered: { title: 'Order delivered', body: 'Your order has been delivered.' },
   cancelled: { title: 'Order cancelled', body: 'Your order has been cancelled.' },
@@ -76,7 +79,8 @@ function storeOwnerIds(members: readonly StoreMemberRecord[]): string[] {
 function inventoryManagerIds(members: readonly StoreMemberRecord[]): string[] {
   const ids = members
     .filter(
-      (m) => m.role === 'owner' || INVENTORY_MANAGER_PERMISSIONS.some((p) => m.permissions.includes(p)),
+      (m) =>
+        m.role === 'owner' || INVENTORY_MANAGER_PERMISSIONS.some((p) => m.permissions.includes(p)),
     )
     .map((m) => m.oxyUserId);
   return [...new Set(ids)];
@@ -101,7 +105,10 @@ export async function handleRecomputeAggregates(job: RecomputeAggregatesJob): Pr
 export async function handleOrderEventNotification(job: OrderEventNotificationJob): Promise<void> {
   const record = await findOrderById(job.orderId);
   if (!record) {
-    log.general.warn({ orderId: job.orderId, event: job.event }, 'Order-event notification: order not found');
+    log.general.warn(
+      { orderId: job.orderId, event: job.event },
+      'Order-event notification: order not found',
+    );
     return;
   }
 
@@ -233,7 +240,10 @@ export async function handleAggregateSweep(): Promise<void> {
       await recomputeAggregate(targetType, targetId);
       recomputed += 1;
     } catch (err) {
-      log.general.warn({ err, targetType, targetId }, 'Aggregate sweep: recompute failed (skipping)');
+      log.general.warn(
+        { err, targetType, targetId },
+        'Aggregate sweep: recompute failed (skipping)',
+      );
     }
   }
 

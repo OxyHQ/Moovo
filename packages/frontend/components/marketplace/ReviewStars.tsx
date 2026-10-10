@@ -1,9 +1,9 @@
-import { View } from "react-native";
-import Svg, { Path } from "react-native-svg";
-import { useColorScheme } from "@/lib/useColorScheme";
+import { View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+import { useColorScheme } from '@/lib/useColorScheme';
 
 /** Fixed gold fill for the rated portion of the stars (documented constant). */
-const STAR_COLOR = "#FFB800";
+const STAR_COLOR = '#FFB800';
 /** Default star edge length in px. */
 const DEFAULT_SIZE = 14;
 /** Number of stars in the rating row. */
@@ -12,7 +12,7 @@ const STAR_COUNT = 5;
 const STAR_GAP = 1;
 /** Canonical 5-point star path, traced inside a 24×24 viewBox. */
 const STAR_PATH =
-  "M12 2.5l2.92 5.92 6.53.95-4.72 4.6 1.11 6.51L12 17.42 6.16 20.5l1.11-6.51-4.72-4.6 6.53-.95L12 2.5z";
+  'M12 2.5l2.92 5.92 6.53.95-4.72 4.6 1.11 6.51L12 17.42 6.16 20.5l1.11-6.51-4.72-4.6 6.53-.95L12 2.5z';
 
 export interface ReviewStarsProps {
   /** Average rating, 0–5. Fractional values render a partially filled star. */
@@ -46,12 +46,12 @@ function Star({ fill, size, emptyColor }: StarProps) {
       {fraction > 0 ? (
         <View
           style={{
-            position: "absolute",
+            position: 'absolute',
             left: 0,
             top: 0,
             width: size * fraction,
             height: size,
-            overflow: "hidden",
+            overflow: 'hidden',
           }}
           pointerEvents="none"
         >
@@ -76,7 +76,7 @@ export function ReviewStars({ rating, count, size = DEFAULT_SIZE }: ReviewStarsP
       accessible
       accessibilityRole="image"
       accessibilityLabel={`Average rating: ${rating}, based on ${count ?? 0} reviews`}
-      style={{ flexDirection: "row" }}
+      style={{ flexDirection: 'row' }}
     >
       {Array.from({ length: STAR_COUNT }, (_, index) => (
         <View key={index} style={{ marginRight: index < STAR_COUNT - 1 ? STAR_GAP : 0 }}>

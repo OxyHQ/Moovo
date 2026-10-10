@@ -48,33 +48,31 @@ export default function ForgotPasswordScreen() {
       <AuthLogo />
 
       {sent ? (
-            // Success State
-            <View className="items-center">
-              <Text className="text-2xl font-bold text-foreground tracking-tight mb-2 text-center">
-                {t('forgotPassword.checkEmail')}
-              </Text>
-              <Text className="text-sm text-muted-foreground text-center mb-6 leading-5">
-                {t('forgotPassword.sentInstructions')}{'\n'}
-                <Text className="font-medium text-foreground">{email}</Text>
-              </Text>
-              <AuthButton
-                onPress={() => router.back()}
-                className="w-full"
-              >
-                {t('forgotPassword.returnToSignIn')}
-              </AuthButton>
-              <Pressable
-                onPress={() => {
-                  setSent(false);
-                  setEmail('');
-                }}
-                className="mt-4"
-              >
-                <Text className="text-primary text-sm font-medium">
-                  {t('forgotPassword.tryAnotherEmail')}
-                </Text>
-              </Pressable>
-            </View>
+        // Success State
+        <View className="items-center">
+          <Text className="text-2xl font-bold text-foreground tracking-tight mb-2 text-center">
+            {t('forgotPassword.checkEmail')}
+          </Text>
+          <Text className="text-sm text-muted-foreground text-center mb-6 leading-5">
+            {t('forgotPassword.sentInstructions')}
+            {'\n'}
+            <Text className="font-medium text-foreground">{email}</Text>
+          </Text>
+          <AuthButton onPress={() => router.back()} className="w-full">
+            {t('forgotPassword.returnToSignIn')}
+          </AuthButton>
+          <Pressable
+            onPress={() => {
+              setSent(false);
+              setEmail('');
+            }}
+            className="mt-4"
+          >
+            <Text className="text-primary text-sm font-medium">
+              {t('forgotPassword.tryAnotherEmail')}
+            </Text>
+          </Pressable>
+        </View>
       ) : (
         // Form State
         <>
@@ -82,9 +80,7 @@ export default function ForgotPasswordScreen() {
             <Text className="text-3xl font-bold text-foreground tracking-tight">
               {t('forgotPassword.title')}
             </Text>
-            <Text className="text-base text-muted-foreground">
-              {t('forgotPassword.subtitle')}
-            </Text>
+            <Text className="text-base text-muted-foreground">{t('forgotPassword.subtitle')}</Text>
           </View>
 
           <View className="gap-3">
@@ -115,7 +111,6 @@ export default function ForgotPasswordScreen() {
           </View>
         </>
       )}
-
     </AuthContainer>
   );
 }

@@ -69,10 +69,7 @@ import {
   setOfferStatus,
   supersedeLiveOffers,
 } from '../db/transport/jobOfferRepository.js';
-import {
-  findShipmentById,
-  markShipmentBooked,
-} from '../db/transport/shipmentRepository.js';
+import { findShipmentById, markShipmentBooked } from '../db/transport/shipmentRepository.js';
 import {
   findQuoteById,
   markQuoteSelected,
@@ -180,10 +177,7 @@ export async function transition(
     throw conflict(`Job ${job.id} was concurrently transitioned`);
   }
 
-  log.general.info(
-    { jobId: job.id, status: next, actor: opts.actorOxyUserId },
-    'Job transitioned',
-  );
+  log.general.info({ jobId: job.id, status: next, actor: opts.actorOxyUserId }, 'Job transitioned');
   return updated;
 }
 
@@ -413,18 +407,12 @@ export interface JobPage {
 }
 
 async function listPage(filter: JobListFilter, { page, limit }: ListParams): Promise<JobPage> {
-  const [data, total] = await Promise.all([
-    listJobs(filter, { page, limit }),
-    countJobs(filter),
-  ]);
+  const [data, total] = await Promise.all([listJobs(filter, { page, limit }), countJobs(filter)]);
   return { data, total };
 }
 
 /** List jobs the caller booked (as sender), newest first. */
-export async function listForSender(
-  senderOxyUserId: string,
-  params: ListParams,
-): Promise<JobPage> {
+export async function listForSender(senderOxyUserId: string, params: ListParams): Promise<JobPage> {
   return listPage({ senderOxyUserId, status: params.status }, params);
 }
 
@@ -483,7 +471,10 @@ async function recomputeAcceptanceRate(courierOxyUserId: string): Promise<void> 
     }
     await updateCourierAcceptanceRate(courierOxyUserId, accepted / resolved);
   } catch (err) {
-    log.general.warn({ err, courierOxyUserId }, 'Failed to recompute acceptance rate (best-effort)');
+    log.general.warn(
+      { err, courierOxyUserId },
+      'Failed to recompute acceptance rate (best-effort)',
+    );
   }
 }
 

@@ -1,13 +1,9 @@
-import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useOxy } from "@oxy.so/services";
-import type { GeoPoint } from "@moovo/shared-types";
-import {
-  connectMoovoSocket,
-  type JobStatusPayload,
-  type JobLocationPayload,
-} from "@/lib/socket";
-import { queryKeys } from "@/lib/hooks/query-keys";
+import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useOxy } from '@oxy.so/services';
+import type { GeoPoint } from '@moovo/shared-types';
+import { connectMoovoSocket, type JobStatusPayload, type JobLocationPayload } from '@/lib/socket';
+import { queryKeys } from '@/lib/hooks/query-keys';
 
 /** A job's most-recent live courier position, keyed by job id. */
 export interface LiveJobLocation {
@@ -44,12 +40,8 @@ export function useJobSocket(enabled: boolean): JobSocketState {
   const queryClient = useQueryClient();
 
   const [connected, setConnected] = useState(false);
-  const [liveLocations, setLiveLocations] = useState<
-    Record<string, LiveJobLocation>
-  >({});
-  const [lastTransition, setLastTransition] = useState<JobStatusPayload | null>(
-    null,
-  );
+  const [liveLocations, setLiveLocations] = useState<Record<string, LiveJobLocation>>({});
+  const [lastTransition, setLastTransition] = useState<JobStatusPayload | null>(null);
 
   useEffect(() => {
     if (!enabled || !hasAccessToken) {
@@ -59,8 +51,8 @@ export function useJobSocket(enabled: boolean): JobSocketState {
 
     const socket = connectMoovoSocket(() => oxyServices.session.accessToken);
 
-    socket.on("connect", () => setConnected(true));
-    socket.on("disconnect", () => setConnected(false));
+    socket.on('connect', () => setConnected(true));
+    socket.on('disconnect', () => setConnected(false));
 
     const onLocation = (payload: JobLocationPayload) => {
       setLiveLocations((prev) => ({
@@ -79,15 +71,15 @@ export function useJobSocket(enabled: boolean): JobSocketState {
       void queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
     };
 
-    socket.on("job:location", onLocation);
-    socket.on("job:accepted", onTransition);
-    socket.on("job:picked_up", onTransition);
-    socket.on("job:in_transit", onTransition);
-    socket.on("job:delivered", onTransition);
-    socket.on("job:cancelled", onTransition);
+    socket.on('job:location', onLocation);
+    socket.on('job:accepted', onTransition);
+    socket.on('job:picked_up', onTransition);
+    socket.on('job:in_transit', onTransition);
+    socket.on('job:delivered', onTransition);
+    socket.on('job:cancelled', onTransition);
 
     return () => {
-      socket.off("job:location", onLocation);
+      socket.off('job:location', onLocation);
       socket.disconnect();
       setConnected(false);
     };

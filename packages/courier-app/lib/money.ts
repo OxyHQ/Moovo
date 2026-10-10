@@ -1,4 +1,4 @@
-import { FAIR_SYMBOL, type DisplayMoney } from "@moovo/shared-types";
+import { FAIR_SYMBOL, type DisplayMoney } from '@moovo/shared-types';
 
 /**
  * Money formatting for the courier surface.

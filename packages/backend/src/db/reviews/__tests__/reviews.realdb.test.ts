@@ -39,11 +39,7 @@ import { findSellerProfilesByUserIds } from '../../stores/sellerProfileRepositor
 import { createP2PListing } from '../../../services/catalog-write.service';
 import { findListingById, listVariantsForListing } from '../../catalog/catalogRepository';
 import { aggregateForTarget, listPublishedReviewTargets } from '../reviewRepository';
-import {
-  createReview,
-  listReviews,
-  recomputeAggregate,
-} from '../../../services/review.service';
+import { createReview, listReviews, recomputeAggregate } from '../../../services/review.service';
 import { isMoovoError } from '../../../lib/errors/error-codes';
 import { ErrorCodes } from '../../../utils/api-response';
 
@@ -230,7 +226,7 @@ describeIfPostgres('the reviews domain on a real server', () => {
       expect(review.rating).toBe(5);
     });
 
-    it("refuses a listing bought by ANOTHER buyer", async () => {
+    it('refuses a listing bought by ANOTHER buyer', async () => {
       await seedCategory();
       const product = await seedProduct('seller-a', 'p');
       // buyer-b's order exists and qualifies — for buyer-b.
@@ -557,7 +553,12 @@ describeIfPostgres('the reviews domain on a real server', () => {
           // Same target, second author — must appear ONCE.
           { authorOxyUserId: 'buyer-b', targetType: 'listing', listingId, rating: 4 },
           { authorOxyUserId: 'buyer-a', targetType: 'store', storeId, rating: 3 },
-          { authorOxyUserId: 'buyer-a', targetType: 'seller', sellerOxyUserId: 'seller-z', rating: 2 },
+          {
+            authorOxyUserId: 'buyer-a',
+            targetType: 'seller',
+            sellerOxyUserId: 'seller-z',
+            rating: 2,
+          },
           // Hidden — not a target for the sweep.
           {
             authorOxyUserId: 'buyer-c',
@@ -578,18 +579,42 @@ describeIfPostgres('the reviews domain on a real server', () => {
     });
   });
 
-  describe('listing a target\'s reviews', () => {
-    it('returns only this target\'s published reviews, newest first', async () => {
+  describe("listing a target's reviews", () => {
+    it("returns only this target's published reviews, newest first", async () => {
       await seedCategory();
       const a = await seedListing('seller-a', 'a');
       const b = await seedListing('seller-b', 'b');
       await getDb()
         .insert(reviews)
         .values([
-          { authorOxyUserId: 'buyer-a', targetType: 'listing', listingId: a, rating: 5, body: 'first' },
-          { authorOxyUserId: 'buyer-b', targetType: 'listing', listingId: a, rating: 4, body: 'second' },
-          { authorOxyUserId: 'buyer-c', targetType: 'listing', listingId: a, rating: 1, status: 'hidden' },
-          { authorOxyUserId: 'buyer-a', targetType: 'listing', listingId: b, rating: 2, body: 'other' },
+          {
+            authorOxyUserId: 'buyer-a',
+            targetType: 'listing',
+            listingId: a,
+            rating: 5,
+            body: 'first',
+          },
+          {
+            authorOxyUserId: 'buyer-b',
+            targetType: 'listing',
+            listingId: a,
+            rating: 4,
+            body: 'second',
+          },
+          {
+            authorOxyUserId: 'buyer-c',
+            targetType: 'listing',
+            listingId: a,
+            rating: 1,
+            status: 'hidden',
+          },
+          {
+            authorOxyUserId: 'buyer-a',
+            targetType: 'listing',
+            listingId: b,
+            rating: 2,
+            body: 'other',
+          },
         ]);
 
       const page = await listReviews(

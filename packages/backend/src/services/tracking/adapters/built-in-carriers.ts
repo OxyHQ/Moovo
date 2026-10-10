@@ -137,7 +137,8 @@ export const BUILT_IN_TRACKING_CARRIERS: readonly BuiltInCarrier[] = [
     countryCodes: ['DE'],
     adapter: buildDeepLinkAdapter({
       key: 'deutsche-post',
-      template: 'https://www.deutschepost.de/sendung/simpleQueryResult.html?form.sendungsnummer={number}',
+      template:
+        'https://www.deutschepost.de/sendung/simpleQueryResult.html?form.sendungsnummer={number}',
       detect: s10Detect('DE'),
     }),
   },
@@ -204,7 +205,8 @@ export const BUILT_IN_TRACKING_CARRIERS: readonly BuiltInCarrier[] = [
     countryCodes: ['US', 'DE', 'ES', 'GB'],
     adapter: buildDeepLinkAdapter({
       key: 'dhl-ecommerce',
-      template: 'https://www.dhl.com/us-en/home/tracking/tracking-ecommerce.html?tracking-id={number}',
+      template:
+        'https://www.dhl.com/us-en/home/tracking/tracking-ecommerce.html?tracking-id={number}',
       // No rule: DHL eCommerce reuses `GM`/`LX` prefixes and bare digit runs
       // that collide with DHL Express' own, and splitting a number between two
       // DHL adapters by guesswork helps nobody. The user picks.
@@ -253,7 +255,8 @@ export const BUILT_IN_TRACKING_CARRIERS: readonly BuiltInCarrier[] = [
     countryCodes: ['ES'],
     adapter: buildDeepLinkAdapter({
       key: 'nacex',
-      template: 'https://www.nacex.es/seguimientoDetalle.do?agencia_origen=&numero_albaran={number}',
+      template:
+        'https://www.nacex.es/seguimientoDetalle.do?agencia_origen=&numero_albaran={number}',
     }),
   },
   {

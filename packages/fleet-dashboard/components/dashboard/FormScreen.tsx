@@ -1,12 +1,12 @@
-import type { ReactNode } from "react";
-import { View, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft } from "lucide-react-native";
-import Head from "expo-router/head";
-import { Text } from "@/components/ui/text";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import type { ReactNode } from 'react';
+import { View, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft } from 'lucide-react-native';
+import Head from 'expo-router/head';
+import { Text } from '@/components/ui/text';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 
 /** Header height (px) below the safe-area inset — matches `SettingsHeader`. */
 const HEADER_HEIGHT = 56;

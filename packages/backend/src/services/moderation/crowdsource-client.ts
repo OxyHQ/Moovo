@@ -47,9 +47,7 @@ import { log } from '../../lib/logger.js';
 /** The client, or `undefined` where this deployment cannot authenticate. */
 export function getCrowdSourceClient(): CrowdSource | undefined {
   return crowdSourceForOxyService({
-    ...(config.crowdSource.baseUrl === undefined
-      ? {}
-      : { baseUrl: config.crowdSource.baseUrl }),
+    ...(config.crowdSource.baseUrl === undefined ? {} : { baseUrl: config.crowdSource.baseUrl }),
     // Pino takes the context first and the message second; the SDK's logger is
     // the other way round. Adapting it here is what keeps the library from
     // having to know which logger any of its callers chose.

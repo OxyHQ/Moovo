@@ -1,5 +1,5 @@
-import { Text as RNText } from "react-native";
-import { useColorScheme } from "@/lib/useColorScheme";
+import { Text as RNText } from 'react-native';
+import { useColorScheme } from '@/lib/useColorScheme';
 
 export interface MoovoWordmarkProps {
   width?: number;
@@ -28,8 +28,8 @@ export function MoovoWordmark({ width = 96, height, color }: MoovoWordmarkProps)
     <RNText
       accessibilityRole="header"
       style={{
-        fontFamily: "Inter",
-        fontWeight: "700",
+        fontFamily: 'Inter',
+        fontWeight: '700',
         fontSize,
         lineHeight: Math.round(fontSize * 1.1),
         letterSpacing: -fontSize * 0.03,

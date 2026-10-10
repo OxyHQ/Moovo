@@ -12,7 +12,10 @@ import type { ParcelDetails, ShipmentType, JobType } from '@moovo/shared-types';
 import { computeVehicleCapability, isEligible } from '../capability.service.js';
 
 /** Derive the eligibility request from a shipment's type + parcel details. */
-function requestFor(type: ShipmentType, parcel: ParcelDetails): {
+function requestFor(
+  type: ShipmentType,
+  parcel: ParcelDetails,
+): {
   jobType: JobType;
   sizeClass: ParcelDetails['sizeClass'];
   weightKg: number;

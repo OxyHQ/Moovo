@@ -1,10 +1,10 @@
-import { View } from "react-native";
-import { Carousel } from "./Carousel";
-import { CategoryCard } from "./CategoryCard";
-import type { Category, CategoryTile } from "@moovo/shared-types";
+import { View } from 'react-native';
+import { Carousel } from './Carousel';
+import { CategoryCard } from './CategoryCard';
+import type { Category, CategoryTile } from '@moovo/shared-types';
 
 /** Fixed category-card slot width via Tailwind class (no JS measuring). */
-const CATEGORY_SLOT_CLASS = "w-[330px] mr-3";
+const CATEGORY_SLOT_CLASS = 'w-[330px] mr-3';
 
 export interface CategoryCarouselProps {
   categories: Category[];

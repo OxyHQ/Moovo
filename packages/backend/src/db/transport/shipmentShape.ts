@@ -305,7 +305,10 @@ export type ShipmentInsertColumns = Omit<
  * `[NaN, NaN]` has length two and would insert a row that no geography index
  * can place — `ST_MakePoint` is STRICT for nulls but takes a NaN happily.
  */
-function ordinates(endpoint: ShipmentEndpointValue, which: 'pickup' | 'dropoff'): {
+function ordinates(
+  endpoint: ShipmentEndpointValue,
+  which: 'pickup' | 'dropoff',
+): {
   longitude: number;
   latitude: number;
 } {
@@ -370,6 +373,7 @@ export function toShipmentColumns(input: NewShipment): ShipmentInsertColumns {
     photos: input.photos,
 
     schedulingKind: input.scheduling.kind,
-    scheduledFor: input.scheduling.kind === 'scheduled' ? (input.scheduling.scheduledFor ?? null) : null,
+    scheduledFor:
+      input.scheduling.kind === 'scheduled' ? (input.scheduling.scheduledFor ?? null) : null,
   };
 }

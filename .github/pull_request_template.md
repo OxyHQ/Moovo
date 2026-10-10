@@ -16,5 +16,5 @@
 
 - [ ] TypeScript compiles (`tsc --noEmit`)
 - [ ] Tests pass (`bun run --filter @moovo/backend test`)
-- [ ] Lint passes
+- [ ] Lint passes (`bun run lint`)
 - [ ] `bun.lock` committed in the same commit as any `package.json` change

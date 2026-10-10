@@ -177,9 +177,7 @@ export interface EnforcementOutcome {
  * handful, they can contradict each other, and a deterministic order makes the
  * recorded trail readable.
  */
-export async function applyEnforcementPlan(
-  input: EnforcementInput,
-): Promise<EnforcementOutcome> {
+export async function applyEnforcementPlan(input: EnforcementInput): Promise<EnforcementOutcome> {
   const mode = config.crowdSource.enforcementMode;
   let claimed = 0;
   let applied = 0;

@@ -105,7 +105,13 @@ export interface ModerationReportInput {
 export async function buildModerationReportInput(
   report: Pick<
     ReportRecord,
-    'reportedType' | 'reportedId' | 'reporter' | 'categories' | 'details' | 'contextJobId' | 'createdAt'
+    | 'reportedType'
+    | 'reportedId'
+    | 'reporter'
+    | 'categories'
+    | 'details'
+    | 'contextJobId'
+    | 'createdAt'
   > & { id: string },
 ): Promise<ModerationReportInput | null> {
   const provider = subjectProviderFor(report.reportedType);

@@ -275,7 +275,7 @@ describeIfPostgres('the order repository on a real server', () => {
   });
 
   describe('scoped reads never cross an owner boundary', () => {
-    it('returns the buyer\'s own orders and not another buyer\'s', async () => {
+    it("returns the buyer's own orders and not another buyer's", async () => {
       await seedOrder('buyer-a', 'seller-a');
       await seedOrder('buyer-b', 'seller-a');
 
@@ -292,7 +292,9 @@ describeIfPostgres('the order repository on a real server', () => {
 
       // Proves the single result above was a filter working, not a reader that
       // can only ever find one row.
-      expect((await listScopedOrders({ kind: 'buyer', oxyUserId: 'buyer-a' }, {}, 1, 10)).total).toBe(2);
+      expect(
+        (await listScopedOrders({ kind: 'buyer', oxyUserId: 'buyer-a' }, {}, 1, 10)).total,
+      ).toBe(2);
     });
 
     it('does not let a buyer read an order by id that is not theirs', async () => {

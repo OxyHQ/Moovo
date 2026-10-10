@@ -36,17 +36,14 @@ export interface CompanySummary {
  * If the Oxy profile is missing (failed to load), falls back to a minimal
  * courier (displayName = username = oxyUserId) so the request never breaks.
  */
-export function toCourier(
-  profile: CourierProfileRow,
-  oxyProfile: OxyProfile | undefined,
-): Courier {
+export function toCourier(profile: CourierProfileRow, oxyProfile: OxyProfile | undefined): Courier {
   const oxyUserId = profile.oxyUserId;
   const courier: Courier = {
     id: profile.id,
     oxyUserId,
     displayName: oxyProfile?.displayName ?? oxyUserId,
     username: oxyProfile?.username ?? oxyUserId,
-    avatar: oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : oxyProfile?.avatar ?? null,
+    avatar: oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : (oxyProfile?.avatar ?? null),
     status: profile.status as Courier['status'],
     onlineStatus: profile.onlineStatus as Courier['onlineStatus'],
     eligibleJobTypes: [...profile.eligibleJobTypes] as Courier['eligibleJobTypes'],

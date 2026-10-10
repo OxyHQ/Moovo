@@ -17,9 +17,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "now.moovo.app",
       "infoPlist": {
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {

@@ -1,9 +1,4 @@
-import {
-  FAIR_SYMBOL,
-  type DisplayMoney,
-  type JobStatus,
-  type JobType,
-} from "@moovo/shared-types";
+import { FAIR_SYMBOL, type DisplayMoney, type JobStatus, type JobType } from '@moovo/shared-types';
 
 /**
  * Display helpers for the Moovo transport domain.
@@ -16,14 +11,14 @@ import {
 
 /** ISO-4217 → glyph for the small set of fiat display currencies we support. */
 const CURRENCY_SYMBOL: Record<string, string> = {
-  EUR: "€",
-  USD: "$",
+  EUR: '€',
+  USD: '$',
 };
 
 /** Format a {@link DisplayMoney} for display (fiat when present, else FAIR). */
 export function formatMoney(money: DisplayMoney): string {
   if (money.display) {
-    const symbol = CURRENCY_SYMBOL[money.display.currency] ?? "";
+    const symbol = CURRENCY_SYMBOL[money.display.currency] ?? '';
     return `${symbol}${money.display.amount.toFixed(2)}`;
   }
   return `${FAIR_SYMBOL}${money.fair.toFixed(2)}`;
@@ -32,32 +27,32 @@ export function formatMoney(money: DisplayMoney): string {
 /** Format an ISO-8601 instant as a short, locale-aware `HH:MM` time. */
 export function formatTime(iso: string, locale: string): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleTimeString(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
 /** Format an ISO-8601 instant as a short, locale-aware date. */
 export function formatDate(iso: string, locale: string): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleDateString(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
   });
 }
 
 /** Whether a job is in a live/active (non-terminal) state. */
 export function isActiveJob(status: JobStatus): boolean {
   return (
-    status === "requested" ||
-    status === "offered" ||
-    status === "accepted" ||
-    status === "picked_up" ||
-    status === "in_transit"
+    status === 'requested' ||
+    status === 'offered' ||
+    status === 'accepted' ||
+    status === 'picked_up' ||
+    status === 'in_transit'
   );
 }
 

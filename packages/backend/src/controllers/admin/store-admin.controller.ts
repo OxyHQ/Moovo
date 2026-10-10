@@ -12,11 +12,7 @@ import type { Request, Response } from 'express';
 import { getRequiredOxyUserId } from '@oxy.so/core/server';
 import type { CreateStoreInput, UpdateStoreInput, Store as StoreDTO } from '@moovo/shared-types';
 import type { StoreRecord } from '../../db/stores/storeRepository.js';
-import {
-  createStore,
-  listStoresForUser,
-  updateStore,
-} from '../../services/store.service.js';
+import { createStore, listStoresForUser, updateStore } from '../../services/store.service.js';
 import { sendSuccess } from '../../utils/api-response.js';
 import { respondWithError } from '../../lib/errors/error-codes.js';
 import { log } from '../../lib/logger.js';

@@ -1,8 +1,8 @@
-import { useCallback } from "react";
-import { useRouter } from "expo-router";
-import { Settings, Bell } from "lucide-react-native";
-import * as DropdownMenu from "@/components/ui/dropdown-menu";
-import { useTranslation } from "@/hooks/useTranslation";
+import { useCallback } from 'react';
+import { useRouter } from 'expo-router';
+import { Settings, Bell } from 'lucide-react-native';
+import * as DropdownMenu from '@/components/ui/dropdown-menu';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface AccountMenuProps {
   /**
@@ -27,31 +27,24 @@ export function AccountMenu({ children }: AccountMenuProps) {
   const router = useRouter();
   const { t } = useTranslation();
 
-  const goSettings = useCallback(() => router.push("/settings"), [router]);
-  const goNotifications = useCallback(
-    () => router.push("/notifications"),
-    [router],
-  );
+  const goSettings = useCallback(() => router.push('/settings'), [router]);
+  const goNotifications = useCallback(() => router.push('/notifications'), [router]);
 
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>{children}</DropdownMenu.Trigger>
       <DropdownMenu.Content>
         <DropdownMenu.Item key="settings" onSelect={goSettings}>
-          <DropdownMenu.ItemIcon ios={{ name: "gearshape" }}>
+          <DropdownMenu.ItemIcon ios={{ name: 'gearshape' }}>
             <Settings size={16} />
           </DropdownMenu.ItemIcon>
-          <DropdownMenu.ItemTitle>
-            {t("account.settings")}
-          </DropdownMenu.ItemTitle>
+          <DropdownMenu.ItemTitle>{t('account.settings')}</DropdownMenu.ItemTitle>
         </DropdownMenu.Item>
         <DropdownMenu.Item key="notifications" onSelect={goNotifications}>
-          <DropdownMenu.ItemIcon ios={{ name: "bell" }}>
+          <DropdownMenu.ItemIcon ios={{ name: 'bell' }}>
             <Bell size={16} />
           </DropdownMenu.ItemIcon>
-          <DropdownMenu.ItemTitle>
-            {t("account.notifications")}
-          </DropdownMenu.ItemTitle>
+          <DropdownMenu.ItemTitle>{t('account.notifications')}</DropdownMenu.ItemTitle>
         </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>

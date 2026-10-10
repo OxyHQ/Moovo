@@ -492,3 +492,12 @@ prevent.
   redeployed, not just `deploy-cloudflare.yml`.
 - CI (`.github/workflows/ci.yml`) runs lint, tests, the API build and the app
   build on every push and PR.
+- **Biome** (root `biome.json`, version pinned in the root `package.json`)
+  formats and lints the whole repo; there is no ESLint or Prettier. `bun run
+  lint` is `biome check .`, CI runs `bunx biome ci .` in its own ungated job.
+  Rules set to `"warn"` in `biome.json` are a baseline of pre-existing
+  violations, not a statement that they are fine: tighten them to `"error"` as
+  they reach zero. `biome-plugins/expo-env-vars.grit` (scoped to the four Expo
+  apps) refuses computed `process.env[...]` reads and destructuring of
+  `process.env`, because Metro inlines only static `process.env.EXPO_PUBLIC_*`
+  member reads and anything else is `undefined` in the shipped bundle.

@@ -376,11 +376,7 @@ export async function updateStoreRow(
     return findStoreById(storeId, db);
   }
 
-  const [row] = await db
-    .update(stores)
-    .set(patch)
-    .where(eq(stores.id, storeId))
-    .returning();
+  const [row] = await db.update(stores).set(patch).where(eq(stores.id, storeId)).returning();
 
   if (row === undefined) return null;
   return toStoreRecord(row, await membersOf(storeId, db));
@@ -396,7 +392,12 @@ export async function updateStoreRow(
  */
 export async function insertMember(
   storeId: string,
-  member: { oxyUserId: string; role: StoreRole; permissions: StorePermission[]; invitedBy?: string },
+  member: {
+    oxyUserId: string;
+    role: StoreRole;
+    permissions: StorePermission[];
+    invitedBy?: string;
+  },
   db: DatabaseOrTransaction = getDb(),
 ): Promise<StoreRecord | null> {
   const inserted = await db
@@ -460,7 +461,11 @@ export async function updateMemberRow(
   db: DatabaseOrTransaction = getDb(),
 ): Promise<MembershipOutcome> {
   return await db.transaction(async (tx) => {
-    const [store] = await tx.select({ id: stores.id }).from(stores).where(eq(stores.id, storeId)).limit(1);
+    const [store] = await tx
+      .select({ id: stores.id })
+      .from(stores)
+      .where(eq(stores.id, storeId))
+      .limit(1);
     if (store === undefined) return { status: 'store_not_found' };
 
     const members = await lockMembers(storeId, tx);
@@ -468,7 +473,12 @@ export async function updateMemberRow(
     if (target === undefined) return { status: 'member_not_found' };
 
     const owners = members.filter((m) => m.role === 'owner').length;
-    if (patch.role !== undefined && patch.role !== 'owner' && target.role === 'owner' && owners <= 1) {
+    if (
+      patch.role !== undefined &&
+      patch.role !== 'owner' &&
+      target.role === 'owner' &&
+      owners <= 1
+    ) {
       return { status: 'last_owner' };
     }
 
@@ -495,7 +505,11 @@ export async function deleteMemberRow(
   db: DatabaseOrTransaction = getDb(),
 ): Promise<MembershipOutcome> {
   return await db.transaction(async (tx) => {
-    const [store] = await tx.select({ id: stores.id }).from(stores).where(eq(stores.id, storeId)).limit(1);
+    const [store] = await tx
+      .select({ id: stores.id })
+      .from(stores)
+      .where(eq(stores.id, storeId))
+      .limit(1);
     if (store === undefined) return { status: 'store_not_found' };
 
     const members = await lockMembers(storeId, tx);

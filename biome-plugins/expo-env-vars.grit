@@ -1,0 +1,13 @@
+language js
+
+or {
+  `process.env[$key]` as $read where {
+    register_diagnostic(span=$read, message="Read EXPO_PUBLIC_* variables as static `process.env.EXPO_PUBLIC_NAME` member expressions: Metro only inlines static reads, so a computed `process.env[...]` is undefined in the shipped bundle (port of eslint-plugin-expo no-dynamic-env-var).")
+  },
+  `const { $props } = process.env` as $read where {
+    register_diagnostic(span=$read, message="Do not destructure process.env: Metro only inlines static `process.env.EXPO_PUBLIC_NAME` reads, so destructured variables are undefined in the shipped bundle (port of eslint-plugin-expo no-env-var-destructuring).")
+  },
+  `let { $props } = process.env` as $read where {
+    register_diagnostic(span=$read, message="Do not destructure process.env: Metro only inlines static `process.env.EXPO_PUBLIC_NAME` reads, so destructured variables are undefined in the shipped bundle (port of eslint-plugin-expo no-env-var-destructuring).")
+  }
+}

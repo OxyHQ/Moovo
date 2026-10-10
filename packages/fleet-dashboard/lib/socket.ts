@@ -1,6 +1,6 @@
-import { io, type Socket } from "socket.io-client";
-import type { GeoPoint, JobStatus, JobOfferView } from "@moovo/shared-types";
-import { SOCKET_URL } from "@/lib/config";
+import { io, type Socket } from 'socket.io-client';
+import type { GeoPoint, JobStatus, JobOfferView } from '@moovo/shared-types';
+import { SOCKET_URL } from '@/lib/config';
 
 /**
  * Moovo Hub Socket.IO client.
@@ -31,14 +31,14 @@ export interface JobLocationPayload {
 
 /** The server→client events this dashboard listens for, with their payloads. */
 export interface JobServerToClientEvents {
-  "job:offer": (offer: JobOfferView) => void;
-  "job:offer_taken": (payload: { jobId: string; offerId: string }) => void;
-  "job:accepted": (payload: JobStatusPayload) => void;
-  "job:picked_up": (payload: JobStatusPayload) => void;
-  "job:in_transit": (payload: JobStatusPayload) => void;
-  "job:delivered": (payload: JobStatusPayload) => void;
-  "job:cancelled": (payload: JobStatusPayload) => void;
-  "job:location": (payload: JobLocationPayload) => void;
+  'job:offer': (offer: JobOfferView) => void;
+  'job:offer_taken': (payload: { jobId: string; offerId: string }) => void;
+  'job:accepted': (payload: JobStatusPayload) => void;
+  'job:picked_up': (payload: JobStatusPayload) => void;
+  'job:in_transit': (payload: JobStatusPayload) => void;
+  'job:delivered': (payload: JobStatusPayload) => void;
+  'job:cancelled': (payload: JobStatusPayload) => void;
+  'job:location': (payload: JobLocationPayload) => void;
 }
 
 /** A typed Moovo Socket.IO client (server→client events; no client→server emits). */
@@ -51,13 +51,13 @@ export type MoovoSocket = Socket<JobServerToClientEvents>;
  */
 export function connectMoovoSocket(getToken: () => string | null): MoovoSocket {
   return io(SOCKET_URL, {
-    transports: ["websocket", "polling"],
+    transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 10000,
     // Callback form so every (re)connect sends a FRESH token; the server
     // verifies it and auto-joins the user's room.
-    auth: (cb) => cb({ token: getToken() ?? "" }),
+    auth: (cb) => cb({ token: getToken() ?? '' }),
   });
 }

@@ -1,9 +1,9 @@
-import { View, Pressable } from "react-native";
-import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ArrowLeft } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { useColorScheme } from "@/lib/useColorScheme";
+import { View, Pressable } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ArrowLeft } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { useColorScheme } from '@/lib/useColorScheme';
 
 /**
  * A lightweight back-navigation header for the courier stack screens (vehicles,
@@ -44,9 +44,7 @@ export function ScreenHeader({ title, subtitle, right }: ScreenHeaderProps) {
       </Pressable>
       <View className="flex-1">
         <Text className="text-lg font-bold text-foreground">{title}</Text>
-        {subtitle ? (
-          <Text className="text-sm text-muted-foreground">{subtitle}</Text>
-        ) : null}
+        {subtitle ? <Text className="text-sm text-muted-foreground">{subtitle}</Text> : null}
       </View>
       {right ? <View className="pr-2">{right}</View> : null}
     </View>

@@ -168,8 +168,7 @@ const ID_COLUMNS_WITHOUT_FOREIGN_KEY: readonly { column: string; reason: string 
   },
   {
     column: 'notifications.conversation_id',
-    reason:
-      'Names a conversation in another Oxy application; Moovo has no conversations.',
+    reason: 'Names a conversation in another Oxy application; Moovo has no conversations.',
   },
 
   // No `locations` table exists yet; the multi-location seam is unused in F1.

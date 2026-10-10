@@ -1,30 +1,30 @@
-import { type ReactNode } from "react";
-import { View, ScrollView, ActivityIndicator, Pressable } from "react-native";
-import Head from "expo-router/head";
-import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import { useOxy, openAccountDialog } from "@oxy.so/services";
-import type { JobSummary } from "@moovo/shared-types";
-import { ChevronRight } from "lucide-react-native";
-import { Text } from "@/components/ui/text";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { ScreenHeader } from "@/components/courier/ScreenHeader";
-import { useColorScheme } from "@/lib/useColorScheme";
-import { queryKeys } from "@/lib/hooks/query-keys";
-import { fetchCourierJobs } from "@/lib/api/jobs";
-import { formatDisplayMoney } from "@/lib/money";
-import { statusLabel, isTerminal } from "@/lib/job-flow";
-import { errorMessage } from "@/lib/api/errors";
+import { type ReactNode } from 'react';
+import { View, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import Head from 'expo-router/head';
+import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { useOxy, openAccountDialog } from '@oxy.so/services';
+import type { JobSummary } from '@moovo/shared-types';
+import { ChevronRight } from 'lucide-react-native';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ScreenHeader } from '@/components/courier/ScreenHeader';
+import { useColorScheme } from '@/lib/useColorScheme';
+import { queryKeys } from '@/lib/hooks/query-keys';
+import { fetchCourierJobs } from '@/lib/api/jobs';
+import { formatDisplayMoney } from '@/lib/money';
+import { statusLabel, isTerminal } from '@/lib/job-flow';
+import { errorMessage } from '@/lib/api/errors';
 
 /** Format a job's creation date for the card (locale short date). */
 function formatJobDate(iso: string): string {
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 }
 
@@ -54,24 +54,16 @@ function JobCard({ job }: { job: JobSummary }) {
               <Text className="text-base font-semibold text-surface-foreground">
                 {job.jobNumber}
               </Text>
-              <Text className="text-base font-semibold text-surface-foreground">
-                {fareLabel}
-              </Text>
+              <Text className="text-base font-semibold text-surface-foreground">{fareLabel}</Text>
             </View>
             <View className="flex-row items-center gap-2">
-              <Text className="text-sm capitalize text-muted-foreground">
-                {job.type}
-              </Text>
+              <Text className="text-sm capitalize text-muted-foreground">{job.type}</Text>
               <Text className="text-sm text-muted-foreground">·</Text>
-              <Text className="text-sm capitalize text-muted-foreground">
-                {job.sizeClass}
-              </Text>
+              <Text className="text-sm capitalize text-muted-foreground">{job.sizeClass}</Text>
               {dateLabel ? (
                 <>
                   <Text className="text-sm text-muted-foreground">·</Text>
-                  <Text className="text-sm text-muted-foreground">
-                    {dateLabel}
-                  </Text>
+                  <Text className="text-sm text-muted-foreground">{dateLabel}</Text>
                 </>
               ) : null}
             </View>
@@ -150,7 +142,7 @@ function JobsBody() {
   if (jobsQuery.isError) {
     return (
       <Text className="px-8 py-24 text-center text-sm text-muted-foreground">
-        {errorMessage(jobsQuery.error, "Could not load your jobs")}
+        {errorMessage(jobsQuery.error, 'Could not load your jobs')}
       </Text>
     );
   }
@@ -159,9 +151,7 @@ function JobsBody() {
   if (jobs.length === 0) {
     return (
       <View className="items-center gap-2 px-8 py-24">
-        <Text className="text-base font-semibold text-surface-foreground">
-          No jobs yet
-        </Text>
+        <Text className="text-base font-semibold text-surface-foreground">No jobs yet</Text>
         <Text className="text-center text-sm text-muted-foreground">
           Go online from Home to start receiving jobs.
         </Text>
@@ -195,10 +185,7 @@ export default function JobsScreen() {
         <title>Jobs · Moovo Go</title>
       </Head>
       <ScreenHeader title="Jobs" subtitle="Your active jobs and history" />
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="pb-24 mx-auto w-full max-w-2xl"
-      >
+      <ScrollView className="flex-1" contentContainerClassName="pb-24 mx-auto w-full max-w-2xl">
         <JobsBody />
       </ScrollView>
     </View>

@@ -11,11 +11,7 @@
 import type { Request, Response } from 'express';
 import type { InviteMemberInput, UpdateMemberInput, StoreMember } from '@moovo/shared-types';
 import type { StoreMemberRecord, StoreRecord } from '../../db/stores/storeRepository.js';
-import {
-  inviteMember,
-  updateMember,
-  removeMember,
-} from '../../services/store.service.js';
+import { inviteMember, updateMember, removeMember } from '../../services/store.service.js';
 import { sendSuccess } from '../../utils/api-response.js';
 import { respondWithError } from '../../lib/errors/error-codes.js';
 import { routeParam } from '../../utils/request.js';
@@ -32,7 +28,10 @@ function toMemberDTO(member: StoreMemberRecord): StoreMember {
 }
 
 /** Read the loaded store + acting membership, or respond 500 if missing. */
-function loaded(req: Request, res: Response): { store: StoreRecord; actor: StoreMemberRecord } | null {
+function loaded(
+  req: Request,
+  res: Response,
+): { store: StoreRecord; actor: StoreMemberRecord } | null {
   const store = req.store;
   const actor = req.storeMembership;
   if (!store || !actor) {

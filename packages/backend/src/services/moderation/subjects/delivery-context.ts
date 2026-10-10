@@ -135,7 +135,10 @@ async function loadShipment(shipmentId: string | undefined): Promise<SnapshotShi
  * refuses a nested structure here, which is the constraint that stops a whole Job
  * document being posted through this field.
  */
-function deliveryFacts(job: SnapshotJob, shipment: SnapshotShipment | null): Record<string, string | number | boolean> {
+function deliveryFacts(
+  job: SnapshotJob,
+  shipment: SnapshotShipment | null,
+): Record<string, string | number | boolean> {
   const pickup = redactEndpoint({
     city: job.pickupCity,
     region: job.pickupRegion,
@@ -192,9 +195,7 @@ function deliveryFacts(job: SnapshotJob, shipment: SnapshotShipment | null): Rec
 }
 
 /** The delivery as the SUBJECT's own material (a reported delivery). */
-export async function buildDeliveryResource(
-  job: SnapshotJob,
-): Promise<ModerationResource> {
+export async function buildDeliveryResource(job: SnapshotJob): Promise<ModerationResource> {
   const shipment = await loadShipment(job.shipmentId);
   return {
     type: 'metadata',

@@ -49,7 +49,9 @@ function ownerCount(company: Pick<CourierCompanyRecord, 'members'>): number {
 }
 
 /** Map a service-area DTO to the persisted GeoJSON-center shape. */
-function toServiceArea(area: NonNullable<CreateCompanyInput['serviceAreas']>[number]): CompanyServiceAreaValue {
+function toServiceArea(
+  area: NonNullable<CreateCompanyInput['serviceAreas']>[number],
+): CompanyServiceAreaValue {
   return {
     center: { type: 'Point', coordinates: [...area.center.coordinates] },
     radiusM: area.radiusM,
@@ -182,10 +184,7 @@ export async function inviteMember(
       data: { companyId: company.id, role: input.role },
     });
   } catch (err) {
-    log.general.warn(
-      { err, companyId: company.id },
-      'company_member_invited notification failed',
-    );
+    log.general.warn({ err, companyId: company.id }, 'company_member_invited notification failed');
   }
 
   return getCompany(companyId);

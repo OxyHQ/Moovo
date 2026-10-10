@@ -162,7 +162,9 @@ function shipmentFor(type: ShipmentType, sizeClass: SizeClass): ShipmentRecord {
 }
 
 /** Every component of a breakdown, with its name, including the optional ones. */
-function components(breakdown: PriceBreakdown): Array<[string, { originalCurrency?: string; originalAmount?: number }]> {
+function components(
+  breakdown: PriceBreakdown,
+): Array<[string, { originalCurrency?: string; originalAmount?: number }]> {
   const entries: Array<[string, { originalCurrency?: string; originalAmount?: number }]> = [
     ['base', breakdown.base],
     ['distance', breakdown.distance],

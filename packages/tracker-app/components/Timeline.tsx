@@ -60,9 +60,7 @@ export function Timeline({ checkpoints }: { checkpoints: TrackingCheckpoint[] })
                 {checkpoint.locationText ? (
                   <>
                     <Text className="text-xs text-muted-foreground">·</Text>
-                    <Text className="text-xs text-muted-foreground">
-                      {checkpoint.locationText}
-                    </Text>
+                    <Text className="text-xs text-muted-foreground">{checkpoint.locationText}</Text>
                   </>
                 ) : null}
               </View>

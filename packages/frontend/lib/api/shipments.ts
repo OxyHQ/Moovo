@@ -51,10 +51,7 @@ export async function fetchShipment(id: string): Promise<Shipment> {
 }
 
 /** Fetch the display-converted quotes generated for the caller's shipment. */
-export async function fetchShipmentQuotes(
-  id: string,
-  currency?: string,
-): Promise<QuoteList> {
+export async function fetchShipmentQuotes(id: string, currency?: string): Promise<QuoteList> {
   const { data } = await apiClient.get<ApiResponse<QuoteList>>(`/shipments/${id}/quotes`, {
     params: currency ? { currency } : undefined,
   });
@@ -62,10 +59,7 @@ export async function fetchShipmentQuotes(
 }
 
 /** Book a selected quote (creates exactly one job) and return the created job. */
-export async function bookShipment(
-  id: string,
-  input: BookShipmentInput,
-): Promise<BookResult> {
+export async function bookShipment(id: string, input: BookShipmentInput): Promise<BookResult> {
   const { data } = await apiClient.post<ApiResponse<BookResult>>(`/shipments/${id}/book`, input);
   return unwrap(data);
 }

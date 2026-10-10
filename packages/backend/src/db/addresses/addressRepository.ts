@@ -184,7 +184,10 @@ export async function clearDefaultAddresses(
 ): Promise<void> {
   const clauses = [eq(addresses.oxyUserId, oxyUserId), eq(addresses.isDefault, true)];
   if (exceptAddressId !== undefined) clauses.push(ne(addresses.id, exceptAddressId));
-  await db.update(addresses).set({ isDefault: false }).where(and(...clauses));
+  await db
+    .update(addresses)
+    .set({ isDefault: false })
+    .where(and(...clauses));
 }
 
 /** Promote one address to default. Pairs with `clearDefaultAddresses`. */

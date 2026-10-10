@@ -1,18 +1,8 @@
-import { useMemo, useRef } from "react";
-import { View, StyleSheet } from "react-native";
-import MapView, {
-  Marker,
-  Polyline,
-  UrlTile,
-  type Region,
-} from "react-native-maps";
-import { cn } from "@/lib/utils";
-import {
-  type JobMapProps,
-  type LngLat,
-  MARKER_COLORS,
-  OSM_TILE_URL,
-} from "./Map.types";
+import { useMemo, useRef } from 'react';
+import { View, StyleSheet } from 'react-native';
+import MapView, { Marker, Polyline, UrlTile, type Region } from 'react-native-maps';
+import { cn } from '@/lib/utils';
+import { type JobMapProps, type LngLat, MARKER_COLORS, OSM_TILE_URL } from './Map.types';
 
 /**
  * Native job map (react-native-maps over free OpenStreetMap raster tiles via
@@ -76,7 +66,7 @@ export default function JobMap({ markers, route, className }: JobMapProps) {
   );
 
   return (
-    <View className={cn("h-full w-full overflow-hidden rounded-2xl", className)}>
+    <View className={cn('h-full w-full overflow-hidden rounded-2xl', className)}>
       <MapView
         ref={mapRef}
         style={StyleSheet.absoluteFill}
