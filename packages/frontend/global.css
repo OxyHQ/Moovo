@@ -71,14 +71,20 @@
    goes on a CHILD (the shell grid container via `overflow-x-clip`), never here. */
 html,
 body {
+  /* biome-ignore lint/complexity/noImportantStyles: must beat the framework's injected html/body/#root reset (see above) */
   height: auto !important;
+  /* biome-ignore lint/complexity/noImportantStyles: must beat the framework's injected html/body/#root reset (see above) */
   min-height: 100% !important;
+  /* biome-ignore lint/complexity/noImportantStyles: must beat the framework's injected html/body/#root reset (see above) */
   overflow: visible !important;
 }
 
 #root {
+  /* biome-ignore lint/complexity/noImportantStyles: must beat the framework's injected html/body/#root reset (see above) */
   height: auto !important;
+  /* biome-ignore lint/complexity/noImportantStyles: must beat the framework's injected html/body/#root reset (see above) */
   min-height: 100vh !important;
+  /* biome-ignore lint/complexity/noImportantStyles: must beat the framework's injected html/body/#root reset (see above) */
   overflow: visible !important;
 }
 
