@@ -72,7 +72,7 @@ export interface SendNotificationOptions {
   body: string;
   priority?: NotificationPriority;
   channels?: NotificationChannel[];
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   triggerId?: string;
   conversationId?: string;
   expiresAt?: Date;
