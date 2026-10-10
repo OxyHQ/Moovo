@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { cn } from '@/lib/utils';

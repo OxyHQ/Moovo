@@ -11,7 +11,7 @@
 
 import Expo, { type ExpoPushMessage, type ExpoPushReceiptId } from 'expo-server-sdk';
 import { WebPushError } from 'web-push';
-import {
+import type {
   NOTIFICATION_CHANNELS,
   NOTIFICATION_PRIORITIES,
   NOTIFICATION_STATUSES,
@@ -72,7 +72,7 @@ export interface SendNotificationOptions {
   body: string;
   priority?: NotificationPriority;
   channels?: NotificationChannel[];
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   triggerId?: string;
   conversationId?: string;
   expiresAt?: Date;

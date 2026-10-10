@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Company, UpdateCompanyInput, CurrencyCode } from '@moovo/shared-types';
@@ -150,7 +150,7 @@ export default function CompanySettingsScreen() {
   const { t } = useTranslation();
   const ctx = useCompanyContext();
 
-  let body;
+  let body: ReactNode;
   if (ctx.isLoadingCompanies || ctx.isLoadingCompany) {
     body = (
       <View className="items-center py-16">

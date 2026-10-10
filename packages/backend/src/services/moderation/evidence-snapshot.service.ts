@@ -29,7 +29,7 @@
  * allegation codes are sorted, and resource order is positional.
  */
 
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 import type { ReportInput } from '@crowdsource.you/core';
 import type { ReportRecord } from '../../db/moderation/reportRepository.js';
 import { REPORT_TAXONOMY_VERSION, allegationsForCategories } from './report-taxonomy.js';

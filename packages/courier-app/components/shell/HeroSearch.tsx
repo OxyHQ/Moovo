@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { View, Pressable, TextInput } from 'react-native';
 import { Search } from 'lucide-react-native';
 import { MoovoWordmark } from '@/components/ui/moovo-wordmark';

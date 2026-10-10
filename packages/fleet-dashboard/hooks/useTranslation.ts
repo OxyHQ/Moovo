@@ -1,3 +1,4 @@
+import type { TranslateOptions } from 'i18n-js';
 import i18n from '@/lib/i18n';
 import { useI18nStore } from '@/lib/stores/i18n-store';
 
@@ -9,7 +10,7 @@ export function useTranslation() {
   const locale = useI18nStore((s) => s.locale);
   const setLocale = useI18nStore((s) => s.setLocale);
 
-  const t = (key: string, params?: Record<string, any>) => {
+  const t = (key: string, params?: TranslateOptions) => {
     return i18n.t(key, params);
   };
 

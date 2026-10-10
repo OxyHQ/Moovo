@@ -72,7 +72,7 @@ export async function getCategoryListings(req: Request, res: Response): Promise<
     // by unique slug, so an inactive category must 404 rather than silently
     // serve an empty listing page, which is what dropping the check would do.
     const category = await findCategoryBySlug(slug);
-    if (!category || !category.isActive) {
+    if (!category?.isActive) {
       throw notFound('Category not found');
     }
 

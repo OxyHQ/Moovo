@@ -1,7 +1,7 @@
 import { observeEcosystemSocket } from './ecosystemActivity';
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
-import http from 'http';
+import type http from 'node:http';
 import { getRedisClient, getRedisSubClient } from './lib/redis.js';
 import { oxyClient } from './middleware/auth.js';
 import { log } from './lib/logger.js';

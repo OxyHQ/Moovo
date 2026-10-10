@@ -79,6 +79,7 @@ export function ReviewStars({ rating, count, size = DEFAULT_SIZE }: ReviewStarsP
       style={{ flexDirection: 'row' }}
     >
       {Array.from({ length: STAR_COUNT }, (_, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: a fixed row of STAR_COUNT stars; the position IS the identity
         <View key={index} style={{ marginRight: index < STAR_COUNT - 1 ? STAR_GAP : 0 }}>
           <Star fill={rating - index} size={size} emptyColor={colors.border} />
         </View>

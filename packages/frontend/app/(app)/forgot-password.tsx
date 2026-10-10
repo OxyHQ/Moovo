@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
+import axios from 'axios';
 import { AuthContainer, AuthLogo, AuthInput, AuthButton, AuthError } from '@/components/auth';
 import apiClient from '@/lib/api/client';
 import { toast } from '@oxy.so/bloom/toast';
@@ -32,9 +33,11 @@ export default function ForgotPasswordScreen() {
       setSent(true);
       toast.success(t('forgotPassword.checkEmailToast'));
       router.back();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Reset password error:', error);
-      const errorMessage = error.response?.data?.error || t('forgotPassword.failedToSend');
+      const serverError = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
+      const errorMessage =
+        (typeof serverError === 'string' && serverError) || t('forgotPassword.failedToSend');
       setError(errorMessage);
 
       toast.error(errorMessage);

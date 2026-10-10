@@ -1,5 +1,5 @@
-import crypto from 'crypto';
-import { Request, Response, NextFunction } from 'express';
+import crypto from 'node:crypto';
+import type { Request, Response, NextFunction } from 'express';
 import {
   OxyServer,
   createOptionalOxyAuth,
@@ -77,7 +77,8 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction): v
 export function authenticateTokenOrApiKey(req: Request, res: Response, next: NextFunction): void {
   // Already authenticated (e.g., by channel bot pre-middleware)
   if (req.user) {
-    return next();
+    next();
+    return;
   }
 
   const authHeader = req.headers.authorization;
@@ -106,7 +107,8 @@ export function authenticateTokenOrApiKey(req: Request, res: Response, next: Nex
       environment: SERVICE_ENVIRONMENT,
       tier: 'internal',
     };
-    return next();
+    next();
+    return;
   }
 
   // Oxy JWT auth
@@ -120,11 +122,13 @@ export function requireScope(scope: string) {
   return (req: Request, res: Response, next: NextFunction): void => {
     // Session users have all scopes
     if (req.user && !req.apiKey) {
-      return next();
+      next();
+      return;
     }
 
     if (req.apiKey?.scopes.includes(scope)) {
-      return next();
+      next();
+      return;
     }
 
     res.status(403).json({
@@ -181,7 +185,7 @@ export async function authenticateTelegramBot(
       return;
     }
 
-    const crypto = await import('crypto');
+    const crypto = await import('node:crypto');
     if (!crypto.timingSafeEqual(expectedBuffer, providedBuffer)) {
       log.auth.warn({ ip: getClientIp(req) }, 'Invalid bot secret');
       res.status(401).json({ error: 'Invalid bot authentication' });

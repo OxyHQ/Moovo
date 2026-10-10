@@ -14,7 +14,7 @@
  * malformed input — a length mismatch returns `false`, never an exception.
  */
 
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 /** Bytes of entropy per code; 16 bytes → 32 hex chars (128 bits). */
 export const CODE_BYTES = 16;

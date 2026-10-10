@@ -52,18 +52,6 @@ function roundRating(avg: number): number {
   return Math.round(avg * 10) / 10;
 }
 
-/** The persisted target-id field name for a target type. */
-function targetIdField(targetType: ReviewTargetType): 'listingId' | 'storeId' | 'sellerOxyUserId' {
-  switch (targetType) {
-    case 'listing':
-      return 'listingId';
-    case 'store':
-      return 'storeId';
-    case 'seller':
-      return 'sellerOxyUserId';
-  }
-}
-
 /** Resolve + validate the required target id from the input for its target type. */
 function resolveTargetId(input: CreateReviewInput): string {
   switch (input.targetType) {
