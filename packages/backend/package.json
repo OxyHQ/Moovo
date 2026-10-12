@@ -27,7 +27,6 @@
     "@socket.io/redis-adapter": "^8.3.0",
     "bullmq": "^5.34.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.2",
     "esbuild": "^0.27.2",
     "expo-server-sdk": "^6.0.0",
