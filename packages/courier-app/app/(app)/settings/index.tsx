@@ -15,7 +15,7 @@ export default function SettingsAccountScreen() {
     if (!isAuthenticated) {
       router.replace('/(app)');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, router]);
 
   return (
     <View className="flex-1 bg-background">

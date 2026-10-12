@@ -78,7 +78,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof View>, SheetConten
       if (!open) {
         slideAnim.setValue(slideDistance);
       }
-    }, [slideDistance, open]);
+    }, [slideDistance, open, slideAnim]);
 
     React.useEffect(() => {
       if (open) {
@@ -108,7 +108,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof View>, SheetConten
           }),
         ]).start();
       }
-    }, [open, slideDistance]);
+    }, [open, slideDistance, slideAnim, fadeAnim]);
 
     return (
       <Modal

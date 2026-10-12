@@ -61,52 +61,12 @@
     "enabled": true,
     "rules": {
       "preset": "recommended",
-      "a11y": {
-        "noSvgWithoutTitle": "warn",
-        "useValidLang": "warn"
-      },
-      "complexity": {
-        "noImportantStyles": "warn",
-        "noUselessSwitchCase": "warn",
-        "useArrowFunction": "warn",
-        "useLiteralKeys": "warn",
-        "useOptionalChain": "warn"
-      },
-      "correctness": {
-        "noUnusedImports": "warn",
-        "noUnusedVariables": "warn",
-        "noVoidTypeReturn": "warn",
-        "useExhaustiveDependencies": "warn"
-      },
-      "security": {
-        "noDangerouslySetInnerHtml": "warn"
-      },
       "style": {
-        "noNonNullAssertion": "warn",
-        "useExponentiationOperator": "warn",
-        "useImportType": "warn",
-        "useNodejsImportProtocol": "warn",
-        "useTemplate": "warn"
-      },
-      "suspicious": {
-        "noArrayIndexKey": "warn",
-        "noExplicitAny": "warn",
-        "noImplicitAnyLet": "warn",
-        "useIterableCallbackReturn": "warn"
+        "noNonNullAssertion": "warn"
       }
     }
   },
   "overrides": [
-    {
-      "includes": ["packages/frontend/**"],
-      "linter": {
-        "rules": {
-          "suspicious": {
-            "noShadowRestrictedNames": "warn"
-          }
-        }
-      }
-    },
     {
       "includes": [
         "packages/frontend/**",

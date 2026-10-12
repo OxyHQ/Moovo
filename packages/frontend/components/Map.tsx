@@ -15,7 +15,7 @@ import {
 } from '@/components/map-types';
 
 /**
- * Native `Map` — react-native-maps over the platform's default map provider.
+ * Native `MoovoMap` — react-native-maps over the platform's default map provider.
  *
  * Mirrors the web maplibre implementation's `MapProps` contract. Web zoom is
  * mapped to a region latitude/longitude delta so the same `initialZoom` reads
@@ -39,7 +39,7 @@ function toRegion([lng, lat]: Coordinates, zoom: number): Region {
   return { latitude: lat, longitude: lng, latitudeDelta: delta, longitudeDelta: delta };
 }
 
-export default function Map({
+export default function MoovoMap({
   markers = [],
   initialCenter,
   initialZoom = DEFAULT_ZOOM,

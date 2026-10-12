@@ -9,7 +9,7 @@ import { MoneyText } from '@/components/transport/MoneyText';
 import { StatusTimeline } from '@/components/transport/StatusTimeline';
 import { CourierInfo } from '@/components/transport/CourierInfo';
 import { QrCard } from '@/components/transport/QrCard';
-import Map from '@/components/Map';
+import MoovoMap from '@/components/Map';
 import type { MapMarker } from '@/components/map-types';
 import { useColorScheme } from '@/lib/useColorScheme';
 import { useJob, useCancelJob } from '@/lib/hooks/use-jobs';
@@ -143,7 +143,7 @@ export default function JobTrackingScreen() {
         <View className="web:mx-auto web:w-full web:max-w-[640px] gap-4">
           {/* Live map. */}
           <View className="h-72 overflow-hidden rounded-2xl border border-border">
-            <Map markers={markers} fitToMarkers />
+            <MoovoMap markers={markers} fitToMarkers />
           </View>
 
           {/* Courier (once assigned). */}

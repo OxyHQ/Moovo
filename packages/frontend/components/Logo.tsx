@@ -1,6 +1,6 @@
-import { type ReactElement } from 'react';
+import type { ReactElement } from 'react';
 import Svg, { Path } from 'react-native-svg';
-import { type ViewStyle } from 'react-native';
+import type { ViewStyle } from 'react-native';
 import { useColorScheme } from '@/lib/useColorScheme';
 
 const LOGO_PATH =

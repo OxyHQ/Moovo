@@ -123,7 +123,6 @@ function buildOrderBy(query: ListingQuery): SQL[] {
       return [sql`${listings.priceMinAmount} asc nulls last`, desc(listings.id)];
     case 'price_desc':
       return [sql`${listings.priceMinAmount} desc nulls last`, desc(listings.id)];
-    case 'newest':
     default:
       return [sql`${listings.publishedAt} desc nulls last`, desc(listings.id)];
   }

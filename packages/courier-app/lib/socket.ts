@@ -26,7 +26,7 @@ const TRANSPORTS = ['websocket', 'polling'] as const;
  * reflects the current session.
  */
 export function connectSocket(token: string): Socket {
-  if (socket && socket.connected && currentToken === token) {
+  if (socket?.connected && currentToken === token) {
     return socket;
   }
   if (socket && currentToken !== token) {

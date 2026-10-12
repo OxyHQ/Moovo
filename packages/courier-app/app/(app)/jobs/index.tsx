@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { View, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';

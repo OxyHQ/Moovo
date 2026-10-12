@@ -69,7 +69,7 @@ export function FleetMap({ markers, initialCenter, height = 320 }: FleetMapProps
     mapRef.current = map;
 
     return () => {
-      markersRef.current.forEach((m) => m.remove());
+      for (const marker of markersRef.current.values()) marker.remove();
       markersRef.current.clear();
       map.remove();
       mapRef.current = null;

@@ -7,7 +7,7 @@
  * controller is thin and the SQL lives in `db/feedback/feedbackRepository`.
  */
 
-import { FEEDBACK_STATUSES, FEEDBACK_TYPES } from '../db/schema/valueSets.js';
+import type { FEEDBACK_STATUSES, FEEDBACK_TYPES } from '../db/schema/valueSets.js';
 import {
   countFeedbackForUser,
   findFeedbackForUser,

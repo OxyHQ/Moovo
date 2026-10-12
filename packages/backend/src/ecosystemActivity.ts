@@ -46,7 +46,7 @@ export function startEcosystemActivity(ready: () => boolean): void {
       'Ecosystem activity is disabled for moovo: no attestable workload identity and no ' +
         'OXY_SERVICE_API_KEY/OXY_SERVICE_API_SECRET pair',
     );
-    return undefined;
+    return;
   }
   if (activity) return;
   activity = createEcosystemTraffic({

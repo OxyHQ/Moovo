@@ -4,7 +4,7 @@ import {
   ecosystemActivityMiddleware,
 } from './ecosystemActivity';
 import express from 'express';
-import http from 'http';
+import http from 'node:http';
 import cors from 'cors';
 import { log } from './lib/logger.js';
 import { isAbortError, isFatalError, isTransientNetworkError } from './lib/error-classification.js';

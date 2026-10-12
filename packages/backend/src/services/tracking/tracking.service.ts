@@ -68,7 +68,7 @@ const REFRESH_COOLDOWN_MS = 60_000;
 
 async function requireCarrier(carrierKey: string): Promise<TrackingCarrierRow> {
   const carrier = await findTrackingCarrierByKey(carrierKey);
-  if (!carrier || !carrier.enabled) {
+  if (!carrier?.enabled) {
     throw notFound(`Unknown or disabled carrier: ${carrierKey}`);
   }
   return carrier;

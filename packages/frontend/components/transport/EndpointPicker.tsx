@@ -2,7 +2,7 @@ import { View, Pressable, ActivityIndicator } from 'react-native';
 import { Crosshair } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Input } from '@/components/ui/input';
-import Map from '@/components/Map';
+import MoovoMap from '@/components/Map';
 import type { MapMarker, MapMarkerKind } from '@/components/map-types';
 import { useColorScheme } from '@/lib/useColorScheme';
 import { useCurrentLocation, reverseGeocode, type Coordinates } from '@/lib/hooks/use-location';
@@ -54,7 +54,7 @@ export function EndpointPicker({
     <View className="gap-3">
       {/* Map picker. */}
       <View className="h-64 overflow-hidden rounded-2xl border border-border">
-        <Map
+        <MoovoMap
           markers={markers}
           initialCenter={value.coordinate}
           interactive

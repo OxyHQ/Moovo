@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator, Platform } from 'react-native';
+import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import Head from 'expo-router/head';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Clock, Truck, Building2, Check } from 'lucide-react-native';

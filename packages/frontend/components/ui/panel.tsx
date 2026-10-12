@@ -55,7 +55,7 @@ export function Panel({
     if (!open) {
       slideAnim.setValue(side === 'right' ? screenWidth : -screenWidth);
     }
-  }, [screenWidth, open, side]);
+  }, [screenWidth, open, side, slideAnim]);
 
   // Animate open/close on mobile
   React.useEffect(() => {
@@ -88,7 +88,7 @@ export function Panel({
         ]).start();
       }
     }
-  }, [open, isLargeScreen, screenWidth, side]);
+  }, [open, isLargeScreen, screenWidth, side, slideAnim, fadeAnim]);
 
   // Desktop: Render as part of flex layout
   if (isLargeScreen) {
