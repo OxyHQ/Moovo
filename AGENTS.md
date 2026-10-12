@@ -471,6 +471,22 @@ prevent.
 - **API** to AWS ECS Fargate via `.github/workflows/deploy-aws.yml`
   (`linux/arm64`, ECR `oxy/moovo`). The ECS service, task definition, ALB rule,
   ECR repo and SSM params must be provisioned in `oxy-infra` first (handoff).
+- **The API runs on Bun.** The Dockerfile's runtime stage is
+  `oven/bun:<pinned>-alpine` (CMD `bun packages/backend/dist/index.js`, Bun is
+  PID 1), and the migrator one-shot in `.github/scripts/run-migration-task.sh`
+  runs `bun packages/backend/dist/db/migrate.js`. The two must always name the
+  same runtime; returning to Node is reverting the change that moved them
+  together. The image's `node` is a symlink to bun, so never write `node` in a
+  command against it. The task definition (oxy-infra `app-moovo.tf`) sets no
+  command, so the image's CMD is what runs. CI guards it three ways:
+  `bun run --filter @moovo/backend test:bun` (the unit suite under Bun),
+  `bun run check:api-entrypoints` (the built artefacts under bun: every failure
+  exits non-zero, a real boot and SIGTERM exit 0) and the `API image smoke`
+  job (`.github/scripts/smoke-api-image.sh`: the real image against Postgres,
+  both migrator phases, a workload-identity token minted with the production
+  `@oxy.so/core`, `/health/ready`, PID 1, graceful SIGTERM). A test file that
+  must run under both runners uses `src/__tests__/fixtures/runner-compat.ts`
+  instead of `vi.hoisted`/`vi.stubEnv`/`vi.stubGlobal`/`.rejects.toSatisfy`.
 - **Four separate Cloudflare Pages projects**, one workflow each, all using
   `wrangler pages deploy`:
 
@@ -484,8 +500,9 @@ prevent.
   Each project and its DNS must be created before the workflow can succeed
   (handoff). A change to the shared frontend stack usually needs all four
   redeployed, not just `deploy-cloudflare.yml`.
-- CI (`.github/workflows/ci.yml`) runs lint, tests, the API build and the app
-  build on every push and PR.
+- CI (`.github/workflows/ci.yml`) runs lint, tests (vitest and, for the unit
+  suite, Bun), the API entrypoint check, the API image smoke, the API build and
+  the app build on every push and PR.
 - **Biome** (root `biome.json`, version pinned in the root `package.json`)
   formats and lints the whole repo; there is no ESLint or Prettier. `bun run
   lint` is `biome check .`, CI runs `bunx biome ci .` in its own ungated job.

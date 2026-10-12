@@ -14,6 +14,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { rejectionOf } from '../../__tests__/fixtures/runner-compat';
 
 const findJobById = vi.fn();
 const casJobAccepted = vi.fn();
@@ -162,7 +163,7 @@ describe('accept — offer-gated CAS', () => {
     findLiveOfferForCourier.mockResolvedValue({ id: 'offer-c1', courierOxyUserId: 'c1' });
     casJobAccepted.mockResolvedValue(null);
 
-    await expect(accept('c1', 'job-1')).rejects.toSatisfy(
+    expect(await rejectionOf(accept('c1', 'job-1'))).toSatisfy(
       (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.CONFLICT,
     );
     expect(setOfferStatus).toHaveBeenCalledWith('offer-c1', 'superseded');
@@ -173,7 +174,7 @@ describe('accept — offer-gated CAS', () => {
     findJobById.mockResolvedValue(job());
     findLiveOfferForCourier.mockResolvedValue(null);
 
-    await expect(accept('c1', 'job-1')).rejects.toSatisfy(
+    expect(await rejectionOf(accept('c1', 'job-1'))).toSatisfy(
       (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.FORBIDDEN,
     );
     expect(casJobAccepted).not.toHaveBeenCalled();
@@ -182,7 +183,7 @@ describe('accept — offer-gated CAS', () => {
   it('an external-provider job cannot be accepted by a courier', async () => {
     findJobById.mockResolvedValue(job({ fulfillmentType: 'external_provider' }));
 
-    await expect(accept('c1', 'job-1')).rejects.toSatisfy(
+    expect(await rejectionOf(accept('c1', 'job-1'))).toSatisfy(
       (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.CONFLICT,
     );
     // Refused before the offer is even looked up: the rail is wrong, not the
@@ -280,7 +281,7 @@ describe('scanJob — QR pickup/dropoff proof', () => {
     findJobById.mockResolvedValue(scannable('accepted'));
     verifyCode.mockReturnValue(false);
 
-    await expect(scanJob('c1', 'job-1', { leg: 'pickup', code: 'wrong' })).rejects.toSatisfy(
+    expect(await rejectionOf(scanJob('c1', 'job-1', { leg: 'pickup', code: 'wrong' }))).toSatisfy(
       (err: unknown) =>
         isMoovoError(err) &&
         err.code === ErrorCodes.VALIDATION_ERROR &&
@@ -293,7 +294,7 @@ describe('scanJob — QR pickup/dropoff proof', () => {
   it('a pickup scan in the wrong status is a CONFLICT, before the code is checked', async () => {
     findJobById.mockResolvedValue(scannable('in_transit'));
 
-    await expect(scanJob('c1', 'job-1', { leg: 'pickup', code: 'p' })).rejects.toSatisfy(
+    expect(await rejectionOf(scanJob('c1', 'job-1', { leg: 'pickup', code: 'p' }))).toSatisfy(
       (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.CONFLICT,
     );
     expect(verifyCode).not.toHaveBeenCalled();
@@ -302,9 +303,9 @@ describe('scanJob — QR pickup/dropoff proof', () => {
   it('a courier who is not the assigned one is forbidden', async () => {
     findJobById.mockResolvedValue(scannable('accepted'));
 
-    await expect(scanJob('someone-else', 'job-1', { leg: 'pickup', code: 'p' })).rejects.toSatisfy(
-      (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.FORBIDDEN,
-    );
+    expect(
+      await rejectionOf(scanJob('someone-else', 'job-1', { leg: 'pickup', code: 'p' })),
+    ).toSatisfy((err: unknown) => isMoovoError(err) && err.code === ErrorCodes.FORBIDDEN);
     expect(verifyCode).not.toHaveBeenCalled();
   });
 });

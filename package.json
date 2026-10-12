@@ -32,7 +32,8 @@
     "ios": "bun run --filter @moovo/frontend ios",
     "web": "bun run --filter @moovo/frontend web",
     "postinstall": "bun run --filter @moovo/shared-types build",
-    "test:worker": "bun test scripts/asset-worker.test.ts"
+    "test:worker": "bun test scripts/asset-worker.test.ts",
+    "check:api-entrypoints": "bun run build:backend && bun scripts/check-api-entrypoints.ts"
   },
   "keywords": [
     "monorepo",
