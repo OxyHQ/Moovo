@@ -7,6 +7,7 @@ import {
   POSTGRES_TESTS_REQUIRED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../testDatabase';
 
@@ -112,14 +113,16 @@ describeIfPostgres('the Postgres test harness', () => {
   });
 
   it('creates a throwaway database, not the admin one it was pointed at', async () => {
-    const name = new URL(suite!.databaseUrl).pathname.slice(1);
+    const name = new URL(requireSuite(suite).databaseUrl).pathname.slice(1);
     // The prefix is `@oxy.so/db`'s, and the check matters: `TEST_DATABASE_URL`
     // names the ADMIN database, so a harness that failed to create anything
     // would hand back a working handle to `postgres` and every suite would
     // quietly share one database.
     expect(name).toMatch(/^oxydb_test_[0-9a-f]{16}$/);
 
-    const [row] = await suite!.client<{ current: string }[]>`SELECT current_database() AS current`;
+    const [row] = await requireSuite(suite).client<
+      { current: string }[]
+    >`SELECT current_database() AS current`;
     expect(row?.current).toBe(name);
   });
 
@@ -138,7 +141,7 @@ describeIfPostgres('the Postgres test harness', () => {
     await expect(
       runMigrateEntrypoint(['--target-database=definitely_not_this_database', '--phase=all'], {
         ...process.env,
-        DATABASE_URL: suite!.databaseUrl,
+        DATABASE_URL: requireSuite(suite).databaseUrl,
       }),
     ).rejects.toThrow(
       // Pinned to a message only the guard produces, naming BOTH the expected
@@ -153,11 +156,11 @@ describeIfPostgres('the Postgres test harness', () => {
     // Idempotence is the property the deploy depends on: the one-shot task runs
     // on every release, and a second run over an already-migrated database must
     // be a no-op rather than an error.
-    const name = new URL(suite!.databaseUrl).pathname.slice(1);
+    const name = new URL(requireSuite(suite).databaseUrl).pathname.slice(1);
     await expect(
       runMigrateEntrypoint([`--target-database=${name}`, '--phase=all'], {
         ...process.env,
-        DATABASE_URL: suite!.databaseUrl,
+        DATABASE_URL: requireSuite(suite).databaseUrl,
       }),
     ).resolves.toBeUndefined();
   });
@@ -189,7 +192,7 @@ describeIfPostgres('the Postgres test harness', () => {
 
     // The type is not merely declared but USABLE — an extension row with a
     // broken install would still satisfy the query above.
-    const [point] = await suite!.client<{ srid: number }[]>`
+    const [point] = await requireSuite(suite).client<{ srid: number }[]>`
       SELECT ST_SRID(ST_SetSRID(ST_MakePoint(0, 0), 4326)::geography) AS srid
     `;
     expect(point?.srid).toBe(4326);
@@ -203,7 +206,7 @@ describeIfPostgres('the Postgres test harness', () => {
     const [row] = await getDb().execute<{ current: string }>(
       sql`SELECT current_database() AS current`,
     );
-    expect(row?.current).toBe(new URL(suite!.databaseUrl).pathname.slice(1));
+    expect(row?.current).toBe(new URL(requireSuite(suite).databaseUrl).pathname.slice(1));
   });
 });
 

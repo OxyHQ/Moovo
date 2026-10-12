@@ -506,9 +506,10 @@ prevent.
 - **Biome** (root `biome.json`, version pinned in the root `package.json`)
   formats and lints the whole repo; there is no ESLint or Prettier. `bun run
   lint` is `biome check .`, CI runs `bunx biome ci .` in its own ungated job.
-  Rules set to `"warn"` in `biome.json` are a baseline of pre-existing
-  violations, not a statement that they are fine: tighten them to `"error"` as
-  they reach zero. `biome-plugins/expo-env-vars.grit` (scoped to the four Expo
+  Every rule runs at the recommended preset's level; there is no warning
+  baseline, and `biome ci .` reports zero warnings and zero infos. A
+  justified exception is a single-line `biome-ignore` with its reason on the
+  line it covers, never a rule lowered in `biome.json`. `biome-plugins/expo-env-vars.grit` (scoped to the four Expo
   apps) refuses computed `process.env[...]` reads and destructuring of
   `process.env`, by declaration (`const`/`let`/`var`) or by assignment
   (`({ A } = process.env)`), because Metro inlines only static `process.env.EXPO_PUBLIC_*`

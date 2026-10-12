@@ -20,6 +20,7 @@ import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../../../db/testDatabase';
 import {
@@ -42,7 +43,7 @@ describeIfPostgres('the tracking poll claim', () => {
   /** A pollable parcel, due now. `poll_supported` is irrelevant here — the
    * claim reads the parcel, and the carrier filter is the caller's job. */
   async function insertDueParcel(id: string, number: string, carrierKey = 'ups') {
-    await suite!.client`INSERT INTO tracked_parcels ${suite!.client({
+    await requireSuite(suite).client`INSERT INTO tracked_parcels ${requireSuite(suite).client({
       id,
       carrier_key: carrierKey,
       tracking_number: number,
@@ -68,7 +69,7 @@ describeIfPostgres('the tracking poll claim', () => {
   });
 
   beforeEach(async () => {
-    await suite!.client`DELETE FROM tracked_parcels`;
+    await requireSuite(suite).client`DELETE FROM tracked_parcels`;
   });
 
   describe('claiming', () => {
@@ -103,7 +104,7 @@ describeIfPostgres('the tracking poll claim', () => {
       // must not strand a parcel forever.
       await insertDueParcel('p-3', 'AAA000000000003');
       await claimDueParcel({ leaseOwner: 'worker-a', leaseMs: 60_000, carrierKeys: ['ups'] });
-      await suite!.client`
+      await requireSuite(suite).client`
         UPDATE tracked_parcels SET lease_until = ${PAST.toISOString()} WHERE id = 'p-3'
       `;
 
@@ -119,7 +120,7 @@ describeIfPostgres('the tracking poll claim', () => {
     it('never claims a parcel with no due time', async () => {
       // Terminal, unwatched and deep-link parcels all sit here, and they are
       // the large majority of the table.
-      await suite!.client`INSERT INTO tracked_parcels ${suite!.client({
+      await requireSuite(suite).client`INSERT INTO tracked_parcels ${requireSuite(suite).client({
         id: 'p-idle',
         carrier_key: 'ups',
         tracking_number: 'AAA000000000004',
@@ -173,7 +174,7 @@ describeIfPostgres('the tracking poll claim', () => {
     it('refuses to renew a lease that has already lapsed', async () => {
       await insertDueParcel('p-lapsed', 'AAA000000000009');
       await claimDueParcel({ leaseOwner: 'worker-a', leaseMs: 60_000, carrierKeys: ['ups'] });
-      await suite!.client`
+      await requireSuite(suite).client`
         UPDATE tracked_parcels SET lease_until = ${PAST.toISOString()} WHERE id = 'p-lapsed'
       `;
       expect(await renewParcelLease('p-lapsed', 'worker-a', 60_000)).toBe(false);

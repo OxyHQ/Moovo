@@ -21,6 +21,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import assert from 'node:assert/strict';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TRACKING_STATUS_META } from '../tracking-events.service.js';
 import { EVENTS } from '../../../lib/socket-events.js';
@@ -106,7 +107,8 @@ describe('what the tracker notifies about', () => {
     // at runtime — and only where a real database exists, which is to say not
     // in any mocked test.
     for (const meta of Object.values(TRACKING_STATUS_META)) {
-      expect(NOTIFICATION_TYPES).toContain(meta!.notification);
+      assert(meta);
+      expect(NOTIFICATION_TYPES).toContain(meta.notification);
     }
   });
 

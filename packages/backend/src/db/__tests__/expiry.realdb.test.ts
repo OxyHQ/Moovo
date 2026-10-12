@@ -17,6 +17,7 @@ import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../testDatabase';
 import { EXPIRY_TARGETS, sweepExpiredRowsOnce } from '../expiry';
@@ -57,7 +58,7 @@ describeIfPostgres('the expiry sweep', () => {
   });
 
   it('reaps a lapsed quote and leaves a live one', async () => {
-    await suite!.client`
+    await requireSuite(suite).client`
       INSERT INTO shipments (
         id, sender_oxy_user_id, type,
         pickup_latitude, pickup_longitude, pickup_line1, pickup_city,
@@ -76,7 +77,7 @@ describeIfPostgres('the expiry sweep', () => {
       ['q-lapsed', "now() - interval '1 hour'"],
       ['q-live', "now() + interval '1 hour'"],
     ] as const) {
-      await suite!.client.unsafe(`
+      await requireSuite(suite).client.unsafe(`
         INSERT INTO quotes (
           id, shipment_id, source, base_fair_minor, distance_fair_minor,
           size_fair_minor, total_fair_minor, expires_at
@@ -86,7 +87,9 @@ describeIfPostgres('the expiry sweep', () => {
 
     await sweepExpiredRowsOnce();
 
-    const rows = await suite!.client<{ id: string }[]>`SELECT id FROM quotes ORDER BY id`;
+    const rows = await requireSuite(suite).client<
+      { id: string }[]
+    >`SELECT id FROM quotes ORDER BY id`;
     expect(rows.map((row) => row.id)).toEqual(['q-live']);
   });
 
@@ -97,7 +100,7 @@ describeIfPostgres('the expiry sweep', () => {
       // test exists for. A sweep keyed on `created_at` rather than
       // `dismissed_since` deletes all four and looks like housekeeping.
       for (const status of ['pending', 'sent', 'read', 'dismissed']) {
-        await suite!.client.unsafe(`
+        await requireSuite(suite).client.unsafe(`
           INSERT INTO notifications (id, oxy_user_id, type, title, body, status, created_at)
           VALUES ('n-${status}', 'oxy-1', 'order_paid', 't', 'b', '${status}',
                   now() - interval '200 days')
@@ -108,7 +111,7 @@ describeIfPostgres('the expiry sweep', () => {
     it('reaps ONLY the dismissed one, however old the others are', async () => {
       await sweepExpiredRowsOnce();
 
-      const rows = await suite!.client<{ id: string }[]>`
+      const rows = await requireSuite(suite).client<{ id: string }[]>`
         SELECT id FROM notifications ORDER BY id
       `;
       // The three survivors are the assertion that matters. If this ever reads
@@ -118,12 +121,12 @@ describeIfPostgres('the expiry sweep', () => {
     });
 
     it('keeps a RECENTLY dismissed notification until its retention elapses', async () => {
-      await suite!.client`
+      await requireSuite(suite).client`
         INSERT INTO notifications (id, oxy_user_id, type, title, body, status)
         VALUES ('n-just-dismissed', 'oxy-1', 'order_paid', 't', 'b', 'dismissed')
       `;
       await sweepExpiredRowsOnce();
-      const rows = await suite!.client<{ id: string }[]>`
+      const rows = await requireSuite(suite).client<{ id: string }[]>`
         SELECT id FROM notifications WHERE id = 'n-just-dismissed'
       `;
       expect(rows).toHaveLength(1);
@@ -132,10 +135,10 @@ describeIfPostgres('the expiry sweep', () => {
     it('takes a row back out of reach when it is un-dismissed', async () => {
       // The generated column tracks status changes, which a sweep argument
       // could not: un-dismissing returns `dismissed_since` to NULL.
-      await suite!.client`
+      await requireSuite(suite).client`
         UPDATE notifications SET status = 'read' WHERE id = 'n-just-dismissed'
       `;
-      const [row] = await suite!.client<{ dismissed_since: Date | null }[]>`
+      const [row] = await requireSuite(suite).client<{ dismissed_since: Date | null }[]>`
         SELECT dismissed_since FROM notifications WHERE id = 'n-just-dismissed'
       `;
       expect(row?.dismissed_since).toBeNull();
@@ -154,7 +157,7 @@ describeIfPostgres('the expiry sweep', () => {
       // version keeps stale rows forever — removing the protection in the one
       // situation a backstop is for. A row past `expiresAt` is expired and
       // merely unflipped, not live.
-      await suite!.client`
+      await requireSuite(suite).client`
         INSERT INTO shipments (
           id, sender_oxy_user_id, type,
           pickup_latitude, pickup_longitude, pickup_line1, pickup_city,
@@ -169,7 +172,7 @@ describeIfPostgres('the expiry sweep', () => {
           1, 'small', ''
         )
       `;
-      await suite!.client`
+      await requireSuite(suite).client`
         INSERT INTO jobs (
           id, job_number, shipment_id, sender_oxy_user_id, type, fulfillment_type,
           pickup_latitude, pickup_longitude, pickup_line1, pickup_city,
@@ -184,7 +187,7 @@ describeIfPostgres('the expiry sweep', () => {
           1, 'small', '{}'::jsonb, '{}'::jsonb
         )
       `;
-      await suite!.client.unsafe(`
+      await requireSuite(suite).client.unsafe(`
         INSERT INTO job_offers (id, job_id, shipment_id, courier_oxy_user_id, status,
                                 offered_at, expires_at, rank, distance_m)
         VALUES
@@ -198,7 +201,9 @@ describeIfPostgres('the expiry sweep', () => {
 
       await sweepExpiredRowsOnce();
 
-      const rows = await suite!.client<{ id: string }[]>`SELECT id FROM job_offers ORDER BY id`;
+      const rows = await requireSuite(suite).client<
+        { id: string }[]
+      >`SELECT id FROM job_offers ORDER BY id`;
       // Both expired rows go — including the one still marked `offered`, which
       // is the backstop doing its job. The unexpired offer stays, which is what
       // stops this passing for a sweep that simply deletes everything.

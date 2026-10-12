@@ -23,6 +23,7 @@ import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,
   destroySuiteDatabase,
+  requireSuite,
   type SuiteDatabase,
 } from '../testDatabase';
 import { UNSWEPT_GROWING_TABLES, sweepExpiredRowsOnce } from '../expiry';
@@ -36,22 +37,22 @@ describeIfPostgres('tracker retention', () => {
   let suite: SuiteDatabase | null = null;
 
   async function countWhere(table: string, column: string, value: string): Promise<number> {
-    const [row] = await suite!.client<{ count: number }[]>`
-      SELECT count(*)::int AS count FROM ${suite!.client(table)}
-      WHERE ${suite!.client(column)} = ${value}
+    const [row] = await requireSuite(suite).client<{ count: number }[]>`
+      SELECT count(*)::int AS count FROM ${requireSuite(suite).client(table)}
+      WHERE ${requireSuite(suite).client(column)} = ${value}
     `;
     return row?.count ?? 0;
   }
 
   /** A parcel with a subscription and a checkpoint hanging off it. */
   async function insertParcelWithChildren(id: string, expiresAt: string, number: string) {
-    await suite!.client`INSERT INTO tracked_parcels ${suite!.client({
+    await requireSuite(suite).client`INSERT INTO tracked_parcels ${requireSuite(suite).client({
       id,
       carrier_key: 'ups',
       tracking_number: number,
       expires_at: expiresAt,
     })}`;
-    await suite!.client`INSERT INTO tracking_checkpoints ${suite!.client({
+    await requireSuite(suite).client`INSERT INTO tracking_checkpoints ${requireSuite(suite).client({
       id: `cp-${id}`,
       parcel_id: id,
       dedupe_key: `cp-${id}`,
@@ -59,7 +60,9 @@ describeIfPostgres('tracker retention', () => {
       occurred_at: LONG_PAST,
       received_at: LONG_PAST,
     })}`;
-    await suite!.client`INSERT INTO tracked_parcel_subscriptions ${suite!.client({
+    await requireSuite(suite).client`INSERT INTO tracked_parcel_subscriptions ${requireSuite(
+      suite,
+    ).client({
       id: `sub-${id}`,
       parcel_id: id,
       oxy_user_id: 'oxy-ana',

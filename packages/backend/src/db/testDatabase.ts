@@ -100,6 +100,18 @@ export async function createSuiteDatabase(): Promise<SuiteDatabase> {
   return { db, client, databaseUrl };
 }
 
+/**
+ * The suite a `beforeAll` created, narrowed for use inside a test. A test that
+ * runs without one (setup failed, or teardown already ran) fails here with a
+ * message that names the cause, instead of a TypeError on `null.client`.
+ */
+export function requireSuite(suite: SuiteDatabase | null): SuiteDatabase {
+  if (!suite) {
+    throw new Error('No suite database: createSuiteDatabase() did not run or failed in beforeAll.');
+  }
+  return suite;
+}
+
 /** Close the handle and drop the database. Safe to call after a failed setup. */
 export async function destroySuiteDatabase(suite: SuiteDatabase | null): Promise<void> {
   if (!suite) return;

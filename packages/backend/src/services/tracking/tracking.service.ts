@@ -376,7 +376,7 @@ export async function updateParcel(
   if (!current) throw notFound('Parcel not found');
 
   if (patch.carrierKey && patch.carrierKey !== current.carrierKey) {
-    return await repointSubscription(subscription.id, oxyUserId, current, patch);
+    return await repointSubscription(subscription.id, oxyUserId, current, patch.carrierKey, patch);
   }
 
   const updated = await updateSubscription(subscription.id, oxyUserId, {
@@ -394,9 +394,10 @@ async function repointSubscription(
   subscriptionId: string,
   oxyUserId: string,
   currentParcel: { id: string; trackingNumber: string },
+  carrierKey: string,
   patch: UpdateParcelPatch,
 ): Promise<TrackedParcel> {
-  const carrier = await requireSelectableCarrier(patch.carrierKey!);
+  const carrier = await requireSelectableCarrier(carrierKey);
 
   const result = await getDb().transaction(async (tx) => {
     const previous = await findSubscriptionForUser(subscriptionId, oxyUserId, tx);

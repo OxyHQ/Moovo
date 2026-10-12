@@ -14,6 +14,7 @@
  * Decide first whether a stranger holding only a tracking number may see it.
  */
 
+import assert from 'node:assert/strict';
 import { describe, expect, it } from 'vitest';
 import {
   PUBLIC_CHECKPOINT_FACT_KEYS,
@@ -105,9 +106,9 @@ describe('the public lookup shape', () => {
   });
 
   it('carries EXACTLY the permitted checkpoint keys', () => {
-    expect(Object.keys(built.checkpoints[0]!).sort()).toEqual(
-      [...PUBLIC_CHECKPOINT_FACT_KEYS].sort(),
-    );
+    const [first] = built.checkpoints;
+    assert(first, 'the lookup dropped its only checkpoint');
+    expect(Object.keys(first).sort()).toEqual([...PUBLIC_CHECKPOINT_FACT_KEYS].sort());
   });
 
   it('drops coordinates from a public checkpoint', () => {
