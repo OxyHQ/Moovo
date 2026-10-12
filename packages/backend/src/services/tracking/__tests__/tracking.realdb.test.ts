@@ -19,7 +19,8 @@
  *    bumping every tuple. `xmin` is what separates them.
  */
 
-import { afterAll, assert, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import assert from 'node:assert/strict';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   POSTGRES_TESTS_ENABLED,
   createSuiteDatabase,

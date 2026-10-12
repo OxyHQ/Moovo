@@ -14,7 +14,8 @@
  * Decide first whether a stranger holding only a tracking number may see it.
  */
 
-import { assert, describe, expect, it } from 'vitest';
+import assert from 'node:assert/strict';
+import { describe, expect, it } from 'vitest';
 import {
   PUBLIC_CHECKPOINT_FACT_KEYS,
   PUBLIC_PARCEL_FACT_KEYS,

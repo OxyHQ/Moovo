@@ -21,7 +21,8 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assert, beforeEach, describe, expect, it } from 'vitest';
+import assert from 'node:assert/strict';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { TRACKING_STATUS_META } from '../tracking-events.service.js';
 import { EVENTS } from '../../../lib/socket-events.js';
 import { NOTIFICATION_TYPES } from '../../../db/schema/valueSets.js';

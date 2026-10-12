@@ -7,7 +7,8 @@
  * latency nobody can trace back to a missing line.
  */
 
-import { assert, describe, expect, it } from 'vitest';
+import assert from 'node:assert/strict';
+import { describe, expect, it } from 'vitest';
 import { TRACKING_STATUSES } from '@moovo/shared-types';
 import { TRACKING_CADENCE, failureBackoffMs, nextPollAt } from '../tracking-cadence.js';
 import { TRACKING_TERMINAL_STATUSES } from '../tracking-status.js';

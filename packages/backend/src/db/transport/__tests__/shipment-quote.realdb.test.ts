@@ -23,7 +23,8 @@
  *    value flows into a `total: number` on the paginated response.
  */
 
-import { afterAll, afterEach, assert, beforeAll, describe, expect, it } from 'vitest';
+import assert from 'node:assert/strict';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { PriceBreakdown } from '@moovo/shared-types';
 import {
   POSTGRES_TESTS_ENABLED,
