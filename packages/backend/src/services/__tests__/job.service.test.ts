@@ -19,6 +19,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { rejectionOf } from '../../__tests__/fixtures/runner-compat';
 
 const casJobStatus = vi.fn();
 const insertJobStatusEvent = vi.fn();
@@ -149,7 +150,7 @@ describe('job.service.transition — illegal transitions', () => {
 
   for (const { from, to } of illegal) {
     it(`rejects ${from} → ${to} with CONFLICT (before the CAS)`, async () => {
-      await expect(transition(jobAt(from), to, {})).rejects.toSatisfy(
+      expect(await rejectionOf(transition(jobAt(from), to, {}))).toSatisfy(
         (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.CONFLICT,
       );
       expect(casJobStatus).not.toHaveBeenCalled();
@@ -160,7 +161,7 @@ describe('job.service.transition — illegal transitions', () => {
   it('a lost CAS (concurrent transition) throws CONFLICT and writes no audit entry', async () => {
     casJobStatus.mockReset().mockResolvedValue(null);
 
-    await expect(transition(jobAt('requested'), 'accepted', {})).rejects.toSatisfy(
+    expect(await rejectionOf(transition(jobAt('requested'), 'accepted', {}))).toSatisfy(
       (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.CONFLICT,
     );
     // A loser must leave no trace: an entry saying the job was accepted, beside

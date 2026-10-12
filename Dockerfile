@@ -10,14 +10,23 @@
 #   docker build -t moovo-backend:test .
 #
 # Pipeline:
-#   build: bun install --frozen-lockfile (incl. devDependencies for the build)
+#   build: bun install (incl. devDependencies for the build)
 #          && bun run build:backend           (tsc shared-types + esbuild bundle
 #                                               -> packages/backend/dist/index.js
 #                                               +  packages/backend/dist/db/migrate.js)
 #          && reinstall production-only deps
-#   run:   node packages/backend/dist/index.js
+#   run:   bun packages/backend/dist/index.js
 #   migrate (one-shot, not the CMD):
-#          node packages/backend/dist/db/migrate.js --target-database=moovo --phase=<pre|post|all>
+#          bun packages/backend/dist/db/migrate.js --target-database=moovo --phase=<pre|post|all>
+#
+# The API runs on BUN, not Node, since 2026-10. The runtime stage is
+# oven/bun:1.4.3-alpine: the same pinned Bun the builder installs with, on the
+# same musl libc the runtime used before, so the production dependency tree
+# installed below matches it. Bun serves the same esbuild bundle (ESM,
+# platform=node) unchanged. The migrator command in
+# .github/scripts/run-migration-task.sh names `bun` too and must always name the
+# runtime this image ships. Rolling back to Node is reverting the change that
+# made this switch: it moved the runtime stage and that command together.
 #
 # The migrator is a SECOND entry point and the image must carry both it and the
 # `.sql` files it applies. Neither was here before: the image shipped a single
@@ -39,9 +48,10 @@ FROM node:22-alpine AS builder
 # never reaches the runtime image.
 RUN apk add --no-cache python3 make g++ libc6-compat
 
-# Bun is the package manager / script runner at build time; the runtime stays
-# Node. The musl build from the matching alpine image works on amd64 and arm64.
-COPY --from=oven/bun:1.3.14-alpine /usr/local/bin/bun /usr/local/bin/bun
+# Bun is the package manager / script runner at build time, and the runtime
+# stage below is the same pinned Bun image. The musl build from the matching
+# alpine image works on amd64 and arm64.
+COPY --from=oven/bun:1.4.3-alpine /usr/local/bin/bun /usr/local/bin/bun
 
 WORKDIR /app
 
@@ -97,8 +107,8 @@ RUN test -f packages/backend/dist/db/migrate.js \
 # to its OWN directory, so the emitted `dist/db/migrate.js` looks for
 # `dist/db/migrations` — which is what this copy creates. Resolving from the
 # module's own directory rather than from the package root is what lets the same
-# line of code find `src/db/migrations` under `bun` in development and this
-# folder under `node` in the image, with neither layout knowing about the other.
+# line of code find `src/db/migrations` in development and this folder in the
+# image, with neither layout knowing about the other.
 RUN cp -R packages/backend/src/db/migrations packages/backend/dist/db/migrations \
  && test -n "$(ls -A packages/backend/dist/db/migrations/*.sql 2>/dev/null)" \
  || (echo "ERROR: no .sql migrations were copied into the image" && exit 1)
@@ -111,36 +121,45 @@ RUN rm -rf node_modules \
  && bun install --production
 
 # ---------------------------------------------------------------------------
-# Stage 2: runner — minimal runtime with production deps and the bundle.
+# Stage 2: runner — the pinned Bun runtime, production deps and the bundle.
 # ---------------------------------------------------------------------------
-FROM node:22-alpine AS runner
+FROM oven/bun:1.4.3-alpine AS runner
 
 ENV NODE_ENV=production \
     PORT=3001
 
 # libc6-compat: glibc shim some prebuilt native binaries expect on Alpine/musl.
-# dumb-init: proper PID 1 so SIGTERM/SIGINT reach Node for graceful shutdown.
-RUN apk add --no-cache libc6-compat dumb-init
+# No dumb-init any more: the base image's entrypoint EXECs the CMD, so Bun is
+# PID 1 and receives the SIGTERM ECS sends on a rollout itself; src/index.ts
+# registers the graceful-shutdown handler. CI's image smoke
+# (.github/scripts/smoke-api-image.sh) asserts both.
+RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
-# Run as the unprivileged `node` user provided by the base image.
-USER node
+# Run as the image's own unprivileged `bun` user (uid/gid 1000, like Node's
+# `node`).
+USER bun
 
 # Bring over the pruned (production-only) dependency tree and the workspace
-# manifests so Node's workspace resolution stays valid.
-COPY --from=builder --chown=node:node /app/node_modules ./node_modules
-COPY --from=builder --chown=node:node /app/package.json ./package.json
-COPY --from=builder --chown=node:node /app/packages/backend/package.json ./packages/backend/package.json
+# manifests so the workspace resolution stays valid.
+COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
+COPY --from=builder --chown=bun:bun /app/package.json ./package.json
+COPY --from=builder --chown=bun:bun /app/packages/backend/package.json ./packages/backend/package.json
 
 # The bundled API.
-COPY --from=builder --chown=node:node /app/packages/backend/dist ./packages/backend/dist
+COPY --from=builder --chown=bun:bun /app/packages/backend/dist ./packages/backend/dist
 
 EXPOSE 3001
 
-# Container-level health check hitting the app's /health endpoint.
+# Container-level health check hitting the app's /health endpoint. ECS does not
+# read it (the task definition declares no healthCheck; the ALB probes
+# /health/ready), so it serves `docker run` and local compose.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "require('http').get({host:'127.0.0.1',port:process.env.PORT||3001,path:'/health',timeout:4000},r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+  CMD bun -e "fetch('http://127.0.0.1:'+(process.env.PORT||3001)+'/health',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.status<500?0:1),()=>process.exit(1))"
 
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "packages/backend/dist/index.js"]
+# The base image puts a `node` on PATH, but it is a symlink to bun
+# (/usr/local/bun-node-fallback-bin/node): there is no Node in this image, so
+# `node <file>` would run Bun while claiming otherwise. Every command names
+# `bun` explicitly, including the migrator one-shot that overrides this CMD.
+CMD ["bun", "packages/backend/dist/index.js"]

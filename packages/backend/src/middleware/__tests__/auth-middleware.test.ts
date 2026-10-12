@@ -1,6 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 
+/*
+ * Runs under vitest AND `bun test` (see `test:bun`). bun:test does not hoist
+ * `vi.mock` and passes no `importOriginal` to a factory, so the module under
+ * test is imported dynamically after the mocks, and under Bun the real SDK is
+ * captured (as a copy: Bun's mock patches the live namespace) before its mock
+ * exists.
+ */
+const realOxyServer = 'Bun' in globalThis ? { ...(await import('@oxy.so/core/server')) } : null;
+
 vi.mock('../../lib/logger.js', () => ({
   log: {
     auth: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -11,8 +20,8 @@ vi.mock('../../lib/net-utils.js', () => ({
   getClientIp: vi.fn(() => '127.0.0.1'),
 }));
 
-vi.mock('@oxy.so/core/server', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
+vi.mock('@oxy.so/core/server', async (importOriginal?: () => Promise<Record<string, unknown>>) => {
+  const actual = importOriginal ? await importOriginal() : realOxyServer;
 
   interface MockAuthRequest extends Request {
     userId?: string;
@@ -37,7 +46,9 @@ vi.mock('@oxy.so/core/server', async (importOriginal) => {
   return { ...actual, OxyServer: MockOxyServer };
 });
 
-import { authenticateTelegramBot, authenticateTokenOrApiKey, requireScope } from '../auth.js';
+const { authenticateTelegramBot, authenticateTokenOrApiKey, requireScope } = await import(
+  '../auth.js'
+);
 
 type MockFn = ReturnType<typeof vi.fn>;
 

@@ -7,7 +7,7 @@
   "workspaces": [
     "packages/*"
   ],
-  "packageManager": "bun@1.3.14",
+  "packageManager": "bun@1.4.3",
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "dev:frontend": "bun run --filter @moovo/frontend dev -- --clear --tunnel",
@@ -32,7 +32,8 @@
     "ios": "bun run --filter @moovo/frontend ios",
     "web": "bun run --filter @moovo/frontend web",
     "postinstall": "bun run --filter @moovo/shared-types build",
-    "test:edge": "bun test scripts/edge-activity.test.ts"
+    "test:worker": "bun test scripts/asset-worker.test.ts",
+    "check:api-entrypoints": "bun run build:backend && bun scripts/check-api-entrypoints.ts"
   },
   "keywords": [
     "monorepo",
@@ -76,7 +77,6 @@
     "lightningcss": "1.30.1",
     "lightningcss-linux-x64-gnu": "1.30.1",
     "lightningcss-linux-x64-musl": "1.30.1",
-    "@oxy.so/telemetry": "1.2.0",
     "@oxy.so/protocol": "1.2.2"
   },
   "dependencies": {
@@ -84,8 +84,5 @@
     "@oxy.so/contracts": "4.9.0",
     "@oxy.so/core": "4.2.0",
     "@oxy.so/services": "11.1.0"
-  },
-  "resolutions": {
-    "@oxy.so/telemetry": "1.2.0"
   }
 }

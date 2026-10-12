@@ -71,7 +71,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.3
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -91,7 +91,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.3
 
       - uses: actions/setup-node@v4
         with:
@@ -132,6 +132,56 @@ jobs:
           MOOVO_REQUIRE_POSTGRES_TESTS: '1'
         run: bun run --filter @moovo/backend test
 
+      # Production runs the API on Bun (Dockerfile runner stage), so the unit
+      # suite also runs under Bun's runtime and test runner, not only under
+      # vitest on Node. Left on vitest only: the *.realdb suites (they hang
+      # under `bun test`; the image smoke below covers Postgres under Bun) and
+      # three files that re-evaluate modules with `vi.resetModules`/`vi.doMock`,
+      # which bun:test cannot reproduce. Those are runner differences, not
+      # runtime ones; see the `test:bun` script.
+      - name: Run API unit tests under Bun
+        run: bun run --filter @moovo/backend test:bun
+
+      # Builds the API and EXECUTES the built artefacts under bun, the image's
+      # runtime: each failure scenario must exit non-zero (ECS and the deploy
+      # read nothing but exit codes), and a real boot, /health/ready and SIGTERM
+      # must end in exit 0. The compose server's `moovo` database has PostGIS.
+      - name: Check built API entrypoints under Bun
+        env:
+          MOOVO_ENTRYPOINT_DATABASE_URL: postgres://moovo:moovo@127.0.0.1:5437/moovo
+        run: bun run check:api-entrypoints
+
+  # The image as ECS runs it: built from the real Dockerfile and booted against
+  # Postgres. Bun as PID 1, both migrator phases with the deploy's command, a
+  # workload-identity token minted with the production @oxy.so/core, a 200 from
+  # /health/ready and a graceful exit 0 on SIGTERM.
+  #
+  # linux/amd64, while production is linux/arm64: the database must be the
+  # compose file's postgis/postgis image (the migrator requires PostGIS), which
+  # publishes amd64 only. The deploy builds the arm64 image from the same
+  # Dockerfile, and both architectures use the same oven/bun alpine (musl) base.
+  api-image-smoke:
+    name: API image smoke (Bun)
+    needs: changes
+    if: ${{ !cancelled() && !failure() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start PostgreSQL
+        run: docker compose -f docker-compose.postgres.yml up -d --wait postgres
+
+      - name: Build the API image
+        run: docker build -t moovo-api:ci .
+
+      - name: Smoke the API image under its Bun runtime
+        env:
+          IMAGE: moovo-api:ci
+          DATABASE_URL: postgres://moovo:moovo@127.0.0.1:5437/moovo
+        run: bash .github/scripts/smoke-api-image.sh
+
   build-api:
     name: Build API
     needs: changes
@@ -144,7 +194,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.3
 
       - uses: actions/setup-node@v4
         with:
@@ -173,7 +223,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.14
+          bun-version: 1.4.3
 
       - uses: actions/setup-node@v4
         with:
