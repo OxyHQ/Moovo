@@ -5,8 +5,11 @@
 **/dist
 **/.expo
 **/coverage
-.env
-.env.*
+# Env files anywhere in the tree (a workspace's own .env included): the build
+# needs none of them, and `COPY packages/backend` would otherwise carry a local
+# packages/backend/.env into a layer.
+**/.env
+**/.env.*
 *.log
 .git
 .github

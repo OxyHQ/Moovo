@@ -1,10 +1,16 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
 #
 # Production image for the @moovo/backend service.
 #
-# Multi-stage, multi-arch. `node:22-alpine` and `oven/bun` are multi-arch
+# Multi-stage, multi-arch. `node:22.23-alpine` and `oven/bun` are multi-arch
 # manifests, so this image builds natively on AWS Graviton (linux/arm64) as well
 # as x86_64 — Docker selects the right base layer per target platform.
+#
+# Every base image and the `# syntax=` frontend is pinned by its multi-arch
+# INDEX digest. The digest is what the build uses; the tag beside it is only for
+# readability (and for gates that read the version). A re-pushed tag therefore
+# cannot change this image. A bump needs a new digest and an owner re-review of
+# the build inputs (.github/scripts/reviewed-image.py pin).
 #
 # Build context is the monorepo ROOT (bun workspaces):
 #   docker build -t moovo-backend:test .
@@ -41,7 +47,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1: builder — install the full dependency graph and bundle the API.
 # ---------------------------------------------------------------------------
-FROM node:22-alpine AS builder
+FROM node:22.23-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS builder
 
 # Toolchain for any dependency that needs a node-gyp fallback when a prebuilt
 # binary is unavailable for the target arch. Confined to the builder stage so it
@@ -51,7 +57,7 @@ RUN apk add --no-cache python3 make g++ libc6-compat
 # Bun is the package manager / script runner at build time, and the runtime
 # stage below is the same pinned Bun image. The musl build from the matching
 # alpine image works on amd64 and arm64.
-COPY --from=oven/bun:1.4.3-alpine /usr/local/bin/bun /usr/local/bin/bun
+COPY --from=oven/bun:1.4.3-alpine@sha256:629e17411f1f129dbec3af78d5af9c9f2a937435c80349437206c6b0b7422373 /usr/local/bin/bun /usr/local/bin/bun
 
 WORKDIR /app
 
@@ -123,7 +129,7 @@ RUN rm -rf node_modules \
 # ---------------------------------------------------------------------------
 # Stage 2: runner — the pinned Bun runtime, production deps and the bundle.
 # ---------------------------------------------------------------------------
-FROM oven/bun:1.4.3-alpine AS runner
+FROM oven/bun:1.4.3-alpine@sha256:629e17411f1f129dbec3af78d5af9c9f2a937435c80349437206c6b0b7422373 AS runner
 
 ENV NODE_ENV=production \
     PORT=3001

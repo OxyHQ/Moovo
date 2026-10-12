@@ -3,13 +3,11 @@
   "recipes": [
     {
       "name": "moovo",
-      "services": ["moovo"],
       "ecrRepository": "oxy/moovo",
       "dockerfile": "Dockerfile",
-      "dockerfileSha256": "7b207fcc60e7804b0e1e8460dd8692e1d56e6a05e2e8193eae61c95c3e7dd9fc",
+      "context": ".",
       "target": null,
-      "tagSuffix": "",
-      "cacheScope": "moovo-backend"
+      "buildInputsSha256": "55ba47b8b5aed3f9f56cbd08c34a786b117b538f38c764df0c102c6be827a4b5"
     }
   ]
 }
