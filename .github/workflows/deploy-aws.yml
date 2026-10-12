@@ -157,6 +157,11 @@ jobs:
           MOOVO_REQUIRE_POSTGRES_TESTS: '1'
         run: bun run --filter @moovo/backend test
 
+      # The image below runs the API on Bun, so the unit suite runs under Bun
+      # too (see `test:bun` and ci.yml for what stays on vitest only).
+      - name: Run API unit tests under Bun
+        run: bun run --filter @moovo/backend test:bun
+
       - run: bun run build:backend
 
   deploy:

@@ -37,7 +37,7 @@ bun run dev
 
 ```bash
 bun run build   # esbuild bundle -> dist/index.js
-bun run start   # node dist/index.js
+bun run start   # bun dist/index.js (the production runtime)
 bun run test    # Vitest
 ```
 

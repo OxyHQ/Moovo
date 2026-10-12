@@ -15,11 +15,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import type { Server } from 'node:http';
 
-// `vi.mock` factories are hoisted above every `const`, so the state they close
-// over has to be hoisted with them.
-const { postgresQuery } = vi.hoisted(() => ({
-  postgresQuery: vi.fn(),
-}));
+// Runs under vitest AND `bun test` (see `test:bun`). bun:test has no
+// `vi.hoisted` and does not hoist `vi.mock`, so the mock state is a plain
+// constant and the router is imported dynamically AFTER the mocks below.
+const postgresQuery = vi.fn();
 
 vi.mock('../../db/postgres.js', () => ({
   // `getClient()` returns a tagged-template function, so the mock has to be one.
@@ -31,7 +30,7 @@ vi.mock('../../db/postgres.js', () => ({
 
 vi.mock('../../lib/redis.js', () => ({ getRedisClient: () => null }));
 
-import healthRouter from '../health.js';
+const healthRouter = (await import('../health.js')).default;
 
 /**
  * Drive the router over a REAL ephemeral listener.

@@ -70,12 +70,17 @@ fi
 # name matches the database DATABASE_URL resolves to, so a task pointed at the
 # wrong database fails instead of migrating some other Oxy app's, on a server
 # they share.
+#
+# `bun`: the runtime the Dockerfile's runner stage ships (oven/bun). Reverting
+# the image to Node means reverting this line with it — a `bun` command against
+# a Node image cannot start, while the reverse would silently run Bun under the
+# name `node`.
 OVERRIDES=$(jq -nc \
   --arg name "$CONTAINER_NAME" \
   --arg db "$PG_DATABASE" \
   --arg phase "$PHASE" \
   '{containerOverrides: [{name: $name, command: [
-      "node", "packages/backend/dist/db/migrate.js",
+      "bun", "packages/backend/dist/db/migrate.js",
       ("--target-database=" + $db),
       ("--phase=" + $phase)
   ]}]}')
