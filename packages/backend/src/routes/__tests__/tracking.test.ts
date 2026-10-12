@@ -17,20 +17,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import type { Server } from 'node:http';
 
-const { service, currentUserId } = vi.hoisted(() => ({
-  service: {
-    listCarriers: vi.fn(),
-    detectCarriersForNumber: vi.fn(),
-    lookupParcel: vi.fn(),
-    listParcels: vi.fn(),
-    trackParcel: vi.fn(),
-    getParcelDetail: vi.fn(),
-    updateParcel: vi.fn(),
-    untrackParcel: vi.fn(),
-    requestRefresh: vi.fn(),
-  },
-  currentUserId: { value: null as string | null },
-}));
+/*
+ * Runs under vitest AND `bun test` (see `test:bun`). bun:test has no
+ * `vi.hoisted`, does not hoist `vi.mock` and passes no `importOriginal` to a
+ * factory, so: the mock state is plain constants, the modules under test are
+ * imported dynamically after the mocks, and under Bun the real SDK is captured
+ * (as a copy: Bun's mock patches the live namespace) before its mock exists.
+ */
+const realOxyServer = 'Bun' in globalThis ? { ...(await import('@oxy.so/core/server')) } : null;
+const service = {
+  listCarriers: vi.fn(),
+  detectCarriersForNumber: vi.fn(),
+  lookupParcel: vi.fn(),
+  listParcels: vi.fn(),
+  trackParcel: vi.fn(),
+  getParcelDetail: vi.fn(),
+  updateParcel: vi.fn(),
+  untrackParcel: vi.fn(),
+  requestRefresh: vi.fn(),
+};
+const currentUserId = { value: null as string | null };
 
 vi.mock('../../services/tracking/tracking.service.js', () => service);
 
@@ -42,8 +48,8 @@ vi.mock('../../middleware/auth.js', () => ({
   oxyClient: {},
 }));
 
-vi.mock('@oxy.so/core/server', async (importOriginal) => {
-  const actual = await importOriginal<Record<string, unknown>>();
+vi.mock('@oxy.so/core/server', async (importOriginal?: () => Promise<Record<string, unknown>>) => {
+  const actual = importOriginal ? await importOriginal() : realOxyServer;
   return {
     ...actual,
     getRequiredOxyUserId: () => {

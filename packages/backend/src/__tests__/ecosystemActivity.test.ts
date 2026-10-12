@@ -1,12 +1,18 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { stubEnv, unstubAllEnvs } from './fixtures/runner-compat';
 
-const publisher = vi.hoisted(() => ({
+/*
+ * Runs under vitest AND `bun test` (see `test:bun`): the mocks are plain
+ * constants and the module under test is imported dynamically AFTER the mock is
+ * registered, because bun:test has no `vi.hoisted` and does not hoist `vi.mock`.
+ */
+const publisher = {
   observeHttp: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
   installFetch: vi.fn(),
   observeSocket: vi.fn(),
   stop: vi.fn(async () => {}),
-}));
-const create = vi.hoisted(() => vi.fn((_options: unknown) => publisher));
+};
+const create = vi.fn((_options: unknown) => publisher);
 /**
  * `canAttestWorkloadIdentity` is stubbed rather than driven through its real
  * environment variable, because the real one is set by ECS and by nothing else:
@@ -14,34 +20,43 @@ const create = vi.hoisted(() => vi.fn((_options: unknown) => publisher));
  * asserting this suite's idea of how the SDK detects a task role rather than
  * what Moovo does with the answer.
  */
-const canAttest = vi.hoisted(() => vi.fn(() => false));
+const canAttest = vi.fn(() => false);
 vi.mock('@oxy.so/core/server', () => ({
   createEcosystemTraffic: create,
   canAttestWorkloadIdentity: canAttest,
 }));
-import {
-  ecosystemActivityMiddleware,
-  observeEcosystemSocket,
-  startEcosystemActivity,
-  stopEcosystemActivity,
-} from '../ecosystemActivity';
+
+type Module = typeof import('../ecosystemActivity');
+let ecosystemActivityMiddleware: Module['ecosystemActivityMiddleware'];
+let observeEcosystemSocket: Module['observeEcosystemSocket'];
+let startEcosystemActivity: Module['startEcosystemActivity'];
+let stopEcosystemActivity: Module['stopEcosystemActivity'];
+
+beforeAll(async () => {
+  ({
+    ecosystemActivityMiddleware,
+    observeEcosystemSocket,
+    startEcosystemActivity,
+    stopEcosystemActivity,
+  } = await import('../ecosystemActivity'));
+});
 
 describe('ecosystem activity lifecycle', () => {
   beforeEach(() => {
-    vi.stubEnv('OXY_SERVICE_API_KEY', 'test-key');
-    vi.stubEnv('OXY_SERVICE_API_SECRET', 'test-secret');
+    stubEnv('OXY_SERVICE_API_KEY', 'test-key');
+    stubEnv('OXY_SERVICE_API_SECRET', 'test-secret');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.clearAllMocks();
     canAttest.mockReturnValue(false);
   });
   afterEach(async () => {
     await stopEcosystemActivity();
-    vi.unstubAllEnvs();
+    unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
   it('does not start or publish with neither an attestable identity nor a pair', () => {
-    vi.stubEnv('OXY_SERVICE_API_KEY', undefined);
+    stubEnv('OXY_SERVICE_API_KEY', undefined);
     startEcosystemActivity(() => true);
     expect(create).not.toHaveBeenCalled();
     expect(console.warn).toHaveBeenCalled();
@@ -53,7 +68,7 @@ describe('ecosystem activity lifecycle', () => {
   });
 
   it('does not start or publish when the API secret is blank', () => {
-    vi.stubEnv('OXY_SERVICE_API_SECRET', '   ');
+    stubEnv('OXY_SERVICE_API_SECRET', '   ');
     startEcosystemActivity(() => true);
     expect(create).not.toHaveBeenCalled();
     expect(console.warn).toHaveBeenCalled();
@@ -70,8 +85,8 @@ describe('ecosystem activity lifecycle', () => {
    */
   it('starts on an attesting deployment that carries no credential pair', () => {
     canAttest.mockReturnValue(true);
-    vi.stubEnv('OXY_SERVICE_API_KEY', undefined);
-    vi.stubEnv('OXY_SERVICE_API_SECRET', undefined);
+    stubEnv('OXY_SERVICE_API_KEY', undefined);
+    stubEnv('OXY_SERVICE_API_SECRET', undefined);
     startEcosystemActivity(() => true);
     expect(create).toHaveBeenCalledTimes(1);
     expect(publisher.installFetch).toHaveBeenCalledTimes(1);
