@@ -8,7 +8,11 @@
 #      dynamic import once broke under Node's ESM resolver),
 #   3. serve /health/ready with 200 from the image's default CMD,
 #   4. turn SIGTERM (`docker stop`, as ECS does on a rollout) into the graceful
-#      shutdown and exit 0.
+#      shutdown and exit 0,
+# and first, through check-api-image-files.sh, that the runtime user cannot
+# write the app files and the runtime node_modules is the API's closure only.
+# The migrator and the server below then run with /app read-only to them, so
+# a write the runtime needs under /app would fail here.
 # A unit suite cannot see any of these: they are properties of the image.
 #
 # Env: IMAGE (the built image), DATABASE_URL (a throwaway database named
@@ -23,6 +27,8 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 
 cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
+
+bash "$HERE/check-api-image-files.sh"
 
 for phase in pre post; do
   docker run --rm --network host -e DATABASE_URL "$IMAGE" \
@@ -66,8 +72,8 @@ case "$pid1" in
     ;;
 esac
 uid=$(docker exec "$NAME" id -u)
-if [ "$uid" = 0 ]; then
-  echo "::error::the API runs as root; the image must run as its unprivileged bun user"
+if [ "$uid" != 1000 ]; then
+  echo "::error::the API runs as uid $uid; the image must run as its unprivileged bun user (uid 1000)"
   exit 1
 fi
 
@@ -80,4 +86,4 @@ if [ "$exit_code" != 0 ] || ! grep -q 'Graceful shutdown complete' <<<"$logs"; t
   exit 1
 fi
 
-echo "API image smoke passed: migrations, workload attestation, /health/ready, PID 1 = Bun (uid $uid), graceful SIGTERM"
+echo "API image smoke passed: read-only app files, migrations, workload attestation, /health/ready, PID 1 = Bun (uid $uid), graceful SIGTERM"
