@@ -80,9 +80,9 @@
     "@oxy.so/protocol": "1.2.2"
   },
   "dependencies": {
-    "@oxy.so/bloom": "6.2.1",
-    "@oxy.so/contracts": "4.9.0",
-    "@oxy.so/core": "4.2.0",
-    "@oxy.so/services": "11.1.0"
+    "@oxy.so/bloom": "7.31.1",
+    "@oxy.so/contracts": "4.10.0",
+    "@oxy.so/core": "4.4.0",
+    "@oxy.so/services": "11.1.17"
   }
 }
