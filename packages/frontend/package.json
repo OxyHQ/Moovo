@@ -22,7 +22,7 @@
     "@hugeicons/react-native": "^1.0.11",
     "@moovo/shared-types": "workspace:*",
     "@oxy.so/app-preset": "^3.0.0",
-    "@oxy.so/bloom": "7.31.1",
+    "@oxy.so/bloom": "7.33.0",
     "@oxy.so/contracts": "4.10.0",
     "@oxy.so/core": "4.4.0",
     "@oxy.so/services": "11.1.17",
