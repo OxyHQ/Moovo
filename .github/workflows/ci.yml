@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # The scheduled base-image digest bump (bump-base-digests.yml) opens its PR
+  # with GITHUB_TOKEN, which triggers no `pull_request` run, so it dispatches
+  # this workflow on its branch. Not a pull request, so `changes` is skipped
+  # and every job below runs: the reviewed-image check and both image builds.
+  workflow_dispatch:
 
 # A new push to a pull request supersedes its previous run. A push to `main`
 # never cancels anything: each `main` commit gets its own group (keyed on the
@@ -87,6 +92,8 @@ jobs:
       # the gate can fail, not that it stopped looking.
       - name: Prove the reviewed-image gate can fail
         run: python3 -B -m unittest discover -s .github/scripts -p test_reviewed_image.py
+      - name: Test the base-image digest bump
+        run: python3 -B -m unittest discover -s .github/scripts -p test_bump_base_digests.py
       - name: Verify the production image's build inputs are reviewed
         run: python3 -B .github/scripts/reviewed-image.py check
 
@@ -163,9 +170,12 @@ jobs:
         run: bun run check:api-entrypoints
 
   # The image as ECS runs it: built from the real Dockerfile and booted against
-  # Postgres. Bun as PID 1, both migrator phases with the deploy's command, a
-  # workload-identity token minted with the production @oxy.so/core, a 200 from
-  # /health/ready and a graceful exit 0 on SIGTERM.
+  # Postgres. App files root-owned and read-only to the runtime user, only the
+  # API's production closure in node_modules, Bun as PID 1, both migrator
+  # phases with the deploy's command, a workload-identity token minted with the
+  # production @oxy.so/core, a 200 from /health/ready and a graceful exit 0 on
+  # SIGTERM. The Dockerfile and context come from the same guard the deploy
+  # runs, so this builds what production would build.
   #
   # linux/amd64, while production is linux/arm64: the database must be the
   # compose file's postgis/postgis image (the migrator requires PostGIS), which
@@ -181,17 +191,76 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Refuse unreviewed image build inputs
+        id: reviewed
+        run: python3 -B .github/scripts/reviewed-image.py guard --recipe moovo
+
       - name: Start PostgreSQL
         run: docker compose -f docker-compose.postgres.yml up -d --wait postgres
 
       - name: Build the API image
-        run: docker build -t moovo-api:ci .
+        env:
+          DOCKERFILE: ${{ steps.reviewed.outputs.dockerfile }}
+          CONTEXT: ${{ steps.reviewed.outputs.context }}
+          TARGET: ${{ steps.reviewed.outputs.target }}
+        run: docker build -f "$DOCKERFILE" ${TARGET:+--target "$TARGET"} -t moovo-api:ci "$CONTEXT"
 
       - name: Smoke the API image under its Bun runtime
         env:
           IMAGE: moovo-api:ci
           DATABASE_URL: postgres://moovo:moovo@127.0.0.1:5437/moovo
         run: bash .github/scripts/smoke-api-image.sh
+
+  # The image for the platform the deploy pushes, linux/arm64 on the same arm64
+  # runner, so a change that builds on amd64 and not on arm64 (a musl-arm64
+  # native package missing from bun.lock under --frozen-lockfile, say) fails
+  # here and not in the deploy. Booting against Postgres stays on amd64 (see
+  # above: postgis/postgis has no arm64 image); this checks the built image's
+  # files and user, its native addon and the workload attestation, none of which
+  # needs a database. Reads the deploy's cache scope, never writes it, and never
+  # pushes.
+  api-image-arm64:
+    name: API image build (linux/arm64)
+    needs: changes
+    if: ${{ !cancelled() && !failure() && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true') }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      - name: Refuse unreviewed image build inputs
+        id: reviewed
+        run: python3 -B .github/scripts/reviewed-image.py guard --recipe moovo
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Build the API image (linux/arm64, not pushed)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ steps.reviewed.outputs.context }}
+          file: ${{ steps.reviewed.outputs.dockerfile }}
+          target: ${{ steps.reviewed.outputs.target }}
+          platforms: linux/arm64
+          load: true
+          push: false
+          provenance: false
+          tags: moovo-api:ci-arm64
+          cache-from: type=gha,scope=moovo-backend
+
+      - name: Check the arm64 image's files and user
+        env:
+          IMAGE: moovo-api:ci-arm64
+        run: bash .github/scripts/check-api-image-files.sh
+
+      - name: Mint a workload-identity token with the arm64 image's @oxy.so/core
+        run: |
+          docker run --rm --network host \
+            -v "$PWD/.github/scripts/check-workload-attestation.mjs:/app/check-workload-attestation.mjs:ro" \
+            moovo-api:ci-arm64 bun check-workload-attestation.mjs
 
   build-api:
     name: Build API

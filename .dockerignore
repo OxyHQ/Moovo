@@ -21,3 +21,5 @@ docs
 **/__tests__
 sst.config.ts
 .do
+# Local git worktrees: a local build would send each one in the context.
+.worktrees

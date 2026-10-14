@@ -16,11 +16,11 @@
 #   docker build -t moovo-backend:test .
 #
 # Pipeline:
-#   build: bun install (incl. devDependencies for the build)
+#   build: bun install --frozen-lockfile (incl. devDependencies for the build)
 #          && bun run build:backend           (tsc shared-types + esbuild bundle
 #                                               -> packages/backend/dist/index.js
 #                                               +  packages/backend/dist/db/migrate.js)
-#          && reinstall production-only deps
+#          && reinstall the API's production-only deps, no lifecycle scripts
 #   run:   bun packages/backend/dist/index.js
 #   migrate (one-shot, not the CMD):
 #          bun packages/backend/dist/db/migrate.js --target-database=moovo --phase=<pre|post|all>
@@ -65,28 +65,31 @@ WORKDIR /app
 # the lockfile and the bun config (hoisted linker — required so the runtime
 # image can resolve deps from the root node_modules; see the Bun-1.3 isolated
 # linker gotcha) so this layer is reused unless dependencies change. Every
-# workspace's package.json is included (the frontend source is excluded by
-# .dockerignore) so the bun workspace graph stays valid.
+# workspace's package.json is included (only the manifests: the app sources are
+# never copied) so the workspace graph is exactly the one bun.lock records. A new
+# workspace needs its line here too.
 COPY package.json bun.lock bunfig.toml ./
 COPY packages/backend/package.json ./packages/backend/package.json
 COPY packages/frontend/package.json ./packages/frontend/package.json
 COPY packages/courier-app/package.json ./packages/courier-app/package.json
 COPY packages/fleet-dashboard/package.json ./packages/fleet-dashboard/package.json
+COPY packages/tracker-app/package.json ./packages/tracker-app/package.json
 COPY packages/shared-types/package.json ./packages/shared-types/package.json
 
 # Copy shared-types source before install so its `postinstall` (tsc) can build
 # the package's dist during `bun install`.
 COPY packages/shared-types ./packages/shared-types
 
-# Install from the lockfile (devDependencies included — esbuild/TypeScript needed
-# to bundle the API; root postinstall builds @moovo/shared-types). NOT
-# --frozen-lockfile: this stage is alpine/musl-arm64, and the glibc-generated
-# bun.lock omits the musl-arm64 native optional deps the frontend workspaces pull
-# in (lightningcss, etc.) — a known Bun frozen-lockfile false-positive in
-# monorepos with native deps. The API bundle externalizes/inlines and never uses
-# those, so healing them here is harmless. Lockfile reproducibility IS enforced
-# upstream by the CI `test` job's `bun install --frozen-lockfile` on the host.
-RUN bun install
+# Install exactly what bun.lock records (devDependencies included — esbuild and
+# TypeScript bundle the API; the root postinstall builds @moovo/shared-types).
+# --frozen-lockfile: a lockfile that disagrees with the manifests fails the
+# build instead of being re-resolved inside it. bun.lock records every
+# platform's native optional packages (the musl arm64 and x64 builds of
+# lightningcss and @swc/core included), so the musl stage needs nothing the
+# lockfile lacks. That was the reason this used to be a plain `bun install`;
+# CI's image jobs build this stage for linux/amd64 and linux/arm64 on every
+# change to it.
+RUN bun install --frozen-lockfile
 
 # Copy the source needed to build the API.
 COPY packages/backend ./packages/backend
@@ -119,12 +122,34 @@ RUN cp -R packages/backend/src/db/migrations packages/backend/dist/db/migrations
  && test -n "$(ls -A packages/backend/dist/db/migrations/*.sql 2>/dev/null)" \
  || (echo "ERROR: no .sql migrations were copied into the image" && exit 1)
 
-# Strip devDependencies so only production modules are carried into the runtime
-# image (bun has no `prune`; a clean production install from the same lockfile is
-# the deterministic equivalent). The API bundle inlines first-party code, so the
-# shared-types dist is no longer needed at runtime.
-RUN rm -rf node_modules \
- && bun install --production
+# The runtime dependency tree: a clean install from the same lockfile of the
+# API's own production dependencies and nothing else (bun has no `prune`). The
+# API bundle inlines first-party code, so no workspace's dist is needed.
+#
+#   --filter @moovo/backend  only the API workspace. Without it every workspace's
+#                            production dependencies came along: Expo, React
+#                            Native, Metro and TypeScript, 1.1 GB of the image.
+#   --omit peer              bun installs peer dependencies by default, and
+#                            @oxy.so/protocol declares a non-optional peer on
+#                            expo-modules-core, which pulls Expo and React Native
+#                            back in. Every peer the bundle imports (express,
+#                            drizzle-orm, postgres) is a direct dependency of
+#                            @moovo/backend, so nothing it loads is lost.
+#   --ignore-scripts         no lifecycle script runs. Measured on this closure:
+#                            the only one is msgpackr-extract's `install`
+#                            (node-gyp-build-optional-packages), which compiles
+#                            from source only when no prebuilt binary exists;
+#                            @msgpackr-extract/msgpackr-extract-linux-{x64,arm64}
+#                            ship the musl prebuilds, so it is not needed. CI's
+#                            image smoke asserts the native addon still loads.
+#
+# The runner copies the ROOT node_modules only, so a nested
+# packages/backend/node_modules (a version the hoisted linker could not hoist)
+# would be silently left behind: fail the build instead.
+RUN rm -rf node_modules packages/*/node_modules \
+ && bun install --production --frozen-lockfile --filter @moovo/backend --omit peer --ignore-scripts
+RUN test ! -e packages/backend/node_modules \
+ || (echo "ERROR: the production install nested packages/backend/node_modules, which the runner does not copy" && exit 1)
 
 # ---------------------------------------------------------------------------
 # Stage 2: runner — the pinned Bun runtime, production deps and the bundle.
@@ -143,18 +168,25 @@ RUN apk add --no-cache libc6-compat
 
 WORKDIR /app
 
+# The app files are ROOT-owned and read-only to the user the API runs as: no
+# --chown. The process cannot rewrite its own bundle, migrations or
+# node_modules. Nothing it runs writes under /app; the migrator stages a
+# journal prefix in the OS temp dir (/tmp, world-writable with the sticky bit
+# in the base image) and Bun's cache lives in the bun user's home. CI's image
+# smoke asserts both: no write under /app succeeds, a write to /tmp does.
+#
+# The pruned (production-only) dependency tree and the workspace manifests, so
+# the workspace resolution stays valid.
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/packages/backend/package.json ./packages/backend/package.json
+
+# The bundled API and its migrations.
+COPY --from=builder /app/packages/backend/dist ./packages/backend/dist
+
 # Run as the image's own unprivileged `bun` user (uid/gid 1000, like Node's
 # `node`).
 USER bun
-
-# Bring over the pruned (production-only) dependency tree and the workspace
-# manifests so the workspace resolution stays valid.
-COPY --from=builder --chown=bun:bun /app/node_modules ./node_modules
-COPY --from=builder --chown=bun:bun /app/package.json ./package.json
-COPY --from=builder --chown=bun:bun /app/packages/backend/package.json ./packages/backend/package.json
-
-# The bundled API.
-COPY --from=builder --chown=bun:bun /app/packages/backend/dist ./packages/backend/dist
 
 EXPOSE 3001
 
