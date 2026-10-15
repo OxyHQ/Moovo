@@ -2,7 +2,7 @@
 # Boot the built API image the way ECS runs it, against a throwaway Postgres,
 # and fail unless the production runtime (Bun as PID 1, the image's own user and
 # entrypoint) can:
-#   1. apply both migrator phases with the command run-migration-task.sh sends,
+#   1. seed the previous release, then apply candidate pre/boot/post phases,
 #   2. mint an Oxy service token from a workload identity with the production
 #      @oxy.so/core (check-workload-attestation.mjs — the path an extensionless
 #      dynamic import once broke under Node's ESM resolver),
@@ -16,18 +16,31 @@
 set -euo pipefail
 
 : "${IMAGE:?IMAGE required}"
+: "${BASELINE_REF:?BASELINE_REF required (the previously deployed commit)}"
 : "${DATABASE_URL:?DATABASE_URL required (a throwaway database named moovo)}"
 PORT="${PORT:-3001}"
 NAME="moovo-api-smoke-$$"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
-cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
+BASELINE_DIR=$(mktemp -d)
+cleanup() {
+  docker rm -f "$NAME" >/dev/null 2>&1 || true
+  rm -rf "$BASELINE_DIR"
+}
 trap cleanup EXIT
 
-for phase in pre post; do
-  docker run --rm --network host -e DATABASE_URL "$IMAGE" \
-    bun packages/backend/dist/db/migrate.js --target-database=moovo --phase="$phase"
-done
+# The previous release has already completed its post phase in production.
+# Seed that exact journal, not candidate "pre" over an empty database: otherwise
+# an old pending post sits below the new pre high-water mark and the real runner
+# correctly refuses to skip it. No production migration guard is bypassed.
+git cat-file -e "$BASELINE_REF^{commit}"
+git archive "$BASELINE_REF" packages/backend/src/db/migrations | tar -x -C "$BASELINE_DIR"
+docker run --rm --network host -e DATABASE_URL \
+  -v "$BASELINE_DIR/packages/backend/src/db/migrations:/app/packages/backend/dist/db/migrations:ro" \
+  "$IMAGE" bun packages/backend/dist/db/migrate.js --target-database=moovo --phase=all
+
+docker run --rm --network host -e DATABASE_URL "$IMAGE" \
+  bun packages/backend/dist/db/migrate.js --target-database=moovo --phase=pre
 
 # Mounted INTO /app so `@oxy.so/core` resolves from the image's own
 # node_modules, exactly as the bundle at /app/packages/backend/dist does.
@@ -53,6 +66,12 @@ if [ -z "$ready" ]; then
   echo "::error::the API image never answered /health/ready"
   exit 1
 fi
+
+# The new runtime is healthy before destructive post migrations. The simulated
+# old release is now drained, matching the production rollout boundary.
+docker run --rm --network host -e DATABASE_URL "$IMAGE" \
+  bun packages/backend/dist/db/migrate.js --target-database=moovo --phase=post
+curl -fsS "http://127.0.0.1:$PORT/health/ready" >/dev/null
 
 # PID 1 must be Bun running the bundle: the entrypoint execs the CMD, so a
 # wrapper left at PID 1 would have to forward the SIGTERM tested below, and a
