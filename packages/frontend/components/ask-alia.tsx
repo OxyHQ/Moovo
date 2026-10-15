@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { AliaChatSheet, type AliaChatSheetRef } from '@alia.onl/sdk';
+import { AliaAvatarIcon } from '@alia.onl/sdk/avatar';
 import { VoiceSession } from '@alia.onl/sdk/voice';
 import { Button } from '@oxy.so/bloom/button';
-import { RiSparklingLine } from '@oxy.so/bloom/icons/RiSparklingLine';
 import { useAuth } from '@oxy.so/services';
 import i18n from '@/lib/i18n';
 
@@ -34,7 +34,7 @@ export function AskAlia() {
 
   return (
     <>
-      <Button size="sm" appearance="outline" leadingIcon={RiSparklingLine} onPress={handleAskAlia}>
+      <Button size="sm" appearance="outline" leadingIcon={AliaAvatarIcon} onPress={handleAskAlia}>
         {i18n.t('alia.ask')}
       </Button>
       {canUsePrivateApi && (
