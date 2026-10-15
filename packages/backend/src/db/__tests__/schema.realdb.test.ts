@@ -51,7 +51,7 @@ const TABLES: PgTable[] = Object.values(schema as Record<string, unknown>).filte
  * produces no migration, and the omission looks exactly like "no schema change
  * to generate".
  */
-const EXPECTED_TABLE_COUNT = 40;
+const EXPECTED_TABLE_COUNT = 42;
 
 /**
  * Traversal floors. Deliberately well below the real figures — they exist to
@@ -69,6 +69,27 @@ const MINIMUM_COLUMNS = 400;
  * has looked at this yet" stop being indistinguishable.
  */
 const ID_COLUMNS_WITHOUT_FOREIGN_KEY: readonly { column: string; reason: string }[] = [
+  { column: 'material_transports.reservation_id', reason: 'Opaque Mercaria reservation reference' },
+  { column: 'material_transports.requesting_account_id', reason: 'Oxy owns accounts' },
+  { column: 'material_transports.payer_account_id', reason: 'Oxy owns accounts' },
+  { column: 'material_transports.donor_account_id', reason: 'Oxy owns accounts' },
+  { column: 'material_transports.recipient_account_id', reason: 'Oxy owns accounts' },
+  { column: 'material_transports.authorized_actor_account_id', reason: 'Oxy owns accounts' },
+  { column: 'material_transports.operation_id', reason: 'Client idempotency token, not a row ID' },
+  {
+    column: 'material_transports.authorized_quote_id',
+    reason: 'Historical authorization reference; expired quotes may be reaped',
+  },
+  {
+    column: 'shipment_booking_attempts.quote_id',
+    reason: 'Historical operation reference; expired quotes may be reaped',
+  },
+  { column: 'shipment_booking_attempts.sender_account_id', reason: 'Oxy owns accounts' },
+  {
+    column: 'shipment_booking_attempts.operation_id',
+    reason: 'Provider operation idempotency token, not a row ID',
+  },
+
   // Oxy owns identity. Moovo owns none of these rows and cannot enforce their
   // existence; a foreign key would either fail on a legitimate write or
   // require mirroring another service's table.

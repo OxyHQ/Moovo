@@ -71,6 +71,13 @@
       "when": 1792044990663,
       "tag": "0009_retire_local_company_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792063099102,
+      "tag": "0010_material_transport_reservations",
+      "breakpoints": true
     }
   ]
 }

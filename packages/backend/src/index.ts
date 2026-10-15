@@ -25,6 +25,7 @@ import reviewsRouter from './routes/reviews.js';
 import sellerRouter from './routes/seller.js';
 import courierRouter from './routes/courier.js';
 import shipmentsRouter from './routes/shipments.js';
+import materialTransportsRouter from './routes/material-transports.js';
 import jobsRouter from './routes/jobs.js';
 import reportsRouter from './routes/reports.js';
 import trackingRouter from './routes/tracking.js';
@@ -100,6 +101,7 @@ const isAllowedOrigin = (origin: string): boolean =>
   staticAllowedOrigins.includes(origin) || MOOVO_SUBDOMAIN_ORIGIN.test(origin);
 
 app.use((req, res, next) => {
+  if (req.path.startsWith('/api/v1/')) return next();
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl)
@@ -179,6 +181,9 @@ if (trackingWebhookRoutes) {
   app.use('/webhooks', trackingWebhookRoutes);
 }
 
+// Public API owns its JSON/error contract and bearer-only rate limiter.
+app.use('/api/v1', materialTransportsRouter);
+
 // Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -203,6 +208,7 @@ app.use('/reviews', reviewsRouter);
 app.use('/seller', sellerRouter);
 app.use('/courier', courierRouter);
 app.use('/shipments', shipmentsRouter);
+
 app.use('/jobs', jobsRouter);
 app.use('/reports', reportsRouter);
 app.use('/tracking', trackingRouter);

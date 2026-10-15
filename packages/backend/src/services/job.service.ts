@@ -34,6 +34,8 @@
  * it, because an HTTP round trip does not belong inside an open transaction.
  */
 
+import { eq } from 'drizzle-orm';
+import { shipmentBookingAttempts, materialTransports } from '../db/schema/material-transports';
 import { findProviderById } from '../db/transport/providerRepository.js';
 import type {
   JobStatus,
@@ -219,6 +221,7 @@ export async function bookShipment(
   shipmentId: string,
   quoteId: string,
   idempotencyKey?: string,
+  materialRequestId?: string,
 ): Promise<JobWithHistory> {
   const shipment = await findShipmentById(shipmentId);
   if (!shipment) {
@@ -237,12 +240,63 @@ export async function bookShipment(
     throw conflict(`Shipment is ${shipment.status} and cannot be booked`);
   }
 
+  const [materialTransport] = await getDb()
+    .select()
+    .from(materialTransports)
+    .where(eq(materialTransports.shipmentId, shipmentId));
+  if (
+    materialTransport &&
+    (materialTransport.id !== materialRequestId ||
+      idempotencyKey !== `material_${materialTransport.id}` ||
+      materialTransport.status !== 'booking' ||
+      materialTransport.authorizedQuoteId !== quoteId ||
+      !materialTransport.authorizationExpiresAt ||
+      materialTransport.authorizationExpiresAt.getTime() <= Date.now())
+  ) {
+    throw forbidden(
+      'Material transport requires the selected payer authorization and the transport booking endpoint',
+    );
+  }
   const quote = await findQuoteById(quoteId);
   if (!quote || quote.shipmentId !== shipmentId) {
     throw notFound('Quote not found for this shipment');
   }
   if (!isQuoteBookable(quote)) {
     throw conflict('Quote is no longer active');
+  }
+
+  // Validate the caller key BEFORE any provider effect; keys from another
+  // shipment/account must never return its job or book a second carrier parcel.
+  if (idempotencyKey) {
+    const prior = await findJobByIdempotencyKey(idempotencyKey);
+    if (prior && (prior.shipmentId !== shipmentId || prior.senderOxyUserId !== senderOxyUserId)) {
+      throw conflict('This booking key already belongs to another shipment');
+    }
+  }
+  const operationId = `shipment_${shipmentId}`;
+  if (quote.source === 'external_provider') {
+    const [claim] = await getDb()
+      .insert(shipmentBookingAttempts)
+      .values({
+        shipmentId,
+        quoteId,
+        senderAccountId: senderOxyUserId,
+        operationId,
+        idempotencyKey,
+        status: quote.source === 'external_provider' ? 'unknown' : 'processing',
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (!claim) {
+      const current = await findShipmentById(shipmentId);
+      if (current?.jobId) {
+        const job = await findJobWithHistory(current.jobId, config.jobs.maxLocationPings);
+        if (job) return job;
+      }
+      throw conflict(
+        'Booking is pending or its result is unknown. Reconcile this shipment before retrying; no second carrier request was sent.',
+      );
+    }
   }
 
   // For an external-provider quote, book through the adapter to get a booking
@@ -263,7 +317,7 @@ export async function bookShipment(
     if (!adapter) {
       throw conflict('No adapter registered for the quoted provider');
     }
-    const booking = await adapter.book(shipment, quote);
+    const booking = await adapter.book(shipment, quote, { operationId });
     providerRef = booking.bookingRef;
     // Kept, at last. Every adapter has always returned this and `job.service`
     // has always dropped it, so a customer whose parcel is on DHL had no way to
@@ -280,6 +334,57 @@ export async function bookShipment(
 
   const jobNumber = await nextJobNumber();
   const { job, converged } = await getDb().transaction(async (tx) => {
+    if (materialTransport) {
+      // Fence a worker paused past its lease: cancellation, renewed approval and
+      // recovery serialize with the actual job commit, not only the HTTP claim.
+      const [current] = await tx
+        .select()
+        .from(materialTransports)
+        .where(eq(materialTransports.id, materialTransport.id))
+        .for('update');
+      if (
+        current?.status !== 'booking' ||
+        current.authorizedQuoteId !== quoteId ||
+        !current.authorizationExpiresAt ||
+        current.authorizationExpiresAt.getTime() <= Date.now()
+      )
+        throw conflict('Transport authorization changed before booking');
+    }
+    if (!isExternal) {
+      // Internal admission is atomic with the job. A process dying before this
+      // transaction leaves no claim to strand ordinary courier bookings.
+      const [claim] = await tx
+        .insert(shipmentBookingAttempts)
+        .values({
+          shipmentId,
+          quoteId,
+          senderAccountId: senderOxyUserId,
+          operationId,
+          idempotencyKey,
+          status: 'processing',
+        })
+        .onConflictDoNothing()
+        .returning();
+      if (!claim) {
+        const [attempt] = await tx
+          .select()
+          .from(shipmentBookingAttempts)
+          .where(eq(shipmentBookingAttempts.shipmentId, shipmentId));
+        if (attempt?.jobId) {
+          const prior = await findJobById(attempt.jobId, tx);
+          if (prior) return { job: prior, converged: true };
+        }
+        // Recover an old interrupted internal admission under the material row
+        // lock; no external carrier can produce a processing claim.
+        if (
+          !materialTransport ||
+          attempt?.status !== 'processing' ||
+          attempt.senderAccountId !== senderOxyUserId ||
+          attempt.createdAt.getTime() > Date.now() - 30000
+        )
+          throw conflict('Booking key is already in use or booking is still in progress');
+      }
+    }
     const created = await insertJobIfAbsent(
       {
         jobNumber,
@@ -338,6 +443,15 @@ export async function bookShipment(
     );
     await markQuoteSelected(quoteId, tx);
     await markShipmentBooked(shipmentId, { jobId: created.id, quoteRef: quoteId }, tx);
+    await tx
+      .update(shipmentBookingAttempts)
+      .set({ status: 'completed', jobId: created.id, quoteId })
+      .where(eq(shipmentBookingAttempts.shipmentId, shipmentId));
+    if (materialTransport)
+      await tx
+        .update(materialTransports)
+        .set({ status: 'booked' })
+        .where(eq(materialTransports.id, materialTransport.id));
 
     // The tracker's pointer at this job, written HERE so it commits with the
     // job or not at all. A pointer to a job that rolled back would show a
