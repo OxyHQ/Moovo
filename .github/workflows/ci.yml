@@ -49,7 +49,6 @@ jobs:
               - 'packages/shared-types/**'
               - 'packages/contracts/**'
               - 'packages/sdk/**'
-              - 'vendor/**'
               - 'tsconfig*.json'
               - 'app.json'
               - 'scripts/**'

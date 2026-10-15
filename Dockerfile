@@ -76,7 +76,6 @@ COPY packages/shared-types/package.json ./packages/shared-types/package.json
 COPY packages/contracts/package.json ./packages/contracts/package.json
 COPY packages/sdk/package.json ./packages/sdk/package.json
 COPY packages/tracker-app/package.json ./packages/tracker-app/package.json
-COPY vendor ./vendor
 
 # Copy shared-types source before install so its `postinstall` (tsc) can build
 # the package's dist during `bun install`.
@@ -129,7 +128,7 @@ RUN cp -R packages/backend/src/db/migrations packages/backend/dist/db/migrations
 # the deterministic equivalent). The API bundle inlines first-party code, so the
 # shared-types dist is no longer needed at runtime.
 RUN rm -rf node_modules \
- && bun install --production
+ && bun install --frozen-lockfile --production --ignore-scripts
 
 # ---------------------------------------------------------------------------
 # Stage 2: runner — the pinned Bun runtime, production deps and the bundle.

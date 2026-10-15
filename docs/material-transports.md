@@ -84,10 +84,9 @@ before deployment. The previous release’s `0007` and `0009` post migrations mu
 already be applied before a normal pre-deploy rollout; do not bypass that production guard. Empty disposable smoke
 databases bootstrap the complete history before checking both deployment phases. They
 create transport/booking admission state and enforce the approval shape and
-booking keys. The API recipe copies contracts, every workspace manifest and
-vendored SDKs before installation; contracts are inlined into its backend bundle.
-`vendor/sdk-provenance.json` identifies the unpublished upstream Mercaria SDK by
-source commit and SHA-256/SHA-512. No registry publication is needed for review.
+booking keys. The API recipe copies contracts and every workspace manifest
+before installation; contracts are inlined into its backend bundle. The owning
+Mercaria SDK is installed from the registry at exact version `0.4.0`.
 
 The transport real-DB suite uses migrated PostgreSQL, actual HTTP, the SDK and
 request-local official Oxy-linked clients. It covers quantity-source access,
