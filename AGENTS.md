@@ -471,6 +471,11 @@ prevent.
 - **API** to AWS ECS Fargate via `.github/workflows/deploy-aws.yml`
   (`linux/arm64`, ECR `oxy/moovo`). The ECS service, task definition, ALB rule,
   ECR repo and SSM params must be provisioned in `oxy-infra` first (handoff).
+  It runs on `workflow_run` once CI has SUCCEEDED on a push to main, for the
+  exact commit CI tested, and has no test job of its own. It releases only
+  when a backend input (backend, shared-types, manifests, lockfile,
+  Dockerfile, the workflow and its scripts) changed since the commit the live
+  image was built from, so a frontend-only merge does not roll the API.
 - **The API runs on Bun.** The Dockerfile's runtime stage is
   `oven/bun:<pinned>-alpine` (CMD `bun packages/backend/dist/index.js`, Bun is
   PID 1), and the migrator one-shot in `.github/scripts/run-migration-task.sh`
