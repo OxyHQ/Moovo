@@ -10,9 +10,24 @@ on:
       - 'package.json'
       - 'bun.lock'
 
+# One deploy to the `moovo-hub` Pages project at a time, and never cancel one in
+# flight: a `wrangler pages deploy` cut off half-way is worse than a late one.
+# A newer pending run may replace an older pending one, which is safe because
+# it builds main's newer tree.
+concurrency:
+  group: deploy-cloudflare-moovo-hub
+  cancel-in-progress: false
+
+# Cloudflare is reached with its own API token; the GitHub token only needs to
+# read the repository.
+permissions:
+  contents: read
+
 jobs:
   deploy-app:
     runs-on: ubuntu-latest
+    # The web export alone is allowed 60 minutes below; the rest takes minutes.
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

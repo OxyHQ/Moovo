@@ -186,8 +186,30 @@ jobs:
       - name: Start PostgreSQL
         run: docker compose -f docker-compose.postgres.yml up -d --wait postgres
 
+      # BuildKit layer cache, READ on every run and WRITTEN only by a push to
+      # main, so a pull request can never seed what main (or another pull
+      # request) builds from. Its own amd64 scope: the deploy's `moovo-backend`
+      # scope holds linux/arm64 layers, which an amd64 build cannot reuse.
+      # `--load` keeps the image in the local daemon for the smoke below.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # `type=gha` needs the Actions runtime token and cache URL, which GitHub
+      # gives to JavaScript actions and NOT to `run:` steps; without them buildx
+      # skips the cache silently.
+      - name: Expose the Actions cache to buildx
+        uses: crazy-max/ghaction-github-runtime@v4
+
       - name: Build the API image
-        run: docker build -t moovo-api:ci .
+        env:
+          WRITE_CACHE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          set -euo pipefail
+          cache=(--cache-from type=gha,scope=moovo-backend-amd64)
+          if [ "$WRITE_CACHE" = true ]; then
+            cache+=(--cache-to type=gha,scope=moovo-backend-amd64,mode=max)
+          fi
+          docker buildx build --load "${cache[@]}" -t moovo-api:ci .
 
       - name: Smoke the API image under its Bun runtime
         env:
