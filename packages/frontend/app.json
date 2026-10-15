@@ -49,6 +49,13 @@
           "locationWhenInUsePermission": "Moovo uses your location to show nearby couriers and track your delivery in real time."
         }
       ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow Moovo to hear what you dictate and say to Alia.",
+          "speechRecognitionPermission": "Allow Moovo to turn your speech into text."
+        }
+      ],
       "@oxy.so/services/plugins/withOxySharedPermissions"
     ],
     "experiments": {

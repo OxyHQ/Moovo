@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useOxy, openAccountDialog } from '@oxy.so/services';
 import { ChevronRight } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
+import { AskAlia } from '@/components/ask-alia';
 import { Footer } from '@/components/shell/Footer';
 import { MoovoWordmark } from '@/components/ui/moovo-wordmark';
 import { StatusBadge } from '@/components/transport/StatusBadge';
@@ -185,7 +186,10 @@ function HomeBody() {
   const { isAuthenticated } = useOxy();
   return (
     <>
-      <View className="items-center bg-background px-4 pb-2 pt-10">
+      <View className="items-center bg-background px-4 pb-2 pt-16">
+        <View className="absolute right-4 top-4 z-10">
+          <AskAlia />
+        </View>
         <MoovoWordmark width={200} color={colors.foreground} />
         <Text className="mt-2 text-sm text-muted-foreground">
           Send packages, food and moves — your way.

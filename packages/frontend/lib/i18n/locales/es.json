@@ -175,5 +175,14 @@
   },
   "welcome": {
     "appName": "Moovo"
+  },
+  "alia": {
+    "ask": "Preguntar a Alia",
+    "clientContext": "La persona usa Moovo, una aplicación de mensajería y transporte donde envía paquetes, comida y mudanzas, recibe presupuestos de mensajeros y proveedores y sigue sus entregas. Está en la pantalla de inicio, que muestra las opciones de envío y sus entregas recientes.",
+    "suggestion": {
+      "send": "¿Cómo envío un paquete?",
+      "track": "¿Dónde está mi entrega?",
+      "price": "¿Cuánto costará hacer mi mudanza?"
+    }
   }
 }

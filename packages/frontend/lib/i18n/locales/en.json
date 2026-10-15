@@ -175,5 +175,14 @@
   },
   "welcome": {
     "appName": "Moovo"
+  },
+  "alia": {
+    "ask": "Ask Alia",
+    "clientContext": "The person is using Moovo, a courier and transport app where they send packages, food and moves, get quotes from couriers and providers, and track their deliveries. They are on the home screen, which shows the send options and their recent deliveries.",
+    "suggestion": {
+      "send": "How do I send a package?",
+      "track": "Where is my delivery?",
+      "price": "How much will it cost to move my things?"
+    }
   }
 }
