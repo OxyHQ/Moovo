@@ -3,7 +3,6 @@ import { View, ActivityIndicator } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Company, UpdateCompanyInput, CurrencyCode } from '@moovo/shared-types';
 import { Text } from '@/components/ui/text';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ColorPicker } from '@/components/ui/color-picker';
@@ -36,7 +35,6 @@ function SettingsForm({ company }: { company: Company }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  const [name, setName] = useState(company.name);
   const [description, setDescription] = useState(company.description);
   const [brandColor, setBrandColor] = useState(company.brandColor);
   const [currency, setCurrency] = useState<CurrencyCode>(company.defaultCurrency);
@@ -57,9 +55,7 @@ function SettingsForm({ company }: { company: Company }) {
   // Only send the fields that actually changed (the API requires ≥1 field).
   const buildPatch = (): UpdateCompanyInput => {
     const patch: UpdateCompanyInput = {};
-    const trimmedName = name.trim();
     const trimmedDescription = description.trim();
-    if (trimmedName && trimmedName !== company.name) patch.name = trimmedName;
     if (trimmedDescription !== company.description) patch.description = trimmedDescription;
     if (brandColor !== company.brandColor) patch.brandColor = brandColor;
     if (currency !== company.defaultCurrency) patch.defaultCurrency = currency;
@@ -69,18 +65,13 @@ function SettingsForm({ company }: { company: Company }) {
 
   const patch = buildPatch();
   const hasChanges = Object.keys(patch).length > 0;
-  const canSubmit = hasChanges && name.trim().length > 0 && !mutation.isPending;
+  const canSubmit = hasChanges && !mutation.isPending;
 
   return (
     <>
       <Field label={t('companyForm.name')}>
-        <Input
-          value={name}
-          onChangeText={setName}
-          placeholder={t('companyForm.namePlaceholder')}
-          maxLength={120}
-          autoCapitalize="words"
-        />
+        <Text>{company.name}</Text>
+        <Text>{t('companyForm.identityInOxy')}</Text>
       </Field>
 
       <Field label={t('companyForm.description')}>

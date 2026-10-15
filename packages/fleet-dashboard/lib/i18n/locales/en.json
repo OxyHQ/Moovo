@@ -78,8 +78,8 @@
     "stats": "Stats"
   },
   "companyForm": {
-    "createTitle": "New company",
-    "createSubtitle": "Create a company to manage members, fleet and jobs.",
+    "createTitle": "Register a fleet",
+    "createSubtitle": "Choose an organization you administer in Oxy to manage its fleet and delivery jobs.",
     "settingsTitle": "Company settings",
     "name": "Company name",
     "namePlaceholder": "e.g. Acme Couriers",
@@ -89,12 +89,16 @@
     "brandColor": "Brand color",
     "currency": "Default currency",
     "status": "Status",
-    "createButton": "Create company",
+    "createButton": "Register fleet",
     "created": "Company created.",
     "createFailed": "Couldn't create the company.",
     "saved": "Changes saved.",
     "saveFailed": "Couldn't save changes.",
-    "manageDenied": "You need the company:manage permission to edit company settings."
+    "manageDenied": "You need the company:manage permission to edit company settings.",
+    "organization": "Organization",
+    "directoryUnavailable": "The organization directory is unavailable. Try again.",
+    "noOrganizations": "Create or claim an organization in Oxy before registering its fleet.",
+    "identityInOxy": "Manage the company name and logo in Oxy."
   },
   "members": {
     "listTitle": "{{count}} members",
@@ -113,7 +117,7 @@
     "joinedOn": "Joined {{date}}",
     "manageDenied": "You need the members:manage permission to manage members.",
     "role": {
-      "owner": "Owner",
+      "owner": "Fleet administrator",
       "dispatcher": "Dispatcher",
       "driver": "Driver"
     }

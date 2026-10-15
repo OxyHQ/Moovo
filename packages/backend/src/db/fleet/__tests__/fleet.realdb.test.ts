@@ -411,7 +411,7 @@ describeIfPostgres('the fleet domain on a real server', () => {
       });
       // A COMPANY vehicle the courier does not own must never appear.
       const company = await insertCompanyWithOwner(
-        { handle: 'fleet-co', name: 'Fleet Co', description: '', brandColor: '#000' },
+        { handle: 'fleet-co', oxyAccountId: 'oxy-fleet-co', description: '', brandColor: '#000' },
         { oxyUserId: 'c-owner', permissions: ['fleet:write'] },
       );
       await insertVehicle({
@@ -431,7 +431,7 @@ describeIfPostgres('the fleet domain on a real server', () => {
   describe('companies and their members', () => {
     it('creates the company and its owner member together', async () => {
       const company = await insertCompanyWithOwner(
-        { handle: 'acme', name: 'Acme', description: 'x', brandColor: '#123456' },
+        { handle: 'acme', oxyAccountId: 'oxy-acme', description: 'x', brandColor: '#123456' },
         { oxyUserId: 'owner-1', permissions: ['company:manage', 'members:manage'] },
       );
 
@@ -449,7 +449,7 @@ describeIfPostgres('the fleet domain on a real server', () => {
      */
     it('converges on one member row when the same person is added twice', async () => {
       const company = await insertCompanyWithOwner(
-        { handle: 'dup', name: 'Dup', description: '', brandColor: '#000' },
+        { handle: 'dup', oxyAccountId: 'oxy-dup', description: '', brandColor: '#000' },
         { oxyUserId: 'owner-1', permissions: [] },
       );
 
@@ -472,7 +472,7 @@ describeIfPostgres('the fleet domain on a real server', () => {
 
     it('keeps the original joinedAt when a member is re-added', async () => {
       const company = await insertCompanyWithOwner(
-        { handle: 'joined', name: 'Joined', description: '', brandColor: '#000' },
+        { handle: 'joined', oxyAccountId: 'oxy-joined', description: '', brandColor: '#000' },
         { oxyUserId: 'owner-1', permissions: [] },
       );
       const first = await upsertCompanyMember(company.id, {
@@ -493,7 +493,7 @@ describeIfPostgres('the fleet domain on a real server', () => {
 
     it('cascades members when the company is deleted', async () => {
       const company = await insertCompanyWithOwner(
-        { handle: 'gone', name: 'Gone', description: '', brandColor: '#000' },
+        { handle: 'gone', oxyAccountId: 'oxy-gone', description: '', brandColor: '#000' },
         { oxyUserId: 'owner-1', permissions: [] },
       );
       await client()`DELETE FROM courier_companies WHERE id = ${company.id}`;
@@ -506,7 +506,7 @@ describeIfPostgres('the fleet domain on a real server', () => {
 
     it('clears a courier´s company pointer rather than blocking the delete', async () => {
       const company = await insertCompanyWithOwner(
-        { handle: 'affil', name: 'Affil', description: '', brandColor: '#000' },
+        { handle: 'affil', oxyAccountId: 'oxy-affil', description: '', brandColor: '#000' },
         { oxyUserId: 'owner-1', permissions: [] },
       );
       await ensureCourierProfile('c-affiliated');

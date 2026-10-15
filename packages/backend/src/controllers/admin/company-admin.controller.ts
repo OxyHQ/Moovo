@@ -19,7 +19,7 @@ import type {
   Company as CompanyDTO,
   Vehicle as VehicleDTO,
 } from '@moovo/shared-types';
-import type { CourierCompanyRecord } from '../../db/fleet/courierCompanyRepository.js';
+import { hydrateCompany, type FleetCompany } from '../../services/organizations/directory.js';
 import type { VehicleRecord } from '../../db/fleet/vehicleRepository.js';
 import {
   createCompany,
@@ -39,9 +39,10 @@ import { routeParam } from '../../utils/request.js';
 import { log } from '../../lib/logger.js';
 
 /** Serialize a company document to the `Company` admin DTO. */
-export function toCompanyDTO(company: CourierCompanyRecord): CompanyDTO {
+export function toCompanyDTO(company: FleetCompany): CompanyDTO {
   return {
     id: company.id,
+    oxyAccountId: company.oxyAccountId,
     handle: company.handle,
     name: company.name,
     description: company.description,
@@ -115,7 +116,7 @@ function loadedCompanyId(req: Request, res: Response): string | null {
 export async function createCompanyHandler(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
-    const company = await createCompany(oxyUserId, req.body as CreateCompanyInput);
+    const company = await createCompany(oxyUserId, req.body as CreateCompanyInput, req.accessToken);
     sendSuccess(res, toCompanyDTO(company), 201);
   } catch (err) {
     log.general.error({ err }, 'Failed to create company');
@@ -136,14 +137,18 @@ export async function listMyCompanies(req: Request, res: Response): Promise<void
 }
 
 /** GET /admin/companies/:companyId — the loaded company (caller is a member). */
-export function getCompanyHandler(req: Request, res: Response): void {
+export async function getCompanyHandler(req: Request, res: Response): Promise<void> {
   // `loadCompany` guarantees req.company is set for this route.
   const company = req.company;
   if (!company) {
     respondWithError(res, undefined, 'Company not loaded');
     return;
   }
-  sendSuccess(res, toCompanyDTO(company));
+  try {
+    sendSuccess(res, toCompanyDTO(await hydrateCompany(company)));
+  } catch (error) {
+    respondWithError(res, error, 'Failed to load organization');
+  }
 }
 
 /** PATCH /admin/companies/:companyId — update the loaded company. */

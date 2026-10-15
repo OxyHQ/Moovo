@@ -180,6 +180,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Start PostgreSQL
         run: docker compose -f docker-compose.postgres.yml up -d --wait postgres
@@ -190,6 +192,7 @@ jobs:
       - name: Smoke the API image under its Bun runtime
         env:
           IMAGE: moovo-api:ci
+          BASELINE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
           DATABASE_URL: postgres://moovo:moovo@127.0.0.1:5437/moovo
         run: bash .github/scripts/smoke-api-image.sh
 

@@ -1,7 +1,8 @@
 /**
  * Courier-company (fleet) service.
  *
- * Owns company lifecycle (create/update), membership management, and the
+ * Owns fleet lifecycle and operational membership, not Oxy company identity.
+ * The legacy `owner` role means fleet administrator. Enforces the
  * owner-protection invariants:
  *   - the LAST owner of a company can be neither removed nor demoted, and
  *   - only an `owner` may change or remove ANOTHER `owner`.
@@ -23,7 +24,6 @@ import type {
 // database enforces.
 import { COMPANY_PERMISSIONS as ALL_COMPANY_PERMISSIONS } from '../db/schema/valueSets.js';
 import {
-  companyHandleExists,
   deleteCompanyMember,
   findCompanyById,
   insertCompanyWithOwner,
@@ -35,9 +35,14 @@ import {
   type CompanyServiceAreaValue,
   type CourierCompanyRecord,
 } from '../db/fleet/courierCompanyRepository.js';
-import { ensureUniqueSlug } from '../utils/slug.js';
+import {
+  hydrateCompanies,
+  hydrateCompany,
+  requireOrganizationAdministrator,
+  type FleetCompany,
+} from './organizations/directory.js';
 import { sendNotification } from '../lib/notification-service.js';
-import { conflict, forbidden, notFound, validationError } from '../lib/errors/error-codes.js';
+import { conflict, forbidden, notFound } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
 
 /** Default brand color for a company created without one. */
@@ -59,20 +64,16 @@ function toServiceArea(
 }
 
 /**
- * Create a company. The caller becomes its sole `owner` (granted every
- * permission). The handle is derived from the name and made unique.
+ * Register a fleet after Oxy authorizes its administrator. The local role does
+ * not create ownership of the company account; the stable handle is a fleet route key.
  */
 export async function createCompany(
   ownerOxyUserId: string,
   input: CreateCompanyInput,
-): Promise<CourierCompanyRecord> {
-  const handle = await ensureUniqueSlug(input.name, async (candidate) => {
-    return companyHandleExists(candidate);
-  });
-
-  if (handle.length === 0) {
-    throw validationError('Company name must contain at least one alphanumeric character');
-  }
+  accessToken: string | undefined,
+): Promise<FleetCompany> {
+  const organization = await requireOrganizationAdministrator(input.oxyAccountId, accessToken);
+  const handle = `fleet-${organization.accountId}`;
 
   // The company row and its owner member commit TOGETHER — see the repository.
   // The source got that atomicity for free by embedding `members` in the same
@@ -80,43 +81,47 @@ export async function createCompany(
   const company = await insertCompanyWithOwner(
     {
       handle,
-      name: input.name,
+      oxyAccountId: organization.accountId,
       description: input.description ?? '',
       brandColor: input.brandColor ?? DEFAULT_BRAND_COLOR,
-      ...(input.logoFileId ? { logoFileId: input.logoFileId } : {}),
       ...(input.coverFileId ? { coverFileId: input.coverFileId } : {}),
       defaultCurrency: input.defaultCurrency ?? 'USD',
     },
     { oxyUserId: ownerOxyUserId, permissions: [...ALL_COMPANY_PERMISSIONS] },
-  );
+  ).catch((error: unknown) => {
+    const cause = (error as { cause?: { code?: string; constraint_name?: string } })?.cause;
+    if (cause?.code === '23505' && cause.constraint_name === 'courier_companies_oxy_account_key')
+      throw conflict('This organization already has a registered fleet');
+    throw error;
+  });
 
   const serviceAreas = (input.serviceAreas ?? []).map(toServiceArea);
   if (serviceAreas.length > 0) {
     await replaceCompanyServiceAreas(company.id, serviceAreas);
     return getCompany(company.id);
   }
-  return company;
+  return hydrateCompany(company);
 }
 
 /** Fetch a company by id, or throw NOT_FOUND. */
-export async function getCompany(companyId: string): Promise<CourierCompanyRecord> {
+export async function getCompany(companyId: string): Promise<FleetCompany> {
   const company = await findCompanyById(companyId);
   if (!company) {
     throw notFound('Company not found');
   }
-  return company;
+  return hydrateCompany(company);
 }
 
 /** List the companies the given user is a member of. */
-export async function listCompaniesForUser(oxyUserId: string): Promise<CourierCompanyRecord[]> {
-  return listCompaniesForMember(oxyUserId);
+export async function listCompaniesForUser(oxyUserId: string): Promise<FleetCompany[]> {
+  return hydrateCompanies(await listCompaniesForMember(oxyUserId));
 }
 
 /** Update a company's profile fields. Returns the updated company. */
 export async function updateCompany(
   companyId: string,
   patch: UpdateCompanyInput,
-): Promise<CourierCompanyRecord> {
+): Promise<FleetCompany> {
   const existing = await findCompanyById(companyId);
   if (!existing) {
     throw notFound('Company not found');
@@ -127,10 +132,8 @@ export async function updateCompany(
   }
 
   const updated = await updateCompanyRow(companyId, {
-    name: patch.name,
     description: patch.description,
     brandColor: patch.brandColor,
-    logoFileId: patch.logoFileId,
     coverFileId: patch.coverFileId,
     defaultCurrency: patch.defaultCurrency,
     textTone: patch.textTone,
@@ -139,7 +142,7 @@ export async function updateCompany(
   if (!updated) {
     throw notFound('Company not found');
   }
-  return updated;
+  return hydrateCompany(updated);
 }
 
 /**
@@ -151,7 +154,7 @@ export async function inviteMember(
   companyId: string,
   actor: CompanyMemberValue,
   input: InviteCompanyMemberInput,
-): Promise<CourierCompanyRecord> {
+): Promise<FleetCompany> {
   const company = await findCompanyById(companyId);
   if (!company) {
     throw notFound('Company not found');
@@ -180,7 +183,7 @@ export async function inviteMember(
       userId: input.oxyUserId,
       type: 'company_member_invited',
       title: 'Company invitation',
-      body: `You were added to ${company.name}`,
+      body: `You were added to ${(await hydrateCompany(company)).name}`,
       data: { companyId: company.id, role: input.role },
     });
   } catch (err) {
@@ -200,7 +203,7 @@ export async function updateMember(
   actor: CompanyMemberValue,
   targetOxyUserId: string,
   patch: UpdateCompanyMemberInput,
-): Promise<CourierCompanyRecord> {
+): Promise<FleetCompany> {
   const company = await findCompanyById(companyId);
   if (!company) {
     throw notFound('Company not found');
@@ -250,7 +253,7 @@ export async function removeMember(
   companyId: string,
   actor: CompanyMemberValue,
   targetOxyUserId: string,
-): Promise<CourierCompanyRecord> {
+): Promise<FleetCompany> {
   const company = await findCompanyById(companyId);
   if (!company) {
     throw notFound('Company not found');

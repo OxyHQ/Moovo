@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useOxy } from '@oxy.so/services';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateCompanyInput, CurrencyCode } from '@moovo/shared-types';
 import { Text } from '@/components/ui/text';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ColorPicker, COLOR_OPTIONS } from '@/components/ui/color-picker';
@@ -37,7 +37,33 @@ export default function NewCompanyScreen() {
   const queryClient = useQueryClient();
   const setSelectedCompanyId = useCompanyStore((s) => s.setSelectedCompanyId);
 
-  const [name, setName] = useState('');
+  const { oxyServices, canUsePrivateApi, user } = useOxy();
+  const [accountId, setAccountId] = useState('');
+  const accounts = useQuery({
+    queryKey: ['fleetRegistrationAccounts', user?.id],
+    enabled: canUsePrivateApi,
+    queryFn: async () => {
+      const nodes = await oxyServices.accounts.list();
+      const ids = nodes
+        .filter(
+          (node) =>
+            node.kind === 'organization' &&
+            node.callerMembership?.status === 'active' &&
+            ['owner', 'admin'].includes(node.callerMembership.role),
+        )
+        .map((node) => node.accountId);
+      const organizations = [];
+      for (let offset = 0; offset < ids.length; offset += 100) {
+        const response = await oxyServices.organizations.batch({
+          ids: ids.slice(offset, offset + 100),
+        });
+        organizations.push(...response.items.map((item) => item.organization));
+      }
+      return organizations.filter(
+        (org) => org.status === 'active' && org.claimStatus === 'claimed',
+      );
+    },
+  });
   const [description, setDescription] = useState('');
   const [brandColor, setBrandColor] = useState<string>(COLOR_OPTIONS[0] ?? '#3b82f6');
   const [currency, setCurrency] = useState<CurrencyCode>('USD');
@@ -55,13 +81,12 @@ export default function NewCompanyScreen() {
     },
   });
 
-  const trimmedName = name.trim();
-  const canSubmit = trimmedName.length > 0 && !mutation.isPending;
+  const canSubmit = Boolean(accountId) && canUsePrivateApi && !mutation.isPending;
 
   const onSubmit = () => {
     if (!canSubmit) return;
     const input: CreateCompanyInput = {
-      name: trimmedName,
+      oxyAccountId: accountId,
       brandColor,
       defaultCurrency: currency,
     };
@@ -74,14 +99,20 @@ export default function NewCompanyScreen() {
     <FormScreen title={t('companyForm.createTitle')}>
       <Text className="text-sm text-muted-foreground">{t('companyForm.createSubtitle')}</Text>
 
-      <Field label={t('companyForm.name')}>
-        <Input
-          value={name}
-          onChangeText={setName}
-          placeholder={t('companyForm.namePlaceholder')}
-          maxLength={120}
-          autoCapitalize="words"
-        />
+      <Field label={t('companyForm.organization')}>
+        {accounts.isError ? <Text>{t('companyForm.directoryUnavailable')}</Text> : null}
+        {accounts.isSuccess && accounts.data.length === 0 ? (
+          <Text>{t('companyForm.noOrganizations')}</Text>
+        ) : null}
+        {accounts.data?.map((organization) => (
+          <Button
+            key={organization.accountId}
+            onPress={() => setAccountId(organization.accountId)}
+            variant={accountId === organization.accountId ? 'default' : 'outline'}
+          >
+            <Text>{organization.name}</Text>
+          </Button>
+        ))}
       </Field>
 
       <Field label={t('companyForm.description')} helper={t('companyForm.descriptionHelper')}>

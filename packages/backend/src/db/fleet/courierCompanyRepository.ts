@@ -62,9 +62,8 @@ export interface CompanyServiceAreaValue {
 export interface CourierCompanyRecord {
   id: string;
   handle: string;
-  name: string;
+  oxyAccountId: string;
   description: string;
-  logoFileId?: string;
   coverFileId?: string;
   brandColor: string;
   textTone: TextTone;
@@ -116,7 +115,7 @@ function toCompanyRecord(
   const record: CourierCompanyRecord = {
     id: row.id,
     handle: row.handle,
-    name: row.name,
+    oxyAccountId: row.oxyAccountId,
     description: row.description,
     brandColor: row.brandColor,
     textTone: row.textTone as TextTone,
@@ -133,7 +132,6 @@ function toCompanyRecord(
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
-  if (row.logoFileId !== null) record.logoFileId = row.logoFileId;
   if (row.coverFileId !== null) record.coverFileId = row.coverFileId;
   if (row.payoutAccountRef !== null) record.payout.accountRef = row.payoutAccountRef;
   return record;
@@ -231,11 +229,10 @@ export async function listCompaniesForMember(
 /** What creating a company needs. */
 export interface NewCourierCompany {
   handle: string;
-  name: string;
+  oxyAccountId: string;
   description: string;
   brandColor: string;
   textTone?: string | undefined;
-  logoFileId?: string | undefined;
   coverFileId?: string | undefined;
   defaultCurrency?: string | undefined;
 }
@@ -259,11 +256,10 @@ export async function insertCompanyWithOwner(
       .values({
         id: uuidv7(),
         handle: input.handle,
-        name: input.name,
+        oxyAccountId: input.oxyAccountId,
         description: input.description,
         brandColor: input.brandColor,
         ...(input.textTone === undefined ? {} : { textTone: input.textTone }),
-        logoFileId: input.logoFileId ?? null,
         coverFileId: input.coverFileId ?? null,
         ...(input.defaultCurrency === undefined ? {} : { defaultCurrency: input.defaultCurrency }),
       })
@@ -295,11 +291,9 @@ export async function insertCompanyWithOwner(
 
 /** The mutable fields of a company. */
 export interface CourierCompanyPatch {
-  name?: string | undefined;
   description?: string | undefined;
   brandColor?: string | undefined;
   textTone?: string | undefined;
-  logoFileId?: string | undefined;
   coverFileId?: string | undefined;
   status?: string | undefined;
   defaultCurrency?: string | undefined;
@@ -313,11 +307,9 @@ export async function updateCompany(
 ): Promise<CourierCompanyRecord | null> {
   const set: Partial<typeof courierCompanies.$inferInsert> = {};
   for (const key of [
-    'name',
     'description',
     'brandColor',
     'textTone',
-    'logoFileId',
     'coverFileId',
     'status',
     'defaultCurrency',

@@ -30,6 +30,7 @@ import { type ChildProcess, spawn } from 'node:child_process';
 import { cpSync, existsSync } from 'node:fs';
 import { createServer, type Server } from 'node:net';
 import { join } from 'node:path';
+import postgres from 'postgres';
 
 const ROOT = join(import.meta.dir, '..');
 const SERVER = 'packages/backend/dist/index.js';
@@ -146,6 +147,28 @@ async function waitForReady(port: number, run: Run, timeoutMs: number): Promise<
   return false;
 }
 
+/** A dry run must not initialize the ledger or change its recorded progress. */
+async function migrationState(databaseUrl: string): Promise<string> {
+  const sql = postgres(databaseUrl, { max: 1 });
+  try {
+    return await sql.begin('read only', async (tx) => {
+      const relations = await tx`
+        SELECT n.nspname, c.relname, c.relkind
+        FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND n.nspname NOT LIKE 'pg_toast%' ORDER BY 1, 2, 3`;
+      const ledger = relations.some(
+        (row) => row.nspname === 'drizzle' && row.relname === '__drizzle_migrations',
+      )
+        ? await tx`SELECT * FROM drizzle.__drizzle_migrations ORDER BY id`
+        : [];
+      return JSON.stringify({ relations, ledger });
+    });
+  } finally {
+    await sql.end();
+  }
+}
+
 async function main(): Promise<void> {
   const databaseUrl = process.env.MOOVO_ENTRYPOINT_DATABASE_URL;
   if (!databaseUrl) {
@@ -225,9 +248,13 @@ async function main(): Promise<void> {
     ['Refusing to migrate: the run expects "not-this-database"'],
   );
 
-  // 5. Positive control: a dry run reaches its report and exits 0, writing nothing.
+  // 5. Positive control: inspect the entire cold-start chain without writing.
+  // A fresh ledger cannot run a later pre migration past an earlier post;
+  // that rollout guard remains enforced by the production runner. The image
+  // smoke separately applies the previous release then candidate pre/boot/post.
+  const beforeDryRun = await migrationState(databaseUrl);
   const dryRun = await start(
-    [MIGRATOR, `--target-database=${targetDatabase}`, '--phase=pre', '--dry-run'],
+    [MIGRATOR, `--target-database=${targetDatabase}`, '--phase=all', '--dry-run'],
     { DATABASE_URL: databaseUrl },
     60_000,
   ).done;
@@ -237,6 +264,11 @@ async function main(): Promise<void> {
     /migration\(s\)|No migrations to apply/.test(dryRun.output),
     'never reached its report',
     dryRun,
+  );
+  check(
+    'migrator: dry run',
+    (await migrationState(databaseUrl)) === beforeDryRun,
+    'changed database relations or migration ledger',
   );
   console.log(`migrator: dry run: exit ${dryRun.code}`);
 
