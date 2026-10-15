@@ -18,7 +18,10 @@ export default function Root({ children }: PropsWithChildren) {
         {/* Security and Performance */}
         <meta httpEquiv="Content-Security-Policy" content="upgrade-insecure-requests" />
         <meta name="referrer" content="origin-when-cross-origin" />
-        <meta httpEquiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
+        <meta
+          httpEquiv="Permissions-Policy"
+          content="camera=(), microphone=(self), geolocation=()"
+        />
 
         {/* Primary Meta Tags */}
         <meta name="title" content="Moovo" />

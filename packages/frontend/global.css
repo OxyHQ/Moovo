@@ -9,6 +9,7 @@
 @source "./hooks/**/*.{js,jsx,ts,tsx}";
 @source "../../node_modules/@oxy.so/services/lib/**/*.{js,jsx}";
 @source "../../node_modules/@oxy.so/bloom/lib/**/*.{js,jsx}";
+@source "../../node_modules/@alia.onl/sdk/src/**/*.{ts,tsx}";
 
 @theme {
   --font-sans: Inter, sans-serif;
