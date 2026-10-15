@@ -190,6 +190,23 @@ async function main(): Promise<void> {
   const run = start([SERVER], { DATABASE_URL: databaseUrl, PORT: String(port) }, 60_000);
   const ready = await waitForReady(port, run, 20_000);
   check('server: boots and shuts down', ready, `never answered /health/ready on port ${port}`);
+  if (ready) {
+    const response = await fetch(`http://127.0.0.1:${port}/api/v1/openapi.json`, {
+      headers: { Origin: 'https://mercaria.co' },
+    });
+    const contract = (await response.json()) as { paths?: Record<string, unknown> };
+    check(
+      'server: bundled transport contracts',
+      response.status === 200 && !!contract.paths?.['/transports'],
+      'compiled contracts could not generate OpenAPI',
+    );
+    check(
+      'server: transport CORS',
+      response.headers.get('access-control-allow-origin') === 'https://mercaria.co' &&
+        !response.headers.get('access-control-allow-credentials'),
+      'Mercaria bearer-only CORS missing',
+    );
+  }
   run.child.kill('SIGTERM');
   const outcome = await run.done;
   check('server: boots and shuts down', !outcome.timedOut, 'did not exit after SIGTERM', outcome);
@@ -225,9 +242,11 @@ async function main(): Promise<void> {
     ['Refusing to migrate: the run expects "not-this-database"'],
   );
 
-  // 5. Positive control: a dry run reaches its report and exits 0, writing nothing.
+  // 5. Positive control: inspect the complete history on a disposable database.
+  // A fresh database may contain historical post steps before newer pre steps;
+  // production pre-only admission correctly refuses that unbootstrapped state.
   const dryRun = await start(
-    [MIGRATOR, `--target-database=${targetDatabase}`, '--phase=pre', '--dry-run'],
+    [MIGRATOR, `--target-database=${targetDatabase}`, '--phase=all', '--dry-run'],
     { DATABASE_URL: databaseUrl },
     60_000,
   ).done;

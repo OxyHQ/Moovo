@@ -33,6 +33,7 @@ export type RateLimitScope =
   | 'courier'
   | 'company'
   | 'shipments'
+  | 'material-transports'
   | 'jobs'
   | 'reports'
   | 'tracking'
