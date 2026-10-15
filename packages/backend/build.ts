@@ -29,7 +29,11 @@ await esbuild.build({
    * shared chunk — the one failure that would strike exactly when a deploy is
    * mid-flight.
    */
-  entryPoints: ['src/index.ts', 'src/db/migrate.ts'],
+  entryPoints: [
+    'src/index.ts',
+    'src/db/migrate.ts',
+    'src/scripts/backfill-company-organizations.ts',
+  ],
   bundle: true,
   platform: 'node',
   target: 'node20',

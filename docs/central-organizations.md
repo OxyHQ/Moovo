@@ -19,11 +19,11 @@ The 2026-10-15 read-only production inventory found zero courier companies, comp
 The backfill requires a selected database and is dry-run by default. It reads source archives, current mappings and relationship counts; a private `--plan-output` file gives reviewers concrete rows and evidence. File creation is mode 0600 and refuses overwrite.
 
 ```sh
-bun packages/backend/src/scripts/backfill-company-organizations.ts \
+bun packages/backend/dist/scripts/backfill-company-organizations.js \
   --target-database=moovo --reviewed-mappings=/secure/fleet-links.json \
   --plan-output=/secure/fleet-plan.json
 
-bun packages/backend/src/scripts/backfill-company-organizations.ts \
+bun packages/backend/dist/scripts/backfill-company-organizations.js \
   --target-database=moovo --reviewed-mappings=/secure/fleet-links.json \
   --apply --plan-sha256=<reviewed-hash>
 ```

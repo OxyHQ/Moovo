@@ -61,7 +61,9 @@ it('freezes populated company identity, guards unmapped cutover and preserves fl
     await expect(through(url, 9, 'post')).rejects.toThrow();
     const planDir = mkdtempSync(join(tmpdir(), 'moovo-company-plan-'));
     try {
-      const script = join(MIGRATIONS_FOLDER, '../../scripts/backfill-company-organizations.ts');
+      const packageRoot = join(MIGRATIONS_FOLDER, '../../..');
+      execFileSync('bun', ['build.ts'], { cwd: packageRoot, stdio: 'pipe' });
+      const script = join(packageRoot, 'dist/scripts/backfill-company-organizations.js');
       const args = [
         script,
         `--target-database=${new URL(url).pathname.slice(1)}`,
