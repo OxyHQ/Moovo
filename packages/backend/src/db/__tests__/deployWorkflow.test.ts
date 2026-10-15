@@ -282,7 +282,6 @@ describe('the deploy holds no runtime secret', () => {
     'CLOUDFLARE_API_TOKEN',
     'CLOUDFLARE_ACCOUNT_ID',
     'NPM_TOKEN',
-    'ADD_TO_PROJECT_TOKEN',
   ]);
   const workflows = readdirSync(join(REPO_ROOT, '.github', 'workflows'))
     .filter((file) => /\.ya?ml$/.test(file))
