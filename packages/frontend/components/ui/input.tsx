@@ -7,7 +7,7 @@ const Input = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof TextInput> & {
     noFocus?: boolean;
   }
->(({ className, placeholderClassName, noFocus = false, ...props }, ref) => {
+>(({ className, noFocus = false, ...props }, ref) => {
   return (
     <TextInput
       ref={ref}
@@ -20,7 +20,6 @@ const Input = React.forwardRef<
         props.editable === false && 'opacity-50 web:cursor-not-allowed',
         className,
       )}
-      placeholderClassName={cn('text-muted-foreground', placeholderClassName)}
       {...props}
     />
   );
