@@ -51,7 +51,7 @@ const TABLES: PgTable[] = Object.values(schema as Record<string, unknown>).filte
  * produces no migration, and the omission looks exactly like "no schema change
  * to generate".
  */
-const EXPECTED_TABLE_COUNT = 39;
+const EXPECTED_TABLE_COUNT = 40;
 
 /**
  * Traversal floors. Deliberately well below the real figures — they exist to
@@ -105,7 +105,14 @@ const ID_COLUMNS_WITHOUT_FOREIGN_KEY: readonly { column: string; reason: string 
   { column: 'categories.image_file_id', reason: 'Oxy media file id.' },
   { column: 'stores.logo_file_id', reason: 'Oxy media file id.' },
   { column: 'stores.cover_file_id', reason: 'Oxy media file id.' },
-  { column: 'courier_companies.logo_file_id', reason: 'Oxy media file id.' },
+  {
+    column: 'courier_company_identity_archives.logo_file_id',
+    reason: 'Historical Oxy asset provenance, never a serving identity.',
+  },
+  {
+    column: 'courier_companies.oxy_account_id',
+    reason: 'Canonical Oxy organization account identity.',
+  },
   { column: 'courier_companies.cover_file_id', reason: 'Oxy media file id.' },
   { column: 'providers.logo_file_id', reason: 'Oxy media file id.' },
   { column: 'tracking_carriers.logo_file_id', reason: 'Oxy media file id.' },

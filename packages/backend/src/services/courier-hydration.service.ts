@@ -13,7 +13,7 @@
 
 import type { Courier, TextTone } from '@moovo/shared-types';
 import type { CourierProfileRow } from '../db/fleet/courierProfileRepository.js';
-import type { CourierCompanyRecord } from '../db/fleet/courierCompanyRepository.js';
+import type { FleetCompany } from './organizations/directory.js';
 import { resolveMedia } from './media.service.js';
 import { getProfiles, type OxyProfile } from './oxy-user.service.js';
 
@@ -59,7 +59,7 @@ export function toCourier(profile: CourierProfileRow, oxyProfile: OxyProfile | u
  * Build the PUBLIC `CompanySummary` projection of a company. Logo/cover are
  * resolved through the media chokepoint.
  */
-export function toCompanySummary(company: CourierCompanyRecord): CompanySummary {
+export function toCompanySummary(company: FleetCompany): CompanySummary {
   const summary: CompanySummary = {
     id: company.id,
     handle: company.handle,

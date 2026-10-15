@@ -12,7 +12,7 @@ import type { CurrencyCode } from './money';
 import type { TextTone } from './product';
 import type { GeoPoint, CourierPayout } from './courier';
 
-/** A member's role within a company. */
+/** Fleet role only. Legacy `owner` means fleet administrator, not Oxy account owner. */
 export type CompanyRole = 'owner' | 'dispatcher' | 'driver';
 
 /** A granular permission a company member can hold. */
@@ -48,6 +48,8 @@ export interface CompanyServiceArea {
 
 /** A courier company (fleet). */
 export interface Company extends Timestamps {
+  /** Canonical company account; fleet membership never grants Oxy account ownership. */
+  oxyAccountId: string;
   /** Stable company id. */
   id: string;
   /** Unique handle (without leading @), used to build the `/c/<handle>` route. */
@@ -83,18 +85,17 @@ export interface Company extends Timestamps {
 }
 
 /** Payload accepted when creating a new company. */
+/** Register a fleet for an organization the caller already administers in Oxy. */
 export interface CreateCompanyInput {
-  name: string;
+  oxyAccountId: string;
   description?: string;
   brandColor?: string;
-  logoFileId?: string;
   coverFileId?: string;
   defaultCurrency?: CurrencyCode;
   serviceAreas?: CompanyServiceArea[];
 }
-
-/** Partial payload accepted when updating an existing company. */
-export type UpdateCompanyInput = Partial<CreateCompanyInput> & {
+/** Fleet presentation and operations only; identity is edited in Oxy. */
+export type UpdateCompanyInput = Partial<Omit<CreateCompanyInput, 'oxyAccountId'>> & {
   textTone?: TextTone;
   status?: Company['status'];
 };

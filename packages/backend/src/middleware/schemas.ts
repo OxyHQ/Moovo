@@ -466,15 +466,16 @@ const serviceAreaSchema = z.object({
 });
 
 /** Body for `POST /admin/companies` (CreateCompanyInput). */
-export const createCompanySchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  description: z.string().max(5_000).optional(),
-  brandColor: z.string().trim().min(1).optional(),
-  logoFileId: z.string().trim().min(1).optional(),
-  coverFileId: z.string().trim().min(1).optional(),
-  defaultCurrency: currencySchema.optional(),
-  serviceAreas: z.array(serviceAreaSchema).optional(),
-});
+export const createCompanySchema = z
+  .object({
+    oxyAccountId: z.string().trim().min(1),
+    description: z.string().max(5_000).optional(),
+    brandColor: z.string().trim().min(1).optional(),
+    coverFileId: z.string().trim().min(1).optional(),
+    defaultCurrency: currencySchema.optional(),
+    serviceAreas: z.array(serviceAreaSchema).optional(),
+  })
+  .strict();
 
 const companyRoleSchema = z.enum(['owner', 'dispatcher', 'driver']);
 const companyPermissionSchema = z.enum([
@@ -489,16 +490,15 @@ const companyPermissionSchema = z.enum([
 /** Body for `PATCH /admin/companies/:companyId` (UpdateCompanyInput). */
 export const updateCompanySchema = z
   .object({
-    name: z.string().trim().min(1).max(120).optional(),
     description: z.string().max(5_000).optional(),
     brandColor: z.string().trim().min(1).optional(),
-    logoFileId: z.string().trim().min(1).optional(),
     coverFileId: z.string().trim().min(1).optional(),
     defaultCurrency: currencySchema.optional(),
     serviceAreas: z.array(serviceAreaSchema).optional(),
     textTone: z.enum(['light', 'dark']).optional(),
     status: z.enum(['active', 'suspended', 'closed']).optional(),
   })
+  .strict()
   .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
 
 /** Body for `POST /admin/companies/:companyId/members` (InviteCompanyMemberInput). */

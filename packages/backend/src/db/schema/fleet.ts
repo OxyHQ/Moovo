@@ -49,11 +49,10 @@ export const courierCompanies = pgTable(
   {
     id: generatedId(),
     handle: text().notNull(),
-    name: text().notNull(),
+    oxyAccountId: foreignServiceId().notNull(),
     /** NOT NULL, no database default — see `listings.description`. */
     description: text().notNull(),
-    /** An Oxy media file id. Oxy owns identity/media: no FK. */
-    logoFileId: foreignServiceId(),
+    /** Fleet-specific cover presentation; canonical avatar is owned by Oxy. */
     coverFileId: foreignServiceId(),
     brandColor: text().notNull(),
     textTone: text().notNull().default('light'),
@@ -78,6 +77,7 @@ export const courierCompanies = pgTable(
     closedSet('courier_companies_status_check', table.status, COMPANY_STATUSES),
     closedSet('courier_companies_default_currency_check', table.defaultCurrency, CURRENCY_CODES),
     closedSet('courier_companies_payout_provider_check', table.payoutProvider, PAYMENT_PROVIDERS),
+    uniqueIndex('courier_companies_oxy_account_key').on(table.oxyAccountId),
     uniqueIndex('courier_companies_handle_key').on(table.handle),
     index('courier_companies_status_created_idx').on(table.status, table.createdAt),
   ],
@@ -311,4 +311,19 @@ export const vehicles = pgTable(
     index('vehicles_courier_oxy_user_idx').on(table.courierOxyUserId),
     index('vehicles_company_idx').on(table.companyId),
   ],
+);
+
+/** Immutable provenance from the retired local company directory. */
+export const courierCompanyIdentityArchives = pgTable(
+  'courier_company_identity_archives',
+  {
+    id: generatedId(),
+    companyId: text()
+      .notNull()
+      .references(() => courierCompanies.id, { onDelete: 'restrict' }),
+    observedName: text().notNull(),
+    logoFileId: foreignServiceId(),
+    archivedAt: createdAt(),
+  },
+  (table) => [uniqueIndex('courier_company_identity_archives_company_key').on(table.companyId)],
 );

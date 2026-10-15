@@ -87,7 +87,7 @@ describeIfPostgres('the CHECK constraints that replace the hooks', () => {
       INSERT INTO stores (id, handle, name, description, brand_color) VALUES ('store-1', 'shop', 'Shop', '', '#000')
     `;
     await suite.client`
-      INSERT INTO courier_companies (id, handle, name, description, brand_color)
+      INSERT INTO courier_companies (id, handle, oxy_account_id, description, brand_color)
       VALUES ('company-1', 'fleet', 'Fleet', '', '#000')
     `;
   });

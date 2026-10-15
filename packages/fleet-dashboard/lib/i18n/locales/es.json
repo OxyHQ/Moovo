@@ -78,8 +78,8 @@
     "stats": "Estadísticas"
   },
   "companyForm": {
-    "createTitle": "Nueva empresa",
-    "createSubtitle": "Crea una empresa para gestionar miembros, flota y trabajos.",
+    "createTitle": "Registrar una flota",
+    "createSubtitle": "Elige una organización que administras en Oxy para gestionar su flota y sus entregas.",
     "settingsTitle": "Ajustes de la empresa",
     "name": "Nombre de la empresa",
     "namePlaceholder": "p. ej. Acme Couriers",
@@ -89,12 +89,16 @@
     "brandColor": "Color de marca",
     "currency": "Moneda predeterminada",
     "status": "Estado",
-    "createButton": "Crear empresa",
+    "createButton": "Registrar flota",
     "created": "Empresa creada.",
     "createFailed": "No se pudo crear la empresa.",
     "saved": "Cambios guardados.",
     "saveFailed": "No se pudieron guardar los cambios.",
-    "manageDenied": "Necesitas el permiso company:manage para editar los ajustes de la empresa."
+    "manageDenied": "Necesitas el permiso company:manage para editar los ajustes de la empresa.",
+    "organization": "Organización",
+    "directoryUnavailable": "El directorio no está disponible. Inténtalo de nuevo.",
+    "noOrganizations": "Crea o reclama una organización en Oxy antes de registrar su flota.",
+    "identityInOxy": "Gestiona el nombre y el logotipo en Oxy."
   },
   "members": {
     "listTitle": "{{count}} miembros",
@@ -113,7 +117,7 @@
     "joinedOn": "Se unió el {{date}}",
     "manageDenied": "Necesitas el permiso members:manage para gestionar miembros.",
     "role": {
-      "owner": "Propietario",
+      "owner": "Administrador de flota",
       "dispatcher": "Despachador",
       "driver": "Conductor"
     }
