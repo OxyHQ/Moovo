@@ -50,10 +50,12 @@
         }
       ],
       [
-        "expo-speech-recognition",
+        "react-native-audio-api",
         {
-          "microphonePermission": "Allow Moovo to hear what you dictate and say to Alia.",
-          "speechRecognitionPermission": "Allow Moovo to turn your speech into text."
+          "iosMicrophonePermission": "Allow Moovo to hear what you dictate and say to Alia.",
+          "iosBackgroundMode": false,
+          "androidForegroundService": false,
+          "androidPermissions": ["android.permission.RECORD_AUDIO"]
         }
       ],
       "@oxy.so/services/plugins/withOxySharedPermissions"
