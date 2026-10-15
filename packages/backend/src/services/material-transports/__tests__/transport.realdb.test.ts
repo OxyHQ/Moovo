@@ -5,7 +5,7 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { eq, sql } from 'drizzle-orm';
 import { OxyServices } from '@oxy.so/core';
-import { moovoForOxy, createMoovoClient } from '@moovo.now/sdk';
+import { moovoForOxy, createMoovoClient } from '@oxy.so/moovo-sdk';
 import {
   createSuiteDatabase,
   destroySuiteDatabase,

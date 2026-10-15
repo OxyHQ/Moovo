@@ -1,7 +1,7 @@
 # Moovo transport SDK
 
-`@moovo.now/sdk` is Moovo's canonical transport client. Its bundled schemas come
-from `@moovo.now/contracts`; consumers do not copy transport metadata into their
+`@oxy.so/moovo-sdk` is Moovo's canonical transport client. Its bundled schemas come
+from `@oxy.so/moovo-contracts`; consumers do not copy transport metadata into their
 own databases. Use `moovoForOxy(oxyServices)` in an authenticated Oxy application
 and dispose the returned linked client with its component/request lifecycle.
 

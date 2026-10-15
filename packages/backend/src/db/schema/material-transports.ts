@@ -1,7 +1,7 @@
 import { check, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createdAt, generatedId, timestamptz, updatedAt } from '@oxy.so/db';
-import { TRANSPORT_STATES } from '@moovo.now/contracts';
+import { TRANSPORT_STATES } from '@oxy.so/moovo-contracts';
 import { closedSet, foreignServiceId, moneyMinor } from './columns';
 import { shipments, jobs } from './transport';
 

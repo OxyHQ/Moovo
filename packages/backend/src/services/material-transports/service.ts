@@ -7,7 +7,7 @@ import {
   type TransportRequest,
   type TransportAuthorizationInput,
   type TransportEndpoint,
-} from '@moovo.now/contracts';
+} from '@oxy.so/moovo-contracts';
 import { getDb } from '../../db/postgres';
 import { materialTransports as transports } from '../../db/schema/material-transports';
 import {

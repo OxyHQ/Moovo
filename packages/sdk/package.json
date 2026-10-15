@@ -1,5 +1,5 @@
 {
-  "name": "@moovo.now/sdk",
+  "name": "@oxy.so/moovo-sdk",
   "version": "0.1.0",
   "type": "module",
   "sideEffects": false,
@@ -35,7 +35,7 @@
     "esbuild": "^0.28.2",
     "rollup": "^4.59.0",
     "rollup-plugin-dts": "~6.4.1",
-    "@moovo.now/contracts": "workspace:*"
+    "@oxy.so/moovo-contracts": "workspace:*"
   },
   "peerDependencies": {
     "@oxy.so/core": "^4.5.0"

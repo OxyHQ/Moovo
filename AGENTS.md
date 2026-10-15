@@ -25,8 +25,8 @@ not as the domain.** The live courier domain is `courier-company`,
 | `@moovo/fleet-dashboard` | `packages/fleet-dashboard/` | Fleet and ops dashboard, shipped as **Moovo Hub** |
 | `@moovo/tracker-app` | `packages/tracker-app/` | Public parcel-tracking app, shipped as **Moovo Tracker** |
 | `@moovo/backend` | `packages/backend/` | Express API (TypeScript, PostgreSQL, Socket.IO) |
-| `@moovo.now/contracts` | `packages/contracts/` | Canonical material transport schemas and OpenAPI |
-| `@moovo.now/sdk` | `packages/sdk/` | Headless Oxy-linked transport client |
+| `@oxy.so/moovo-contracts` | `packages/contracts/` | Canonical material transport schemas and OpenAPI |
+| `@oxy.so/moovo-sdk` | `packages/sdk/` | Headless Oxy-linked transport client |
 | `@moovo/shared-types` | `packages/shared-types/` | Domain DTOs, still largely inherited marketplace shapes awaiting courier replacements |
 
 **The root script names do not match the package names**, which is not guessable

@@ -8,7 +8,7 @@ import {
   TransportRead,
   openapi,
   routes,
-} from '@moovo.now/contracts';
+} from '@oxy.so/moovo-contracts';
 import { optionalAuth } from '../middleware/auth';
 import { makeRateLimiter } from '../lib/rate-limit';
 import { transportCaller, TransportError } from '../services/material-transports/access';

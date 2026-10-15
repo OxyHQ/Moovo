@@ -2,7 +2,7 @@ import { OxyServices, OxyApiError } from '@oxy.so/core';
 import { getOxyActor, getOxyUserId } from '@oxy.so/core/server';
 import type { Request } from 'express';
 import { createMercariaClient, MercariaApiError } from '@mercaria.co/sdk';
-import { ERROR_STATUS, type TransportErrorCode } from '@moovo.now/contracts';
+import { ERROR_STATUS, type TransportErrorCode } from '@oxy.so/moovo-contracts';
 export class TransportError extends Error {
   constructor(
     readonly code: TransportErrorCode,

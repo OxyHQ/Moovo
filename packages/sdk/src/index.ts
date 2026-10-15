@@ -11,14 +11,14 @@ import {
   type TransportAuthorizationInput,
   type TransportActionInput,
   type TransportErrorCode,
-} from '@moovo.now/contracts';
+} from '@oxy.so/moovo-contracts';
 export type {
   TransportRequest,
   TransportView,
   TransportAuthorizationInput,
   TransportActionInput,
   TransportEndpoint,
-} from '@moovo.now/contracts';
+} from '@oxy.so/moovo-contracts';
 export class MoovoApiError extends Error {
   constructor(
     readonly code: TransportErrorCode,

@@ -34,7 +34,7 @@
     "postinstall": "bun run build:shared-types && bun run build:contracts",
     "test:worker": "bun test scripts/asset-worker.test.ts",
     "check:api-entrypoints": "bun run build:backend && bun scripts/check-api-entrypoints.ts",
-    "build:contracts": "bun run --filter @moovo.now/contracts build"
+    "build:contracts": "bun run --filter @oxy.so/moovo-contracts build"
   },
   "keywords": [
     "monorepo",

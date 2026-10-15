@@ -61,7 +61,7 @@ await esbuild.build({
           // still use Zod 3. Inline the owning schema runtime with its contracts.
           if (args.path === 'zod' && args.importer.includes('/packages/contracts/'))
             return undefined;
-          if (args.path.startsWith('@moovo/') || args.path === '@moovo.now/contracts')
+          if (args.path.startsWith('@moovo/') || args.path === '@oxy.so/moovo-contracts')
             return undefined;
           return { path: args.path, external: true };
         });
