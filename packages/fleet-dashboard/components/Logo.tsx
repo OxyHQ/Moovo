@@ -18,13 +18,28 @@ export interface LogoProps {
 /**
  * Moovo brand logo mark — a storefront / shopping-bag glyph.
  *
- * Renders the inlined SVG path (no metro svg transformer dependency) and, by
- * default, follows the active Bloom theme's foreground color. Pair it with
- * `<MoovoWordmark/>` for the full lockup.
+ * Renders the inlined SVG path (no metro svg transformer dependency). With a `color` it is pure;
+ * without one it follows the active Bloom theme's foreground, which needs the theme context. The
+ * splash passes `color` precisely because it renders BEFORE that context exists, so the hook lives
+ * in `ThemedLogo` and is never called on that path. Pair it with `<MoovoWordmark/>` for the full
+ * lockup.
  */
 export function Logo({ color, size = 28, style, className }: LogoProps): ReactElement {
+  if (color === undefined) return <ThemedLogo size={size} style={style} className={className} />;
+  return <LogoMark fill={color} size={size} style={style} className={className} />;
+}
+
+function ThemedLogo(props: Omit<LogoProps, 'color'>): ReactElement {
   const { colors } = useColorScheme();
-  const fill = color ?? colors.foreground;
+  return <LogoMark fill={colors.foreground} {...props} />;
+}
+
+function LogoMark({
+  fill,
+  size,
+  style,
+  className,
+}: Omit<LogoProps, 'color'> & { fill: string }): ReactElement {
   return (
     <Svg viewBox="0 -960 960 960" width={size} height={size} style={style} className={className}>
       <Path d={LOGO_PATH} fill={fill} />
