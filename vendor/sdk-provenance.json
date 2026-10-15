@@ -1,9 +1,10 @@
 {
   "artifact": "mercaria.co-sdk-0.4.0-8a6f9c54.tgz",
   "repository": "https://github.com/OxyHQ/Mercaria",
-  "sourceCommit": "8a6f9c5434413d3e279dd6d8c74587657763d82d",
+  "sourceCommit": "b80545cce850fe898a121a4e1d88c568320ada20",
   "sourcePackage": "packages/sdk",
   "sha256": "0c27f718b97f03336477e9d4f710593656f644c022ae60998984f58f7e78bed1",
   "integrity": "sha512-e31KX4l09tfHf+T2HW2AE/KDHMG6M9WXk38LMoZpTXTtjA6TA4MBYMSHJtol7+ZEfGAtU/iBZI5CK3nPi5639w==",
-  "published": false
+  "published": false,
+  "sdkImplementationCommit": "8a6f9c5434413d3e279dd6d8c74587657763d82d"
 }
