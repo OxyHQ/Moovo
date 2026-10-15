@@ -57,6 +57,27 @@
       "when": 1789004767964,
       "tag": "0007_peable_payment_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792050952512,
+      "tag": "0008_green_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792052334328,
+      "tag": "0009_yummy_kate_bishop",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792052615761,
+      "tag": "0010_breezy_ogun",
+      "breakpoints": true
     }
   ]
 }

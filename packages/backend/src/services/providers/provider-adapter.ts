@@ -41,7 +41,11 @@ export interface ProviderAdapter {
   /** Price a shipment; returns zero or more FAIR-priced quotes. */
   quote(shipment: ShipmentRecord): Promise<ProviderQuote[]>;
   /** Book a shipment against a selected quote; returns the booking reference. */
-  book(shipment: ShipmentRecord, quote: QuoteRecord): Promise<ProviderBooking>;
+  book(
+    shipment: ShipmentRecord,
+    quote: QuoteRecord,
+    context?: { operationId: string },
+  ): Promise<ProviderBooking>;
   /** Cancel a booking, when the provider supports cancellation. */
   cancel?(bookingRef: string): Promise<void>;
 }

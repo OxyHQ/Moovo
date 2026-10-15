@@ -24,7 +24,11 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 cleanup() { docker rm -f "$NAME" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 
-for phase in pre post; do
+# Bootstrap the disposable fixture across completed historical releases. A new
+# pre migration can follow a historical post migration; a production pre-only
+# run must refuse that state, but this empty smoke DB has no serving old image.
+# The actual deployment script remains pre/post and never uses this bootstrap.
+for phase in all pre post; do
   docker run --rm --network host -e DATABASE_URL "$IMAGE" \
     bun packages/backend/dist/db/migrate.js --target-database=moovo --phase="$phase"
 done

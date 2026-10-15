@@ -75,3 +75,6 @@ packages/frontend/.expo/
 packages/shared-types/dist/
 Perplexity.html
 Perplexity_files/
+
+.local/
+.artifacts/
