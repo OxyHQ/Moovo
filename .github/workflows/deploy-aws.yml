@@ -228,8 +228,8 @@ jobs:
       #     order): skip, never roll production back to an older tree;
       #   * no file changed since the live commit is a backend input: skip. The
       #     inputs are what goes into the image or decides how it is rolled out —
-      #     packages/backend, packages/shared-types (a workspace dependency the
-      #     image bundles), every manifest and the lockfile (they decide the
+      #     packages/backend, packages/shared-types and packages/contracts
+      #     (workspace dependencies the image bundles), every manifest and the lockfile (they decide the
       #     install), bunfig.toml, the Dockerfile and its ignore files, this
       #     workflow and the scripts it runs. Markdown never counts. A frontend-
       #     only merge therefore no longer rebuilds and rolls out the API; the
@@ -278,7 +278,7 @@ jobs:
           # matches no exclusion below and so deploys.
           changed=$(for base in "${bases[@]}"; do git diff --name-only "$base" "$DEPLOY_SHA" || echo '<diff failed>'; done | sort -u)
           relevant=$(grep -vE '\.md$' <<<"$changed" \
-            | grep -E '^(packages/backend/|packages/shared-types/|packages/[^/]+/package\.json$|package\.json$|bun\.lock$|bunfig\.toml$|Dockerfile|\.dockerignore$|\.github/workflows/deploy-aws\.yml$|\.github/scripts/(run-migration-task\.sh|reviewed-image\.py|reviewed-images\.json)$|<diff failed>$)' || true)
+            | grep -E '^(packages/backend/|packages/shared-types/|packages/contracts/|packages/[^/]+/package\.json$|package\.json$|bun\.lock$|bunfig\.toml$|Dockerfile|\.dockerignore$|\.github/workflows/deploy-aws\.yml$|\.github/scripts/(run-migration-task\.sh|reviewed-image\.py|reviewed-images\.json)$|<diff failed>$)' || true)
           if [ -z "$relevant" ]; then
             decide false "no backend input changed since live ${bases[*]}; not deploying"
           fi

@@ -73,10 +73,14 @@ COPY packages/frontend/package.json ./packages/frontend/package.json
 COPY packages/courier-app/package.json ./packages/courier-app/package.json
 COPY packages/fleet-dashboard/package.json ./packages/fleet-dashboard/package.json
 COPY packages/shared-types/package.json ./packages/shared-types/package.json
+COPY packages/contracts/package.json ./packages/contracts/package.json
+COPY packages/sdk/package.json ./packages/sdk/package.json
+COPY packages/tracker-app/package.json ./packages/tracker-app/package.json
 
 # Copy shared-types source before install so its `postinstall` (tsc) can build
 # the package's dist during `bun install`.
 COPY packages/shared-types ./packages/shared-types
+COPY packages/contracts ./packages/contracts
 
 # Install from the lockfile (devDependencies included — esbuild/TypeScript needed
 # to bundle the API; root postinstall builds @moovo/shared-types). NOT
@@ -124,7 +128,7 @@ RUN cp -R packages/backend/src/db/migrations packages/backend/dist/db/migrations
 # the deterministic equivalent). The API bundle inlines first-party code, so the
 # shared-types dist is no longer needed at runtime.
 RUN rm -rf node_modules \
- && bun install --production
+ && bun install --frozen-lockfile --production --ignore-scripts
 
 # ---------------------------------------------------------------------------
 # Stage 2: runner — the pinned Bun runtime, production deps and the bundle.

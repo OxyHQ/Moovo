@@ -25,6 +25,8 @@ not as the domain.** The live courier domain is `courier-company`,
 | `@moovo/fleet-dashboard` | `packages/fleet-dashboard/` | Fleet and ops dashboard, shipped as **Moovo Hub** |
 | `@moovo/tracker-app` | `packages/tracker-app/` | Public parcel-tracking app, shipped as **Moovo Tracker** |
 | `@moovo/backend` | `packages/backend/` | Express API (TypeScript, PostgreSQL, Socket.IO) |
+| `@oxy.so/moovo-contracts` | `packages/contracts/` | Canonical material transport schemas and OpenAPI |
+| `@oxy.so/moovo-sdk` | `packages/sdk/` | Headless Oxy-linked transport client |
 | `@moovo/shared-types` | `packages/shared-types/` | Domain DTOs, still largely inherited marketplace shapes awaiting courier replacements |
 
 **The root script names do not match the package names**, which is not guessable
@@ -41,6 +43,11 @@ postgres.js via `@oxy.so/db`), optional Redis and Socket.IO on the backend;
 `@oxy.so/services` for device-first auth. Client id is
 `EXPO_PUBLIC_OXY_CLIENT_ID`; backend auth wiring is in
 `packages/backend/src/middleware/auth.ts`.
+
+Material donation transport, payer authorization and retry behavior are documented
+in `docs/material-transports.md`. Its FAIR cents differ from Mercaria's money scale;
+consumers use the owning SDK formatter. Backend contracts inline their Zod 4
+runtime while legacy backend routes still use Zod 3.
 
 ## Databases
 

@@ -57,7 +57,12 @@ await esbuild.build({
       name: 'externalize-third-party',
       setup(build) {
         build.onResolve({ filter: /^[^./]/ }, (args) => {
-          if (args.path.startsWith('@moovo/')) return undefined;
+          // The new canonical contracts use Zod 4 while legacy backend routes
+          // still use Zod 3. Inline the owning schema runtime with its contracts.
+          if (args.path === 'zod' && args.importer.includes('/packages/contracts/'))
+            return undefined;
+          if (args.path.startsWith('@moovo/') || args.path === '@oxy.so/moovo-contracts')
+            return undefined;
           return { path: args.path, external: true };
         });
       },

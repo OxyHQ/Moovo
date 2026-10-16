@@ -281,7 +281,10 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
     // create shipments of their own, so those go too and the shared one is
     // re-seeded. Jobs are deleted FIRST: `jobs.shipment_id` is `ON DELETE
     // restrict`, deliberately, so a booked shipment cannot be removed under a
-    // live job.
+    // live job. Booking claims and material transports reference both, so they
+    // go before either.
+    await client()`DELETE FROM shipment_booking_attempts`;
+    await client()`DELETE FROM material_transports`;
     await client()`DELETE FROM jobs`;
     await client()`DELETE FROM shipments`;
     const shipment = await insertShipment(shipmentInput());
