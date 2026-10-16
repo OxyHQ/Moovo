@@ -24,7 +24,8 @@
   "scripts": {
     "build": "bun scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "bun run typecheck && bun run test && bun run build"
   },
   "dependencies": {
     "zod": "^4.5.4"
