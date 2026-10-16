@@ -10,6 +10,7 @@ import type { CategoryNode, CursorPage, Listing } from '@moovo/shared-types';
 import { findCategoryBySlug, listActiveCategories } from '../db/catalog/catalogRepository.js';
 import { toCategoryRecord, type CategoryRecord } from '../db/catalog/catalogShape.js';
 import { searchListingsCursor } from '../services/search.service.js';
+import { resolveMedia } from '../services/media.service.js';
 import { hydrateListings } from '../services/catalog-hydration.service.js';
 import { parsePagination } from '../utils/pagination.js';
 import { sendSuccess } from '../utils/api-response.js';
@@ -29,8 +30,11 @@ function buildTree(categories: CategoryRecord[]): CategoryNode[] {
       parentId: c.parentId,
       children: [],
     };
-    if (c.imageUrl) {
-      node.imageUrl = c.imageUrl;
+    // The art is the Moovo-owned Oxy file. `imageUrl` on the ROW is only where
+    // it was imported from and is never served (oxy ADR 0043).
+    const imageUrl = c.imageFileId ? resolveMedia(c.imageFileId) : undefined;
+    if (imageUrl) {
+      node.imageUrl = imageUrl;
     }
     nodeById.set(c.id, node);
   }

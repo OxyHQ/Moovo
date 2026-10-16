@@ -25,7 +25,7 @@ let activity: ReturnType<typeof createEcosystemTraffic> | undefined;
  * "Moovo cannot act as itself here", and the two names are still the thing to
  * set THERE.
  */
-function canAuthenticateAsOxyService(): boolean {
+export function canAuthenticateAsOxyService(): boolean {
   return (
     canAttestWorkloadIdentity() ||
     Boolean(process.env.OXY_SERVICE_API_KEY?.trim() && process.env.OXY_SERVICE_API_SECRET?.trim())

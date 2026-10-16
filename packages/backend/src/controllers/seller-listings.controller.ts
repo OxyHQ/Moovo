@@ -28,6 +28,7 @@ import { sendSuccess, sendPaginated } from '../utils/api-response.js';
 import { respondWithError, forbidden, notFound } from '../lib/errors/error-codes.js';
 import { routeParam } from '../utils/request.js';
 import { log } from '../lib/logger.js';
+import { fileAuthorityFor } from '../services/files/file-ownership.js';
 
 /** Load a P2P listing and assert the caller owns it, or throw NOT_FOUND/FORBIDDEN. */
 async function loadOwnedListing(listingId: string, oxyUserId: string): Promise<ListingRecord> {
@@ -73,7 +74,11 @@ export async function listMyListings(req: Request, res: Response): Promise<void>
 export async function createMyListing(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
-    const listingId = await createP2PListing(oxyUserId, req.body as CreateP2PListingInput);
+    const listingId = await createP2PListing(
+      oxyUserId,
+      req.body as CreateP2PListingInput,
+      fileAuthorityFor(req),
+    );
     const dto = await hydrateById(listingId);
     sendSuccess(res, dto, 201);
   } catch (err) {
@@ -105,7 +110,7 @@ export async function updateMyListing(req: Request, res: Response): Promise<void
   try {
     const oxyUserId = getRequiredOxyUserId(req);
     await loadOwnedListing(id, oxyUserId);
-    await updateListing(id, req.body as UpdateListingInput);
+    await updateListing(id, req.body as UpdateListingInput, fileAuthorityFor(req));
     const dto = await hydrateById(id);
     sendSuccess(res, dto);
   } catch (err) {

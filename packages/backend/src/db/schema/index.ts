@@ -17,6 +17,7 @@
 export * from './catalog';
 export * from './commerce';
 export * from './engagement';
+export * from './files';
 export * from './fleet';
 export * from './moderation';
 export * from './notifications';

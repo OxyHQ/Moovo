@@ -44,6 +44,16 @@ import {
 import { sendNotification } from '../lib/notification-service.js';
 import { conflict, forbidden, notFound } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
+import { assertFilesAttachable, type FileAuthority } from './files/file-ownership.js';
+
+/**
+ * The caller's own accounts plus the fleet's ORGANIZATION account — the
+ * caller was just authorized to administer it, so a cover the organization
+ * owns is theirs to use.
+ */
+function withOrganization(files: FileAuthority, organizationAccountId: string): FileAuthority {
+  return { ownerIds: new Set([...files.ownerIds, organizationAccountId]) };
+}
 
 /** Default brand color for a company created without one. */
 const DEFAULT_BRAND_COLOR = '#1D4ED8';
@@ -71,8 +81,15 @@ export async function createCompany(
   ownerOxyUserId: string,
   input: CreateCompanyInput,
   accessToken: string | undefined,
+  files: FileAuthority,
 ): Promise<FleetCompany> {
   const organization = await requireOrganizationAdministrator(input.oxyAccountId, accessToken);
+  if (input.coverFileId) {
+    await assertFilesAttachable(
+      [input.coverFileId],
+      withOrganization(files, organization.accountId),
+    );
+  }
   const handle = `fleet-${organization.accountId}`;
 
   // The company row and its owner member commit TOGETHER — see the repository.
@@ -121,10 +138,18 @@ export async function listCompaniesForUser(oxyUserId: string): Promise<FleetComp
 export async function updateCompany(
   companyId: string,
   patch: UpdateCompanyInput,
+  files: FileAuthority,
 ): Promise<FleetCompany> {
   const existing = await findCompanyById(companyId);
   if (!existing) {
     throw notFound('Company not found');
+  }
+  if (patch.coverFileId) {
+    await assertFilesAttachable(
+      [patch.coverFileId],
+      withOrganization(files, existing.oxyAccountId),
+      existing.coverFileId ? [existing.coverFileId] : [],
+    );
   }
 
   if (patch.serviceAreas !== undefined) {

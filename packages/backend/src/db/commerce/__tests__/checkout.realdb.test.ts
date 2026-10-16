@@ -41,6 +41,7 @@ import { listScopedOrders } from '../orderRepository';
 import { checkout } from '../../../services/checkout.service';
 import { isMoovoError } from '../../../lib/errors/error-codes';
 import { ErrorCodes } from '../../../utils/api-response';
+import { NO_FILE_AUTHORITY } from '../../../services/files/file-ownership';
 
 vi.mock('../../../services/oxy-user.service.js', () => ({
   getProfiles: async () => new Map(),
@@ -78,15 +79,19 @@ async function seedP2P(
   quantity: number,
   price = 1000,
 ): Promise<{ listingId: string; variantId: string }> {
-  const listingId = await createP2PListing(seller, {
-    title: `p-${seller}-${price}`,
-    description: '',
-    condition: 'new',
-    category: 'gadgets',
-    imageFileIds: [],
-    price: { amount: price, currency: 'USD' },
-    quantity,
-  });
+  const listingId = await createP2PListing(
+    seller,
+    {
+      title: `p-${seller}-${price}`,
+      description: '',
+      condition: 'new',
+      category: 'gadgets',
+      imageFileIds: [],
+      price: { amount: price, currency: 'USD' },
+      quantity,
+    },
+    NO_FILE_AUTHORITY,
+  );
   const [variant] = await listVariantsForListing(listingId);
   return { listingId, variantId: variant.id };
 }

@@ -214,3 +214,67 @@ export const MODERATION_ENFORCEMENT_TARGET_TYPES = ['courier', 'customer', 'deli
  * by another one.
  */
 export const TRACKING_WEBHOOK_STATES = ['claimed', 'queued', 'ignored'] as const;
+
+/**
+ * Every kind of Moovo row that USES an Oxy file (oxy ADR 0043 D4), as the
+ * `entityType` Moovo registers its references under.
+ *
+ * One value per TABLE, not per column: a reference is unique on
+ * (file, application, entity type, entity id), so a store whose logo and cover
+ * are the same file holds that file once, which is the truth. The columns each
+ * type reads are spelled once, in `moovo_entity_file_ids()` (migration 0011),
+ * and nowhere else — the triggers, the sync worker, the reconciliation
+ * inventory and the takedown handler all call it.
+ *
+ * `courier_company_identity_archives.logo_file_id` is deliberately absent: it
+ * records which id a retired directory once showed, as provenance. Moovo never
+ * resolves it to bytes, so it does not USE the file.
+ */
+export const FILE_REFERENCE_ENTITY_TYPES = [
+  'category',
+  'listing',
+  'store',
+  'courier_company',
+  'shipment',
+  'job',
+  'provider',
+  'tracking_carrier',
+  'order_item',
+] as const;
+
+/**
+ * Every file event Oxy sends (`FILE_EVENT_TYPES` in `@oxy.so/core/server`).
+ * A local tuple because the column's CHECK is rendered from it at generate
+ * time; `file-events.test.ts` holds it equal to the SDK's.
+ */
+export const OXY_FILE_EVENT_TYPES = [
+  'file.deleted',
+  'file.visibility_changed',
+  'file.trashed',
+  'file.restored',
+  'file.blocked',
+  'file.unblocked',
+] as const;
+
+/**
+ * Every column a takedown can clear, named as the DATABASE spells it so the
+ * audit row reads without this codebase open. Array columns (`images`,
+ * `photos`) lose one element; the rest are set to NULL.
+ */
+export const FILE_REFERENCE_FIELDS = [
+  'image_file_id',
+  'images',
+  'logo_file_id',
+  'cover_file_id',
+  'photos',
+  'pod_photo_file_id',
+  'pod_signature_file_id',
+] as const;
+
+/**
+ * What a file event did to one entity: `cleared` (blocked or deleted — the
+ * file is gone from the row), `restored` (unblocked — put back where it was
+ * cleared from), `restore_skipped` (unblocked, but the slot is taken now or
+ * the row is gone; the owner re-adds it).
+ */
+export const FILE_TAKEDOWN_ACTIONS = ['cleared', 'restored', 'restore_skipped'] as const;

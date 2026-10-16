@@ -37,6 +37,7 @@ import { sendSuccess } from '../../utils/api-response.js';
 import { respondWithError } from '../../lib/errors/error-codes.js';
 import { routeParam } from '../../utils/request.js';
 import { log } from '../../lib/logger.js';
+import { fileAuthorityFor } from '../../services/files/file-ownership.js';
 
 /** Serialize a company document to the `Company` admin DTO. */
 export function toCompanyDTO(company: FleetCompany): CompanyDTO {
@@ -116,7 +117,12 @@ function loadedCompanyId(req: Request, res: Response): string | null {
 export async function createCompanyHandler(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
-    const company = await createCompany(oxyUserId, req.body as CreateCompanyInput, req.accessToken);
+    const company = await createCompany(
+      oxyUserId,
+      req.body as CreateCompanyInput,
+      req.accessToken,
+      fileAuthorityFor(req),
+    );
     sendSuccess(res, toCompanyDTO(company), 201);
   } catch (err) {
     log.general.error({ err }, 'Failed to create company');
@@ -156,7 +162,11 @@ export async function updateCompanyHandler(req: Request, res: Response): Promise
   const companyId = loadedCompanyId(req, res);
   if (!companyId) return;
   try {
-    const updated = await updateCompany(companyId, req.body as UpdateCompanyInput);
+    const updated = await updateCompany(
+      companyId,
+      req.body as UpdateCompanyInput,
+      fileAuthorityFor(req),
+    );
     sendSuccess(res, toCompanyDTO(updated));
   } catch (err) {
     log.general.error({ err }, 'Failed to update company');

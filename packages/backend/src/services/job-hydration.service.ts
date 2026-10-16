@@ -107,8 +107,10 @@ function toLocationPing(ping: JobLocationPingValue): LocationPing {
 /** Map a persisted proof-of-delivery to the DTO (media through the chokepoint). */
 function toProofOfDelivery(proof: JobProofOfDeliveryValue): ProofOfDelivery {
   const dto: ProofOfDelivery = { at: proof.at.toISOString() };
-  if (proof.photoFileId) dto.photoFileId = resolveMedia(proof.photoFileId);
-  if (proof.signatureFileId) dto.signatureFileId = resolveMedia(proof.signatureFileId);
+  const photoUrl = proof.photoFileId ? resolveMedia(proof.photoFileId) : undefined;
+  if (photoUrl) dto.photoFileId = photoUrl;
+  const signatureUrl = proof.signatureFileId ? resolveMedia(proof.signatureFileId) : undefined;
+  if (signatureUrl) dto.signatureFileId = signatureUrl;
   if (proof.note) dto.note = proof.note;
   if (proof.recipientName) dto.recipientName = proof.recipientName;
   return dto;

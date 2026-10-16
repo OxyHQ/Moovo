@@ -90,6 +90,7 @@ import { getIO } from '../socket.js';
 import { config } from '../config/index.js';
 import { conflict, forbidden, notFound, validationError } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
+import { assertFilesAttachable, type FileAuthority } from './files/file-ownership.js';
 
 /**
  * The allowed status transitions. A transition NOT listed under the current
@@ -712,10 +713,15 @@ export async function deliver(
   courierOxyUserId: string,
   jobId: string,
   input: DeliverInput,
+  files: FileAuthority,
   location?: GeoPoint,
 ): Promise<JobWithHistory> {
   const job = await loadJob(jobId);
   assertAssignedCourier(job, courierOxyUserId);
+  await assertFilesAttachable(
+    [input.photoFileId, input.signatureFileId].filter((id): id is string => Boolean(id)),
+    files,
+  );
 
   const proof: JobProofOfDeliveryValue = { at: new Date() };
   if (input.photoFileId) proof.photoFileId = input.photoFileId;
@@ -745,9 +751,13 @@ export async function scanJob(
   courierOxyUserId: string,
   jobId: string,
   input: ScanInput,
+  files: FileAuthority,
 ): Promise<JobWithHistory> {
   const job = await loadJob(jobId);
   assertAssignedCourier(job, courierOxyUserId);
+  if (input.leg === 'dropoff' && input.photoFileId) {
+    await assertFilesAttachable([input.photoFileId], files);
+  }
 
   if (input.leg === 'pickup') {
     if (job.status !== 'accepted') {

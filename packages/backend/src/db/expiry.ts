@@ -41,6 +41,7 @@ import { jobOffers, quotes } from './schema/transport';
 import { moderationEvents, moderationOutboxes } from './schema/moderation';
 import { notifications, NOTIFICATION_DISMISSED_RETENTION_SECONDS } from './schema/notifications';
 import { trackedParcels, trackingWebhookEvents } from './schema/tracking';
+import { fileEventReceipts } from './schema/files';
 
 /** `expireAfterSeconds: 0` — the column IS the deadline. */
 const DEADLINE_IS_THE_COLUMN = 0;
@@ -126,6 +127,15 @@ export const EXPIRY_TARGETS: readonly ExpirySweepTarget[] = [
       'comfortably longer than any carrier redelivery schedule, past which the ' +
       'claim has nothing left to protect.',
   },
+  {
+    table: fileEventReceipts,
+    column: fileEventReceipts.expiresAt,
+    retentionSeconds: DEADLINE_IS_THE_COLUMN,
+    reason:
+      'An Oxy file event receipt is a dedupe claim, kept 60 days — twice the ' +
+      '30 days after which Oxy stops redelivering. What Moovo DID about the ' +
+      'event is in `file_takedown_actions`, which is not swept.',
+  },
 ];
 
 /**
@@ -156,6 +166,16 @@ export const EXPIRY_TARGETS: readonly ExpirySweepTarget[] = [
  * with owners who do not exist, and the next person goes looking for them.
  */
 export const UNSWEPT_GROWING_TABLES: readonly { table: string; why: string }[] = [
+  {
+    table: 'file_takedown_actions',
+    why:
+      'DECIDED, not owed: the record of every column a rights or privacy ' +
+      'takedown cleared from a Moovo row, and of every unblock that put one ' +
+      'back (oxy ADR 0043 D10). It is what answers "what did Moovo do about ' +
+      'that claim" for as long as anyone can ask, so it has no retention. It ' +
+      'grows by one row per affected column per takedown — bounded by how ' +
+      'often content is taken down, not by traffic.',
+  },
   {
     table: 'job_location_pings',
     why:

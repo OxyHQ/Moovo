@@ -61,7 +61,7 @@ function toSeller(
     oxyUserId,
     displayName: oxyProfile?.displayName ?? oxyUserId,
     username: oxyProfile?.username ?? oxyUserId,
-    avatar: oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : (oxyProfile?.avatar ?? null),
+    avatar: (oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : undefined) ?? null,
     isVerified: profile?.isVerified ?? false,
   };
   if (profile && profile.reviewCount > 0) {
@@ -88,8 +88,9 @@ export function toOrderItemDTO(item: OrderItemRow): OrderItem {
     quantity: item.quantity,
     lineTotal: toMoney(item.lineTotalAmount, item.lineTotalCurrency),
   };
-  if (item.imageUrl) {
-    dto.imageUrl = item.imageUrl;
+  const imageUrl = item.imageFileId ? resolveMedia(item.imageFileId, 'thumb') : undefined;
+  if (imageUrl) {
+    dto.imageUrl = imageUrl;
   }
   return dto;
 }

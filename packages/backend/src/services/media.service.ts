@@ -1,10 +1,22 @@
 /**
  * THE media chokepoint.
  *
- * Absolute URLs are returned as-is (seeded CDN assets pass through unchanged);
- * anything else is treated as an Oxy media file id and resolved through the
- * SDK's `assets.publicUrl` — the only sanctioned resolver. Do NOT build
- * another, and do not hardcode `cloud.oxy.so` anywhere.
+ * A value is an Oxy file id or it is nothing: it resolves through the SDK's
+ * `assets.publicUrl` — the only sanctioned resolver — and anything that cannot
+ * be a file id (a URL above all) resolves to `undefined`. Do NOT build another
+ * resolver, and do not hardcode `cloud.oxy.so` anywhere.
+ *
+ * ## Why an absolute URL is refused rather than passed through
+ *
+ * It used to be returned as-is ("seeded CDN assets pass through unchanged").
+ * That made every `fileId` field an open hotlink: a listing created with
+ * `imageFileIds: ['https://tracker.example/pixel.gif']` had every viewer's
+ * client fetch a stranger's server, and the seeded category art kept depending
+ * on a third party's uptime and goodwill. Under oxy ADR 0043 an image Moovo
+ * shows is an Oxy file — the user's own, ownership-checked at write
+ * (`files/file-ownership.ts`), or the Moovo application's, imported once by URL
+ * (`scripts/import-category-art.ts`). `OXY_FILE_ID_PATTERN` is the same test
+ * `moovo_entity_file_ids()` applies in SQL (migration 0011).
  *
  * ## Why this is its own module
  *
@@ -26,12 +38,19 @@
 
 import { oxyClient } from '../middleware/auth.js';
 
-/** Matches an absolute http(s) URL (seeded CDN assets pass through unchanged). */
-const ABSOLUTE_URL = /^https?:\/\//i;
+/**
+ * What an Oxy file id can look like: Oxy's reference routes accept at most 64
+ * characters, and no id carries a scheme, a slash or whitespace. The same
+ * expression gates `moovo_entity_file_ids()` in migration 0011.
+ */
+export const OXY_FILE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
-export function resolveMedia(value: string, variant?: string): string {
-  if (ABSOLUTE_URL.test(value)) {
-    return value;
-  }
-  return oxyClient.assets.publicUrl(value, variant);
+export function isOxyFileId(value: unknown): value is string {
+  return typeof value === 'string' && OXY_FILE_ID_PATTERN.test(value);
+}
+
+/** The public URL of an Oxy file, or `undefined` for a value that is not one. */
+export function resolveMedia(fileId: string, variant?: string): string | undefined {
+  if (!isOxyFileId(fileId)) return undefined;
+  return oxyClient.assets.publicUrl(fileId, variant);
 }

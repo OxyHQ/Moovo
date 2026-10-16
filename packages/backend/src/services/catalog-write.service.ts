@@ -54,6 +54,7 @@ import { incrementStoreProductCount } from '../db/stores/storeRepository.js';
 import { config } from '../config/index.js';
 import { conflict, notFound, validationError } from '../lib/errors/error-codes.js';
 import { getOrCreate as getOrCreateSellerProfile } from './seller-profile.service.js';
+import { assertFilesAttachable, type FileAuthority } from './files/file-ownership.js';
 
 /** The default variant title for single-variant (P2P) listings. */
 const DEFAULT_VARIANT_TITLE = 'Default Title';
@@ -135,8 +136,11 @@ export async function syncListingFacets(listingId: string): Promise<ProductVaria
 export async function createP2PListing(
   oxyUserId: string,
   input: CreateP2PListingInput,
+  files: FileAuthority,
 ): Promise<string> {
   const { categoryId, categorySlugs } = await resolveCategory(input.category);
+  const images = toListingImages(input.imageFileIds);
+  await assertFilesAttachable(input.imageFileIds, files);
   await getOrCreateSellerProfile(oxyUserId);
 
   const quantity = input.quantity ?? 1;
@@ -150,7 +154,7 @@ export async function createP2PListing(
     status: 'active',
     categoryId,
     categorySlugs,
-    images: toListingImages(input.imageFileIds),
+    images,
     tags: input.tags ?? [],
     options: [],
     priceMinAmount: input.price.amount,
@@ -231,9 +235,12 @@ function resolveStoreVariants(
 export async function createStoreProduct(
   storeId: string,
   input: CreateStoreProductInput,
+  files: FileAuthority,
 ): Promise<string> {
   const { categoryId, categorySlugs } = await resolveCategory(input.category);
   const variants = resolveStoreVariants(input);
+  const images = toListingImages(input.imageFileIds);
+  await assertFilesAttachable(input.imageFileIds, files);
 
   if (variants.length > config.catalog.maxVariantsPerProduct) {
     throw validationError(
@@ -251,7 +258,7 @@ export async function createStoreProduct(
     status: 'active',
     categoryId,
     categorySlugs,
-    images: toListingImages(input.imageFileIds),
+    images,
     tags: input.tags ?? [],
     options: input.options.map((o) => ({ name: o.name, values: [...o.values] })),
     priceMinAmount: first.priceAmount,
@@ -277,7 +284,11 @@ export async function createStoreProduct(
  * variant. Recomputes facets afterwards. Returns nothing; callers re-hydrate
  * the listing for the response.
  */
-export async function updateListing(listingId: string, patch: UpdateListingInput): Promise<void> {
+export async function updateListing(
+  listingId: string,
+  patch: UpdateListingInput,
+  files: FileAuthority,
+): Promise<void> {
   const row = await findListingById(listingId);
   if (!row) {
     throw notFound('Listing not found');
@@ -302,6 +313,11 @@ export async function updateListing(listingId: string, patch: UpdateListingInput
   }
   if (patch.imageFileIds !== undefined) {
     columns.images = toListingImages(patch.imageFileIds);
+    await assertFilesAttachable(
+      patch.imageFileIds,
+      files,
+      listing.images.map((image) => image.fileId),
+    );
   }
 
   // P2P price/quantity updates flow through the single variant, which is the
