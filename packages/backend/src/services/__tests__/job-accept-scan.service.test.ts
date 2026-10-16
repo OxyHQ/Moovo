@@ -93,6 +93,10 @@ import { accept, scanJob } from '../job.service.js';
 import type { JobRecord } from '../../db/transport/jobShape.js';
 import { isMoovoError } from '../../lib/errors/error-codes.js';
 import { ErrorCodes } from '../../utils/api-response.js';
+import { setFileMetadataReaderForTesting } from '../files/file-ownership.js';
+
+/** The courier's own accounts, as `fileAuthorityFor` would build them. */
+const COURIER_FILES = { ownerIds: new Set(['c1']) };
 
 function job(overrides: Partial<JobRecord> = {}): JobRecord {
   return {
@@ -106,6 +110,10 @@ function job(overrides: Partial<JobRecord> = {}): JobRecord {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Fails loudly if a test attaches a file without saying whose files exist.
+  setFileMetadataReaderForTesting(async () => {
+    throw new Error('no file metadata stubbed for this test');
+  });
   casJobStatus.mockImplementation((write: { jobId: string; to: string }) =>
     Promise.resolve({ id: write.jobId, status: write.to }),
   );
@@ -249,7 +257,7 @@ describe('scanJob — QR pickup/dropoff proof', () => {
     findJobById.mockResolvedValue(scannable('accepted'));
     verifyCode.mockReturnValue(true);
 
-    await scanJob('c1', 'job-1', { leg: 'pickup', code: 'p' });
+    await scanJob('c1', 'job-1', { leg: 'pickup', code: 'p' }, COURIER_FILES);
 
     expect(verifyCode).toHaveBeenCalledWith('p', 'hash:p');
     expect(casJobStatus.mock.calls[0][0]).toMatchObject({ from: 'accepted', to: 'picked_up' });
@@ -262,8 +270,16 @@ describe('scanJob — QR pickup/dropoff proof', () => {
   it('a valid dropoff scan transitions in_transit → delivered and records POD', async () => {
     findJobById.mockResolvedValue(scannable('in_transit'));
     verifyCode.mockReturnValue(true);
+    setFileMetadataReaderForTesting(async (ids) =>
+      ids.map((id) => ({ id, mime: 'image/jpeg', status: 'active', ownerUserId: 'c1' })),
+    );
 
-    await scanJob('c1', 'job-1', { leg: 'dropoff', code: 'd', photoFileId: 'file-1' });
+    await scanJob(
+      'c1',
+      'job-1',
+      { leg: 'dropoff', code: 'd', photoFileId: 'file-1' },
+      COURIER_FILES,
+    );
 
     expect(verifyCode).toHaveBeenCalledWith('d', 'hash:d');
     const [write] = casJobStatus.mock.calls[0];
@@ -277,11 +293,30 @@ describe('scanJob — QR pickup/dropoff proof', () => {
     );
   });
 
+  it('a dropoff photo the courier does not own is refused, and nothing is delivered', async () => {
+    // Proof of delivery is evidence: a courier must not be able to file
+    // somebody else's picture of somebody else's doorstep as theirs.
+    findJobById.mockResolvedValue(scannable('in_transit'));
+    verifyCode.mockReturnValue(true);
+    setFileMetadataReaderForTesting(async (ids) =>
+      ids.map((id) => ({ id, mime: 'image/jpeg', status: 'active', ownerUserId: 'stranger' })),
+    );
+
+    expect(
+      await rejectionOf(
+        scanJob('c1', 'job-1', { leg: 'dropoff', code: 'd', photoFileId: 'file-9' }, COURIER_FILES),
+      ),
+    ).toSatisfy((err: unknown) => isMoovoError(err) && err.code === ErrorCodes.VALIDATION_ERROR);
+    expect(casJobStatus).not.toHaveBeenCalled();
+  });
+
   it('a wrong code is rejected (VALIDATION_ERROR) without echoing the expected code', async () => {
     findJobById.mockResolvedValue(scannable('accepted'));
     verifyCode.mockReturnValue(false);
 
-    expect(await rejectionOf(scanJob('c1', 'job-1', { leg: 'pickup', code: 'wrong' }))).toSatisfy(
+    expect(
+      await rejectionOf(scanJob('c1', 'job-1', { leg: 'pickup', code: 'wrong' }, COURIER_FILES)),
+    ).toSatisfy(
       (err: unknown) =>
         isMoovoError(err) &&
         err.code === ErrorCodes.VALIDATION_ERROR &&
@@ -294,9 +329,9 @@ describe('scanJob — QR pickup/dropoff proof', () => {
   it('a pickup scan in the wrong status is a CONFLICT, before the code is checked', async () => {
     findJobById.mockResolvedValue(scannable('in_transit'));
 
-    expect(await rejectionOf(scanJob('c1', 'job-1', { leg: 'pickup', code: 'p' }))).toSatisfy(
-      (err: unknown) => isMoovoError(err) && err.code === ErrorCodes.CONFLICT,
-    );
+    expect(
+      await rejectionOf(scanJob('c1', 'job-1', { leg: 'pickup', code: 'p' }, COURIER_FILES)),
+    ).toSatisfy((err: unknown) => isMoovoError(err) && err.code === ErrorCodes.CONFLICT);
     expect(verifyCode).not.toHaveBeenCalled();
   });
 
@@ -304,7 +339,9 @@ describe('scanJob — QR pickup/dropoff proof', () => {
     findJobById.mockResolvedValue(scannable('accepted'));
 
     expect(
-      await rejectionOf(scanJob('someone-else', 'job-1', { leg: 'pickup', code: 'p' })),
+      await rejectionOf(
+        scanJob('someone-else', 'job-1', { leg: 'pickup', code: 'p' }, COURIER_FILES),
+      ),
     ).toSatisfy((err: unknown) => isMoovoError(err) && err.code === ErrorCodes.FORBIDDEN);
     expect(verifyCode).not.toHaveBeenCalled();
   });

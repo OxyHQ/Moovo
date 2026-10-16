@@ -139,7 +139,7 @@ function toReviewAuthor(profile: OxyProfile | undefined): ReviewAuthor | undefin
     displayName: profile.displayName,
     username: profile.username,
   };
-  author.avatar = profile.avatar ? resolveMedia(profile.avatar) : (profile.avatar ?? null);
+  author.avatar = (profile.avatar ? resolveMedia(profile.avatar) : undefined) ?? null;
   return author;
 }
 

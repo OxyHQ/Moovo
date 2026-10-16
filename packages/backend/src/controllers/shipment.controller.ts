@@ -31,6 +31,7 @@ import { respondWithError, notFound } from '../lib/errors/error-codes.js';
 import { parsePagination, buildPagination } from '../utils/pagination.js';
 import { routeParam } from '../utils/request.js';
 import { log } from '../lib/logger.js';
+import { fileAuthorityFor } from '../services/files/file-ownership.js';
 
 /** Read the requested display currency from `?currency=`. */
 function displayCurrencyFromQuery(req: Request): ReturnType<typeof resolveDisplayCurrency> {
@@ -42,7 +43,11 @@ function displayCurrencyFromQuery(req: Request): ReturnType<typeof resolveDispla
 export async function createShipmentHandler(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
-    const shipment = await createShipment(oxyUserId, req.body as CreateShipmentInput);
+    const shipment = await createShipment(
+      oxyUserId,
+      req.body as CreateShipmentInput,
+      fileAuthorityFor(req),
+    );
     const [dto] = await hydrateShipments([shipment]);
     if (!dto) {
       throw notFound('Shipment not found');

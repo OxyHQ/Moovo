@@ -348,6 +348,34 @@ export interface WebConfig {
   readonly origin: string;
 }
 
+/**
+ * Oxy Files (oxy ADR 0043): keeping Oxy told which files Moovo uses, and the
+ * nightly reconciliation that catches anything that slipped. See
+ * `docs/oxy-files.md`.
+ */
+export interface FilesConfig {
+  /**
+   * Whether this task runs the reference loops. Gates the LOOPS, never the
+   * record: the triggers keep writing the outbox either way, so uses made while
+   * this is off are told to Oxy when it is switched back on.
+   */
+  readonly referencesEnabled: boolean;
+  readonly syncIntervalMs: number;
+  readonly syncBatchSize: number;
+  readonly syncLeaseMs: number;
+  /** The longest a failed reference write waits before it is tried again. */
+  readonly syncMaxBackoffMs: number;
+  /** Report what reconciliation WOULD change, and change nothing. */
+  readonly reconcileDryRun: boolean;
+  /** The UTC hour the nightly reconciliation is due at. */
+  readonly reconcileHourUtc: number;
+  readonly reconcileLeaseMs: number;
+  /** How soon a FAILED reconciliation is tried again. */
+  readonly reconcileRetryMs: number;
+  /** At most this many photos on a shipment; each one is ownership-checked. */
+  readonly maxPhotosPerShipment: number;
+}
+
 export interface AppConfig {
   readonly web: WebConfig;
   readonly pagination: PaginationConfig;
@@ -362,6 +390,7 @@ export interface AppConfig {
   readonly dispatch: DispatchConfig;
   readonly crowdSource: CrowdSourceConfig;
   readonly tracking: TrackingConfig;
+  readonly files: FilesConfig;
 }
 
 /**
@@ -530,5 +559,17 @@ export const config: AppConfig = Object.freeze({
     maxNotFoundStreak: intEnv('TRACKING_MAX_NOT_FOUND_STREAK', 10),
     notFoundMinAgeMs: intEnv('TRACKING_NOT_FOUND_MIN_AGE_MS', 7 * DAY_MS),
     staleAfterMs: intEnv('TRACKING_STALE_AFTER_MS', 60 * DAY_MS),
+  }),
+  files: Object.freeze({
+    referencesEnabled: boolEnv('OXY_FILE_REFERENCES_ENABLED', true),
+    syncIntervalMs: intEnv('OXY_FILE_REFERENCE_SYNC_INTERVAL_MS', 10 * SECOND_MS),
+    syncBatchSize: intEnv('OXY_FILE_REFERENCE_SYNC_BATCH_SIZE', 100),
+    syncLeaseMs: intEnv('OXY_FILE_REFERENCE_SYNC_LEASE_MS', 2 * MINUTE_MS),
+    syncMaxBackoffMs: intEnv('OXY_FILE_REFERENCE_SYNC_MAX_BACKOFF_MS', 6 * HOUR_MS),
+    reconcileDryRun: boolEnv('OXY_FILE_REFERENCE_RECONCILE_DRY_RUN', false),
+    reconcileHourUtc: Math.min(23, Math.max(0, intEnv('OXY_FILE_REFERENCE_RECONCILE_HOUR_UTC', 3))),
+    reconcileLeaseMs: intEnv('OXY_FILE_REFERENCE_RECONCILE_LEASE_MS', HOUR_MS),
+    reconcileRetryMs: intEnv('OXY_FILE_REFERENCE_RECONCILE_RETRY_MS', HOUR_MS),
+    maxPhotosPerShipment: intEnv('MAX_PHOTOS_PER_SHIPMENT', 12),
   }),
 });

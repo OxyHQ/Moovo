@@ -39,6 +39,7 @@ import {
 import { findCartByUser, upsertCartItem } from '../cartRepository';
 import { isMoovoError } from '../../../lib/errors/error-codes';
 import { ErrorCodes } from '../../../utils/api-response';
+import { NO_FILE_AUTHORITY } from '../../../services/files/file-ownership';
 
 const describeIfPostgres = POSTGRES_TESTS_ENABLED ? describe : describe.skip;
 
@@ -63,15 +64,19 @@ async function seedProduct(
   price = 1000,
   currency: 'USD' | 'EUR' = 'USD',
 ): Promise<{ listingId: string; variantId: string }> {
-  const listingId = await createP2PListing(seller, {
-    title: `p-${seller}-${currency}`,
-    description: '',
-    condition: 'new',
-    category: 'gadgets',
-    imageFileIds: [],
-    price: { amount: price, currency },
-    quantity,
-  });
+  const listingId = await createP2PListing(
+    seller,
+    {
+      title: `p-${seller}-${currency}`,
+      description: '',
+      condition: 'new',
+      category: 'gadgets',
+      imageFileIds: [],
+      price: { amount: price, currency },
+      quantity,
+    },
+    NO_FILE_AUTHORITY,
+  );
   const [variant] = await listVariantsForListing(listingId);
   return { listingId, variantId: variant.id };
 }
@@ -206,7 +211,7 @@ describeIfPostgres('the cart domain on a real server', () => {
         quantity: 1,
       });
 
-      await updateListing(product.listingId, { status: 'draft' });
+      await updateListing(product.listingId, { status: 'draft' }, NO_FILE_AUTHORITY);
 
       expect((await getCart('buyer-a')).items[0].stale).toBe(true);
     });

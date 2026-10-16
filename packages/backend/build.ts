@@ -33,6 +33,10 @@ await esbuild.build({
     'src/index.ts',
     'src/db/migrate.ts',
     'src/scripts/backfill-company-organizations.ts',
+    // Oxy Files operator scripts (docs/oxy-files.md): the image ships only
+    // `dist/`, so a script that is not an entry here cannot be run in production.
+    'src/scripts/import-category-art.ts',
+    'src/scripts/reconcile-file-references.ts',
   ],
   bundle: true,
   platform: 'node',

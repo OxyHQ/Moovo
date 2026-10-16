@@ -22,6 +22,7 @@ import { createShipment } from '../../shipment.service';
 import { insertQuotes, listActiveQuotesForShipment } from '../../../db/transport/quoteRepository';
 import { registerAdapter } from '../../providers/provider-registry';
 import type { TransportCaller } from '../access';
+import { NO_FILE_AUTHORITY } from '../../files/file-ownership';
 
 vi.mock('../../../middleware/auth', () => ({
   oxyClient: {
@@ -506,13 +507,17 @@ describe('real transport HTTP, SDK, Oxy-linked source reads and PostgreSQL', () 
   });
   it('rolls back internal booking admission with the job so a failed transaction can retry immediately', async () => {
     const body = input('atomic-admission');
-    const shipment = await createShipment('donor', {
-      type: 'package',
-      pickup: { ...body.pickup, location: { type: 'Point', coordinates: [2.17, 41.38] } },
-      dropoff: { ...body.dropoff, location: { type: 'Point', coordinates: [2.17, 41.4] } },
-      parcel: body.parcel,
-      itemDescription: 'Atomic internal booking',
-    });
+    const shipment = await createShipment(
+      'donor',
+      {
+        type: 'package',
+        pickup: { ...body.pickup, location: { type: 'Point', coordinates: [2.17, 41.38] } },
+        dropoff: { ...body.dropoff, location: { type: 'Point', coordinates: [2.17, 41.4] } },
+        parcel: body.parcel,
+        itemDescription: 'Atomic internal booking',
+      },
+      NO_FILE_AUTHORITY,
+    );
     const [quote] = await listActiveQuotesForShipment(shipment.id);
     await suite.db.execute(
       sql`CREATE FUNCTION fail_internal_job() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected job write failure'; END $$`,
@@ -544,13 +549,17 @@ describe('real transport HTTP, SDK, Oxy-linked source reads and PostgreSQL', () 
   });
   it('claims external provider booking before I/O and never repeats a lost reply', async () => {
     const body = input('external');
-    const shipment = await createShipment('donor', {
-      type: 'package',
-      pickup: { ...body.pickup, location: { type: 'Point', coordinates: [2.17, 41.38] } },
-      dropoff: { ...body.dropoff, location: { type: 'Point', coordinates: [2.17, 41.4] } },
-      parcel: body.parcel,
-      itemDescription: 'Provider test',
-    });
+    const shipment = await createShipment(
+      'donor',
+      {
+        type: 'package',
+        pickup: { ...body.pickup, location: { type: 'Point', coordinates: [2.17, 41.38] } },
+        dropoff: { ...body.dropoff, location: { type: 'Point', coordinates: [2.17, 41.4] } },
+        parcel: body.parcel,
+        itemDescription: 'Provider test',
+      },
+      NO_FILE_AUTHORITY,
+    );
     const [internal] = await listActiveQuotesForShipment(shipment.id);
     const providerId = crypto.randomUUID();
     await suite.db
@@ -583,13 +592,17 @@ describe('real transport HTTP, SDK, Oxy-linked source reads and PostgreSQL', () 
     await expect(
       bookShipment('donor', shipment.id, quote.id, 'different_operation'),
     ).rejects.toMatchObject({ httpStatus: 409 });
-    const other = await createShipment('donor', {
-      type: 'package',
-      pickup: { ...body.pickup, location: { type: 'Point', coordinates: [2.17, 41.38] } },
-      dropoff: { ...body.dropoff, location: { type: 'Point', coordinates: [2.17, 41.4] } },
-      parcel: body.parcel,
-      itemDescription: 'Different shipment, reused operation',
-    });
+    const other = await createShipment(
+      'donor',
+      {
+        type: 'package',
+        pickup: { ...body.pickup, location: { type: 'Point', coordinates: [2.17, 41.38] } },
+        dropoff: { ...body.dropoff, location: { type: 'Point', coordinates: [2.17, 41.4] } },
+        parcel: body.parcel,
+        itemDescription: 'Different shipment, reused operation',
+      },
+      NO_FILE_AUTHORITY,
+    );
     const [otherQuote] = await insertQuotes([
       {
         shipmentId: other.id,

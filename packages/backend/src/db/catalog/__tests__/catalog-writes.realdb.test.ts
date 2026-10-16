@@ -46,6 +46,7 @@ import {
 } from '../../../services/inventory.service';
 import { isMoovoError } from '../../../lib/errors/error-codes';
 import { ErrorCodes } from '../../../utils/api-response';
+import { NO_FILE_AUTHORITY } from '../../../services/files/file-ownership';
 
 const describeIfPostgres = POSTGRES_TESTS_ENABLED ? describe : describe.skip;
 
@@ -66,15 +67,19 @@ async function seedCategory(slug = 'gadgets'): Promise<void> {
 
 /** Create a P2P listing owned by `owner` with one variant holding `quantity`. */
 async function seedP2P(owner: string, quantity: number, price = 1000): Promise<string> {
-  return await createP2PListing(owner, {
-    title: `listing-${owner}`,
-    description: '',
-    condition: 'new',
-    category: 'gadgets',
-    imageFileIds: [],
-    price: { amount: price, currency: 'USD' },
-    quantity,
-  });
+  return await createP2PListing(
+    owner,
+    {
+      title: `listing-${owner}`,
+      description: '',
+      condition: 'new',
+      category: 'gadgets',
+      imageFileIds: [],
+      price: { amount: price, currency: 'USD' },
+      quantity,
+    },
+    NO_FILE_AUTHORITY,
+  );
 }
 
 /** The single variant of a P2P listing. */
@@ -380,7 +385,7 @@ describeIfPostgres('the catalogue write paths on a real server', () => {
       const first = (await findListingById(listingId))?.publishedAt;
       expect(first).not.toBeNull();
 
-      await updateListing(listingId, { status: 'active' });
+      await updateListing(listingId, { status: 'active' }, NO_FILE_AUTHORITY);
 
       expect((await findListingById(listingId))?.publishedAt).toEqual(first);
     });
@@ -389,7 +394,11 @@ describeIfPostgres('the catalogue write paths on a real server', () => {
       await seedCategory();
       const listingId = await seedP2P('seller-a', 1, 1000);
 
-      await updateListing(listingId, { price: { amount: 7777, currency: 'USD' } });
+      await updateListing(
+        listingId,
+        { price: { amount: 7777, currency: 'USD' } },
+        NO_FILE_AUTHORITY,
+      );
 
       const variant = await soleVariant(listingId);
       expect(variant.priceAmount).toBe(7777);

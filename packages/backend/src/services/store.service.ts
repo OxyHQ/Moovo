@@ -39,6 +39,7 @@ import { ensureUniqueSlug } from '../utils/slug.js';
 import { sendNotification } from '../lib/notification-service.js';
 import { conflict, forbidden, notFound, validationError } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
+import { assertFilesAttachable, type FileAuthority } from './files/file-ownership.js';
 
 export type { StoreRecord, StoreMemberRecord };
 
@@ -61,7 +62,12 @@ const HANDLE_ATTEMPTS = 5;
 export async function createStore(
   ownerOxyUserId: string,
   input: CreateStoreInput,
+  files: FileAuthority,
 ): Promise<StoreRecord> {
+  await assertFilesAttachable(
+    [input.logoFileId, input.coverFileId].filter((id): id is string => Boolean(id)),
+    files,
+  );
   for (let attempt = 0; attempt < HANDLE_ATTEMPTS; attempt += 1) {
     const handle = await ensureUniqueSlug(input.name, storeHandleExists);
 
@@ -102,7 +108,20 @@ export async function listStoresForUser(oxyUserId: string): Promise<StoreRecord[
 }
 
 /** Update a store's profile/policy fields. Returns the updated store. */
-export async function updateStore(storeId: string, patch: UpdateStoreInput): Promise<StoreRecord> {
+export async function updateStore(
+  storeId: string,
+  patch: UpdateStoreInput,
+  files: FileAuthority,
+): Promise<StoreRecord> {
+  const incoming = [patch.logoFileId, patch.coverFileId].filter((id): id is string => Boolean(id));
+  if (incoming.length > 0) {
+    const current = await getStore(storeId);
+    await assertFilesAttachable(
+      incoming,
+      files,
+      [current.logoFileId, current.coverFileId].filter((id): id is string => Boolean(id)),
+    );
+  }
   const columns: StorePatch = {};
   if (patch.name !== undefined) columns.name = patch.name;
   if (patch.description !== undefined) columns.description = patch.description;

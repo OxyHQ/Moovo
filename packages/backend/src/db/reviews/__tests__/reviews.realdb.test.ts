@@ -42,6 +42,7 @@ import { aggregateForTarget, listPublishedReviewTargets } from '../reviewReposit
 import { createReview, listReviews, recomputeAggregate } from '../../../services/review.service';
 import { isMoovoError } from '../../../lib/errors/error-codes';
 import { ErrorCodes } from '../../../utils/api-response';
+import { NO_FILE_AUTHORITY } from '../../../services/files/file-ownership';
 
 vi.mock('../../../services/oxy-user.service.js', () => ({
   getProfiles: async () => new Map(),
@@ -76,15 +77,19 @@ async function seedCategory(): Promise<void> {
 
 /** A P2P listing owned by `seller`. */
 async function seedListing(seller: string, title: string): Promise<string> {
-  return await createP2PListing(seller, {
-    title,
-    description: '',
-    condition: 'new',
-    category: 'gadgets',
-    imageFileIds: [],
-    price: { amount: 1000, currency: 'USD' },
-    quantity: 5,
-  });
+  return await createP2PListing(
+    seller,
+    {
+      title,
+      description: '',
+      condition: 'new',
+      category: 'gadgets',
+      imageFileIds: [],
+      price: { amount: 1000, currency: 'USD' },
+      quantity: 5,
+    },
+    NO_FILE_AUTHORITY,
+  );
 }
 
 /**

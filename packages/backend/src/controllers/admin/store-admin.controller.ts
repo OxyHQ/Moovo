@@ -16,6 +16,7 @@ import { createStore, listStoresForUser, updateStore } from '../../services/stor
 import { sendSuccess } from '../../utils/api-response.js';
 import { respondWithError } from '../../lib/errors/error-codes.js';
 import { log } from '../../lib/logger.js';
+import { fileAuthorityFor } from '../../services/files/file-ownership.js';
 
 /** Serialize a store document to the `Store` admin DTO. */
 export function toStoreDTO(store: StoreRecord): StoreDTO {
@@ -52,7 +53,7 @@ export function toStoreDTO(store: StoreRecord): StoreDTO {
 export async function createStoreHandler(req: Request, res: Response): Promise<void> {
   try {
     const oxyUserId = getRequiredOxyUserId(req);
-    const store = await createStore(oxyUserId, req.body as CreateStoreInput);
+    const store = await createStore(oxyUserId, req.body as CreateStoreInput, fileAuthorityFor(req));
     sendSuccess(res, toStoreDTO(store), 201);
   } catch (err) {
     log.general.error({ err }, 'Failed to create store');
@@ -91,7 +92,11 @@ export async function updateStoreHandler(req: Request, res: Response): Promise<v
     return;
   }
   try {
-    const updated = await updateStore(store.id, req.body as UpdateStoreInput);
+    const updated = await updateStore(
+      store.id,
+      req.body as UpdateStoreInput,
+      fileAuthorityFor(req),
+    );
     sendSuccess(res, toStoreDTO(updated));
   } catch (err) {
     log.general.error({ err }, 'Failed to update store');

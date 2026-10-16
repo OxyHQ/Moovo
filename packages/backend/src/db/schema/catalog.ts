@@ -51,7 +51,14 @@ export const categories = pgTable(
     }),
     /** Materialized path: every ancestor slug, root → parent, excluding self. */
     ancestorSlugs: text().array().notNull().default(sql`'{}'::text[]`),
+    /**
+     * Where the category's art was IMPORTED FROM — provenance, never served.
+     * The art itself is `imageFileId`, a file the Moovo application owns
+     * (oxy ADR 0043), put there by `scripts/import-category-art.ts`. Serving
+     * this URL would hotlink a third party's server into every client.
+     */
     imageUrl: text(),
+    /** The category's art: an Oxy file the MOOVO APPLICATION owns. */
     imageFileId: foreignServiceId(),
     position: integer().notNull().default(0),
     isActive: boolean().notNull().default(true),

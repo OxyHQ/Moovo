@@ -19,8 +19,10 @@ import {
 } from '../db/transport/shipmentRepository.js';
 import type { SchedulingValue, ShipmentRecord } from '../db/transport/shipmentShape.js';
 import { quoteShipment } from './quote.service.js';
-import { conflict, forbidden, notFound } from '../lib/errors/error-codes.js';
+import { conflict, forbidden, notFound, validationError } from '../lib/errors/error-codes.js';
 import { log } from '../lib/logger.js';
+import { config } from '../config/index.js';
+import { assertFilesAttachable, type FileAuthority } from './files/file-ownership.js';
 
 /** Map the input scheduling DTO to the persisted shape (parsing the ISO time). */
 function toScheduling(input: CreateShipmentInput['scheduling']): SchedulingValue {
@@ -52,7 +54,18 @@ export interface ShipmentPage {
 export async function createShipment(
   senderOxyUserId: string,
   input: CreateShipmentInput,
+  files: FileAuthority,
 ): Promise<ShipmentRecord> {
+  const photos = input.photos ?? [];
+  if (photos.length > config.files.maxPhotosPerShipment) {
+    throw validationError(
+      `A shipment may have at most ${config.files.maxPhotosPerShipment} photos`,
+    );
+  }
+  await assertFilesAttachable(
+    photos.map((photo) => photo.fileId),
+    files,
+  );
   const created = await insertShipment({
     senderOxyUserId,
     type: input.type,
@@ -61,7 +74,7 @@ export async function createShipment(
     dropoff: input.dropoff,
     parcel: input.parcel,
     itemDescription: input.itemDescription,
-    photos: input.photos ?? [],
+    photos,
     scheduling: toScheduling(input.scheduling),
   });
 

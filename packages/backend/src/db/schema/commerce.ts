@@ -315,7 +315,13 @@ export const orderItems = pgTable(
     variantId: text().notNull(),
     title: text().notNull(),
     variantTitle: text().notNull(),
-    imageUrl: text(),
+    /**
+     * The listing image the line was bought with, as an Oxy file id — resolved
+     * at READ like every other image, and referenced as an `order_item` so Oxy
+     * knows the order still shows it. It replaced `image_url`, which froze a
+     * resolved CDN URL into the row (migrations 0011 and 0012).
+     */
+    imageFileId: foreignServiceId(),
     /** `[{name, value}]` — a value object read only with its line. */
     optionValues: jsonb().notNull().default(sql`'[]'::jsonb`),
     unitPriceAmount: moneyMinor().notNull(),

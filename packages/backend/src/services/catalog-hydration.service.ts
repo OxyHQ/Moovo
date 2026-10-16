@@ -8,10 +8,9 @@
  *   3. batch-load every owning user's Oxy profile in one `getProfiles` call,
  *   4. assemble each DTO with derived price fields + owner identity + media.
  *
- * Media resolution is funneled through ONE chokepoint (`resolveMedia`): absolute
- * URLs pass through unchanged (e.g. seeded Shopify CDN assets), everything else
- * is treated as an Oxy media file id and resolved via `assets.publicUrl` — the
- * only sanctioned media resolver.
+ * Media resolution is funneled through ONE chokepoint (`resolveMedia`): a value
+ * is an Oxy file id resolved via `assets.publicUrl` — the only sanctioned media
+ * resolver — or it is left out. A URL is never passed through (oxy ADR 0043).
  *
  * ## This is the ONE hydration path, and that is the point
  *
@@ -91,12 +90,16 @@ function cheapestVariant(variants: ProductVariantRecord[]): ProductVariantRecord
 function toImageDTOs(images: ListingImageValue[]): ListingImage[] {
   return [...images]
     .sort((a, b) => a.position - b.position)
-    .map((img) => {
-      const dto: ListingImage = { fileId: resolveMedia(img.fileId), position: img.position };
+    .flatMap((img) => {
+      // A value that is not an Oxy file id resolves to nothing and is left
+      // out, rather than handed to the client as a broken or foreign URL.
+      const url = resolveMedia(img.fileId);
+      if (url === undefined) return [];
+      const dto: ListingImage = { fileId: url, position: img.position };
       if (img.alt) {
         dto.alt = img.alt;
       }
-      return dto;
+      return [dto];
     });
 }
 
@@ -115,7 +118,7 @@ function toSeller(
     oxyUserId,
     displayName: oxyProfile?.displayName ?? oxyUserId,
     username: oxyProfile?.username ?? oxyUserId,
-    avatar: oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : (oxyProfile?.avatar ?? null),
+    avatar: (oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : undefined) ?? null,
     isVerified: profile?.isVerified ?? false,
   };
   if (profile && profile.reviewCount > 0) {
@@ -160,7 +163,7 @@ export function toMerchantSummary(
       return {
         id: listing.id,
         title: listing.title,
-        imageUrl: firstImage ? resolveMedia(firstImage.fileId, 'thumb') : '',
+        imageUrl: (firstImage ? resolveMedia(firstImage.fileId, 'thumb') : undefined) ?? '',
       };
     });
 
@@ -168,15 +171,16 @@ export function toMerchantSummary(
     id: store.id,
     handle: store.handle,
     name: store.name,
-    coverImageUrl: store.coverFileId ? resolveMedia(store.coverFileId) : '',
+    coverImageUrl: (store.coverFileId ? resolveMedia(store.coverFileId) : undefined) ?? '',
     brandColor: store.brandColor,
     rating: store.rating,
     reviewCount: store.reviewCount,
     textTone: store.textTone,
     products,
   };
-  if (store.logoFileId) {
-    summary.logoUrl = resolveMedia(store.logoFileId);
+  const logoUrl = store.logoFileId ? resolveMedia(store.logoFileId) : undefined;
+  if (logoUrl) {
+    summary.logoUrl = logoUrl;
   }
   return summary;
 }

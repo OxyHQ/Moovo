@@ -32,8 +32,10 @@ import trackingRouter from './routes/tracking.js';
 import adminRouter from './routes/admin/index.js';
 import { createCrowdSourceWebhookRoutes } from './routes/crowdsource-webhook.js';
 import { createTrackingWebhookRoutes } from './routes/tracking-webhook.js';
+import { createOxyFilesWebhookRoutes } from './routes/oxy-files-webhook.js';
 import { startModerationOutboxDispatcher } from './services/moderation/moderation-outbox.dispatcher.js';
 import { startTrackingPollDispatcher } from './services/tracking/tracking-poll.dispatcher.js';
+import { startFileReferenceDispatcher } from './services/files/file-references.dispatcher.js';
 import { startExpirySweeper, stopExpirySweeper } from './db/expiry.js';
 
 // Socket.io
@@ -180,6 +182,15 @@ const trackingWebhookRoutes = createTrackingWebhookRoutes();
 if (trackingWebhookRoutes) {
   app.use('/webhooks', trackingWebhookRoutes);
 }
+
+/**
+ * Oxy's file events (a file Moovo shows was blocked, deleted, unblocked) —
+ * ahead of the JSON parser for the same reason: an HMAC over the bytes that
+ * arrived. Its raw parser is scoped to `/webhooks/oxy/files` inside the router.
+ * Always mounted: Oxy verifies the endpoint with a challenge before the
+ * signing secret exists. See `routes/oxy-files-webhook.ts`.
+ */
+app.use('/webhooks', createOxyFilesWebhookRoutes());
 
 // Public API owns its JSON/error contract and bearer-only rate limiter.
 app.use('/api/v1', materialTransportsRouter);
@@ -374,6 +385,14 @@ try {
     startTrackingPollDispatcher();
 
     /**
+     * Tells Oxy which files Moovo uses (the outbox the file-bearing tables'
+     * triggers fill) and reconciles each entity type nightly — on every task,
+     * under leases. Without it Moovo's own files read as unused to Oxy and are
+     * collected. Announces itself when it does not start.
+     */
+    startFileReferenceDispatcher();
+
+    /**
      * Reaps the expired rows of the five tables `db/expiry.ts` registers.
      *
      * This call is the half of the expiry work that `@oxy.so/db` cannot
@@ -450,6 +469,12 @@ try {
       );
       await stopTrackingPollDispatcher();
       log.general.info('Tracking poll dispatcher stopped');
+
+      const { stopFileReferenceDispatcher } = await import(
+        './services/files/file-references.dispatcher.js'
+      );
+      await stopFileReferenceDispatcher();
+      log.general.info('File reference dispatcher stopped');
 
       // Let a sweep in flight finish. Its DELETEs are bounded batches, so
       // this is short; abandoning one mid-batch is safe (the next run picks

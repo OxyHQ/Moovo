@@ -77,10 +77,14 @@ function toScheduling(scheduling: SchedulingValue): Scheduling {
 function toPhotos(photos: ShipmentRecord['photos']): ShipmentPhoto[] {
   return [...photos]
     .sort((a, b) => a.position - b.position)
-    .map((p) => {
-      const dto: ShipmentPhoto = { fileId: resolveMedia(p.fileId), position: p.position };
+    .flatMap((p) => {
+      // A value that is not an Oxy file id resolves to nothing and is left
+      // out, rather than handed to the client as a broken or foreign URL.
+      const url = resolveMedia(p.fileId);
+      if (url === undefined) return [];
+      const dto: ShipmentPhoto = { fileId: url, position: p.position };
       if (p.alt) dto.alt = p.alt;
-      return dto;
+      return [dto];
     });
 }
 
@@ -163,9 +167,8 @@ export async function hydrateQuotes(
       const provider = providerById.get(String(quote.providerId));
       if (provider) {
         view.providerName = provider.name;
-        if (provider.logoFileId) {
-          view.providerLogoUrl = resolveMedia(provider.logoFileId);
-        }
+        const logoUrl = provider.logoFileId ? resolveMedia(provider.logoFileId) : undefined;
+        if (logoUrl) view.providerLogoUrl = logoUrl;
       }
     }
     if (quote.providerQuoteRef) view.providerQuoteRef = quote.providerQuoteRef;

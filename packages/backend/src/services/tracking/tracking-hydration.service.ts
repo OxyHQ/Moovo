@@ -24,6 +24,7 @@ import type { TrackedParcelRow } from '../../db/tracking/trackedParcelRepository
 import type { TrackedParcelSubscriptionRow } from '../../db/tracking/trackedParcelSubscriptionRepository.js';
 import type { TrackingCheckpointRow } from '../../db/tracking/trackingCheckpointRepository.js';
 import type { TrackingCarrierRow } from '../../db/tracking/trackingCarrierRepository.js';
+import { resolveMedia } from '../media.service.js';
 
 /** The carrier's own tracking page for this number. */
 export function buildTrackingUrl(carrier: TrackingCarrierRow, trackingNumber: string): string {
@@ -31,10 +32,12 @@ export function buildTrackingUrl(carrier: TrackingCarrierRow, trackingNumber: st
 }
 
 export function toCarrierSummary(carrier: TrackingCarrierRow): TrackingCarrierSummary {
+  // The column holds an Oxy file id; it used to be handed out raw as the URL.
+  const logoUrl = carrier.logoFileId ? resolveMedia(carrier.logoFileId) : undefined;
   return {
     key: carrier.key,
     name: carrier.name,
-    ...(carrier.logoFileId ? { logoUrl: carrier.logoFileId } : {}),
+    ...(logoUrl ? { logoUrl } : {}),
     sourceKind: carrier.sourceKind as TrackingCarrierSummary['sourceKind'],
     pollSupported: carrier.pollSupported,
     countryCodes: carrier.countryCodes,

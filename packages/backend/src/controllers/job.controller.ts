@@ -30,6 +30,7 @@ import { respondWithError } from '../lib/errors/error-codes.js';
 import { parsePagination, buildPagination } from '../utils/pagination.js';
 import { routeParam } from '../utils/request.js';
 import { log } from '../lib/logger.js';
+import { fileAuthorityFor } from '../services/files/file-ownership.js';
 
 /** Read the requested display currency from `?currency=`. */
 function displayCurrencyFromQuery(req: Request): ReturnType<typeof resolveDisplayCurrency> {
@@ -145,7 +146,7 @@ export async function deliverJob(req: Request, res: Response): Promise<void> {
     if (body.signatureFileId) input.signatureFileId = body.signatureFileId;
     if (body.note) input.note = body.note;
     if (body.recipientName) input.recipientName = body.recipientName;
-    const job = await deliver(oxyUserId, id, input, locationFromBody(body));
+    const job = await deliver(oxyUserId, id, input, fileAuthorityFor(req), locationFromBody(body));
     sendSuccess(res, await hydrateJob(job, displayCurrencyFromQuery(req)));
   } catch (err) {
     log.general.error({ err, jobId: id }, 'Failed to deliver job');
@@ -164,7 +165,7 @@ export async function scanJobHandler(req: Request, res: Response): Promise<void>
     const body = req.body as ScanInput;
     const input: ScanInput = { leg: body.leg, code: body.code };
     if (body.photoFileId) input.photoFileId = body.photoFileId;
-    const job = await scanJob(oxyUserId, id, input);
+    const job = await scanJob(oxyUserId, id, input, fileAuthorityFor(req));
     sendSuccess(res, await hydrateJob(job, displayCurrencyFromQuery(req)));
   } catch (err) {
     log.general.error({ err, jobId: id }, 'Failed to scan job code');

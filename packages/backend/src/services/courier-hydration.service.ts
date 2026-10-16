@@ -43,7 +43,7 @@ export function toCourier(profile: CourierProfileRow, oxyProfile: OxyProfile | u
     oxyUserId,
     displayName: oxyProfile?.displayName ?? oxyUserId,
     username: oxyProfile?.username ?? oxyUserId,
-    avatar: oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : (oxyProfile?.avatar ?? null),
+    avatar: (oxyProfile?.avatar ? resolveMedia(oxyProfile.avatar) : undefined) ?? null,
     status: profile.status as Courier['status'],
     onlineStatus: profile.onlineStatus as Courier['onlineStatus'],
     eligibleJobTypes: [...profile.eligibleJobTypes] as Courier['eligibleJobTypes'],
@@ -64,15 +64,16 @@ export function toCompanySummary(company: FleetCompany): CompanySummary {
     id: company.id,
     handle: company.handle,
     name: company.name,
-    coverImageUrl: company.coverFileId ? resolveMedia(company.coverFileId) : '',
+    coverImageUrl: (company.coverFileId ? resolveMedia(company.coverFileId) : undefined) ?? '',
     brandColor: company.brandColor,
     textTone: company.textTone as TextTone,
     rating: company.rating,
     reviewCount: company.reviewCount,
     completedJobs: company.completedJobs,
   };
-  if (company.logoFileId) {
-    summary.logoUrl = resolveMedia(company.logoFileId);
+  const logoUrl = company.logoFileId ? resolveMedia(company.logoFileId) : undefined;
+  if (logoUrl) {
+    summary.logoUrl = logoUrl;
   }
   return summary;
 }

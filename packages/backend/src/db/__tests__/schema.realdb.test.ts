@@ -44,14 +44,14 @@ const TABLES: PgTable[] = Object.values(schema as Record<string, unknown>).filte
  *
  * 25 domain tables (`counters` is two SEQUENCEs, not a table), plus 9 child
  * tables for embedded arrays that are queried, updated per element, or both,
- * plus the 5 Moovo Tracker tables.
+ * plus the 5 Moovo Tracker tables, plus the 4 Oxy Files tables (`files.ts`).
  *
  * Pinned rather than derived because the barrel is the thing that decides
  * whether a table is migrated at all: a table defined but never exported
  * produces no migration, and the omission looks exactly like "no schema change
  * to generate".
  */
-const EXPECTED_TABLE_COUNT = 42;
+const EXPECTED_TABLE_COUNT = 46;
 
 /**
  * Traversal floors. Deliberately well below the real figures — they exist to
@@ -139,6 +139,25 @@ const ID_COLUMNS_WITHOUT_FOREIGN_KEY: readonly { column: string; reason: string 
   { column: 'tracking_carriers.logo_file_id', reason: 'Oxy media file id.' },
   { column: 'jobs.pod_photo_file_id', reason: 'Oxy media file id.' },
   { column: 'jobs.pod_signature_file_id', reason: 'Oxy media file id.' },
+  { column: 'order_items.image_file_id', reason: 'Oxy media file id.' },
+
+  // Oxy Files (oxy ADR 0043): the reference outbox and the takedown record.
+  { column: 'file_reference_syncs.file_id', reason: 'Oxy media file id.' },
+  {
+    column: 'file_reference_syncs.entity_id',
+    reason: 'Polymorphic by `entity_type` — any file-bearing row; deleted rows must still be told.',
+  },
+  { column: 'file_event_receipts.file_id', reason: 'Oxy media file id.' },
+  { column: 'file_takedown_actions.file_id', reason: 'Oxy media file id.' },
+  {
+    column: 'file_takedown_actions.entity_id',
+    reason: 'Polymorphic by `entity_type`; the audit row must outlive the row it describes.',
+  },
+  {
+    column: 'file_takedown_actions.event_id',
+    reason:
+      "Oxy's event id. Not a FK to `file_event_receipts`: receipts are swept, the audit is not.",
+  },
 
   // CrowdSource's key space.
   { column: 'reports.crowd_source_report_id', reason: 'CrowdSource id — their key space.' },

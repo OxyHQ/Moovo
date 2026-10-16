@@ -33,6 +33,7 @@ import { sendSuccess, sendPaginated } from '../../utils/api-response.js';
 import { respondWithError, forbidden, notFound } from '../../lib/errors/error-codes.js';
 import { routeParam } from '../../utils/request.js';
 import { log } from '../../lib/logger.js';
+import { fileAuthorityFor } from '../../services/files/file-ownership.js';
 
 /** The loaded store id for the current request (guaranteed by `loadStore`). */
 function storeId(req: Request): string {
@@ -87,7 +88,11 @@ export async function listProducts(req: Request, res: Response): Promise<void> {
 export async function createProduct(req: Request, res: Response): Promise<void> {
   try {
     const id = storeId(req);
-    const listingId = await createStoreProduct(id, req.body as CreateStoreProductInput);
+    const listingId = await createStoreProduct(
+      id,
+      req.body as CreateStoreProductInput,
+      fileAuthorityFor(req),
+    );
     const dto = await hydrateById(listingId);
     sendSuccess(res, dto, 201);
   } catch (err) {
@@ -113,7 +118,7 @@ export async function patchProduct(req: Request, res: Response): Promise<void> {
   try {
     const listing = await loadStoreProduct(req);
     const listingId = listing.id;
-    await updateListing(listingId, req.body as UpdateListingInput);
+    await updateListing(listingId, req.body as UpdateListingInput, fileAuthorityFor(req));
     const dto = await hydrateById(listingId);
     sendSuccess(res, dto);
   } catch (err) {

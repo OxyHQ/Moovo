@@ -26,10 +26,10 @@ import { getDb } from '../postgres';
 const describeIfPostgres = POSTGRES_TESTS_ENABLED ? describe : describe.skip;
 
 /**
- * The five expiring courier/moderation tables plus the two Moovo Tracker
- * tables. If this grows, so must the registry.
+ * The five expiring courier/moderation tables, the two Moovo Tracker tables
+ * and the Oxy file event receipts. If this grows, so must the registry.
  */
-const EXPECTED_TARGET_COUNT = 7;
+const EXPECTED_TARGET_COUNT = 8;
 
 describeIfPostgres('the expiry sweep', () => {
   let suite: SuiteDatabase | null = null;

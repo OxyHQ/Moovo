@@ -50,7 +50,7 @@ import { nextOrderNumber } from '../db/sequences/numberRepository.js';
 import { getCart, clearCart } from './cart.service.js';
 import { reserve, release } from './inventory.service.js';
 import { summarizeOrders } from './order-hydration.service.js';
-import { resolveMedia } from './media.service.js';
+import { isOxyFileId } from './media.service.js';
 import { multiplyMoney, addMoney, sumMoney } from '../utils/money.js';
 import { config } from '../config/index.js';
 import { getRedisClient, withRedisTimeout } from '../lib/redis.js';
@@ -132,14 +132,16 @@ function sellerKeyForListing(listing: ListingRow): string {
     : `user:${String(listing.oxyUserId)}`;
 }
 
-/** First listing image (lowest position), resolved through the media chokepoint. */
-function firstImageUrl(listing: ListingRow): string | undefined {
+/**
+ * The first listing image (lowest position) as an Oxy FILE ID — never a URL.
+ * The line stores the id and resolves it at read, like every other image, so
+ * the order is a registered use of the file (`order_item`, oxy ADR 0043) and a
+ * takedown reaches it. A value that is not a file id is not snapshotted.
+ */
+function firstImageFileId(listing: ListingRow): string | undefined {
   const images = (listing.images ?? []) as { fileId: string; position: number }[];
-  if (images.length === 0) {
-    return undefined;
-  }
   const first = [...images].sort((a, b) => a.position - b.position)[0];
-  return first ? resolveMedia(first.fileId, 'thumb') : undefined;
+  return first && isOxyFileId(first.fileId) ? first.fileId : undefined;
 }
 
 /** Release every reservation made so far, swallowing (and warning) per-release failures. */
@@ -178,7 +180,7 @@ function buildItems(group: SellerGroup): Omit<NewOrderItem, 'orderId'>[] {
       variantId: variant.id,
       title: listing.title,
       variantTitle: variant.title,
-      imageUrl: firstImageUrl(listing) ?? null,
+      imageFileId: firstImageFileId(listing) ?? null,
       optionValues: ((variant.optionValues ?? []) as { name: string; value: string }[]).map(
         (o) => ({
           name: o.name,
