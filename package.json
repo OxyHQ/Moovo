@@ -58,15 +58,15 @@
     "lightningcss-linux-x64-gnu": "1.30.1",
     "lightningcss-linux-x64-musl": "1.30.1",
     "@oxy.so/bloom": "10.7.0",
-    "@oxy.so/contracts": "4.14.0",
-    "@oxy.so/core": "4.8.0",
-    "@oxy.so/services": "11.2.0",
+    "@oxy.so/contracts": "4.16.0",
+    "@oxy.so/core": "4.10.0",
+    "@oxy.so/services": "11.5.0",
     "@oxy.so/protocol": "1.2.2"
   },
   "dependencies": {
     "@oxy.so/bloom": "10.7.0",
-    "@oxy.so/contracts": "4.14.0",
-    "@oxy.so/core": "4.8.0",
-    "@oxy.so/services": "11.2.0"
+    "@oxy.so/contracts": "4.16.0",
+    "@oxy.so/core": "4.10.0",
+    "@oxy.so/services": "11.5.0"
   }
 }
