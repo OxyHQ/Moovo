@@ -18,6 +18,10 @@ not as the domain.** The live courier domain is `courier-company`,
 
 ## Packages
 
+npm releases: only Actions → Release packages (`release-packages.yml`, Oxy's shared
+workflow, OIDC); a package's gates are its `prepublishOnly`. Never publish from a laptop —
+`~/Oxy/docs/npm-releases.md`.
+
 | Package | Path | Role |
 |---|---|---|
 | `@moovo/frontend` | `packages/frontend/` | Expo customer app |
