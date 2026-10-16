@@ -1,6 +1,11 @@
 {
   "name": "@oxy.so/moovo-contracts",
   "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OxyHQ/Moovo.git",
+    "directory": "packages/contracts"
+  },
   "type": "module",
   "sideEffects": false,
   "files": [
