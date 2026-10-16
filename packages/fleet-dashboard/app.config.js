@@ -69,6 +69,13 @@ module.exports = () => ({
       // Moovo Hub, on its own Android UID, can ask Commons for the Oxy identity
       // ("sign in once, use everywhere").
       '@oxy.so/services/plugins/withOxySharedPermissions',
+      // Release-signs with the ONE Oxy ecosystem key (OXY_UPLOAD_* Gradle
+      // properties) and swaps in the optimising ProGuard file. Without it a
+      // local release build is debug-signed, which Commons' signature-level
+      // permissions refuse. Falls back to debug signing when the properties
+      // are absent, so verify the shipped certificate
+      // (`apksigner verify --print-certs`).
+      '@oxy.so/app-preset/plugin/withOxyAndroidRelease',
     ],
     experiments: {
       typedRoutes: true,

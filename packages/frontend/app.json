@@ -58,7 +58,8 @@
           "androidPermissions": ["android.permission.RECORD_AUDIO"]
         }
       ],
-      "@oxy.so/services/plugins/withOxySharedPermissions"
+      "@oxy.so/services/plugins/withOxySharedPermissions",
+      "@oxy.so/app-preset/plugin/withOxyAndroidRelease"
     ],
     "experiments": {
       "typedRoutes": true
