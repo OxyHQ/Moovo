@@ -15,14 +15,23 @@
 # private DNS on the shared RDS instance, which a hosted runner cannot reach.
 # Use `migration_phase=all` from workflow_dispatch only for a from-zero/cutover
 # batch — see the note on that step.
+#
+# It runs only AFTER CI has passed on main for the exact commit it releases
+# (`workflow_run`), instead of on every push beside CI with a `test` job of its
+# own that repeated CI's backend lint, real-database suites, Bun unit suite and
+# backend build. CI on push to main runs every job (its `changes` filter only
+# narrows pull requests), so the gate is the whole of CI — `Lint (Biome)`,
+# `Lint & Test` (the same real-database suites, armed with
+# MOOVO_REQUIRE_POSTGRES_TESTS), the API image smoke, `Build API` and
+# `Build App` — rather than that subset, and the deploy no longer holds a second
+# runner slot for the copy.
 name: Deploy to AWS
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
   workflow_dispatch:
     inputs:
       migration_phase:
@@ -36,43 +45,6 @@ on:
         options:
           - pre-post
           - all
-
-# ONE deploy at a time, and never cancel one that is already running.
-#
-# Two independent reasons, either of which alone justifies this:
-#
-# 1. THE MIGRATOR TAKES NO LOCK, and that is deliberate rather than an
-#    oversight. `@oxy.so/db`'s runner documents it under a heading reading
-#    "WHAT THIS DELIBERATELY DOES NOT DO": drizzle's migrator reads the
-#    ledger's high-water mark OUTSIDE its transaction and replays everything
-#    newer INSIDE one, so two runs both read the same mark and both attempt
-#    the same DDL. It says a caller that can race itself "needs an interlock
-#    of its own". This is that interlock.
-#
-#    Measured, not taken on trust: two `runMigrations` started together
-#    against one fresh database both logged "Applying 1 migration(s)"; one
-#    exited 0 and the other exited 1 on an already-applied statement. The
-#    ledger ended with exactly one row — so the loser fails LOUDLY and
-#    nothing is corrupted, but a deploy goes red for no reason, having
-#    already pushed its image.
-#
-# 2. Even with a lock this would be right, because it is not only about
-#    migrations. Three simultaneous `update-service --force-new-deployment`
-#    calls, each followed by `wait services-stable`, is a deploy waiting on a
-#    revision another deploy has already superseded — it times out and rolls
-#    the service back to whatever IT captured at its start. That is not
-#    hypothetical: it happened three times to a sibling service, whose
-#    workflow HAS this block, so Moovo without one is strictly worse off.
-#    Three runs were in flight here simultaneously on 2026-08-10.
-#
-# `cancel-in-progress: false` is the load-bearing half. Cancelling a run
-# between `run-task` and its exit-code check ORPHANS a live migration task and
-# reports nothing about it — and cancelling mid-rollout is itself what
-# triggers the rollback above, measured on that same sibling service. A queued
-# deploy is always better than a cancelled one here.
-concurrency:
-  group: deploy-aws-${{ github.ref }}
-  cancel-in-progress: false
 
 permissions:
   id-token: write
@@ -94,87 +66,225 @@ env:
   # owned by role `moovo` on oxy-postgres, with PostGIS already installed
   # (checked 2026-08-10).
   PG_DATABASE: moovo
+  # The commit under release: the head CI tested on `workflow_run`, main's head
+  # on a dispatch. Never `github.sha` alone, which on `workflow_run` is whatever
+  # main points at when the event is created.
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
-  # The gate on the rollout below, and the ONLY one: `deploy` needs THIS job.
-  # `ci.yml` runs the same suite on a push to main, but it is a separate
-  # workflow — it going red stops nothing here, so whatever this job declines to
-  # run is not gating the deploy at all.
+  # Decides, OUTSIDE the release concurrency group, whether this run releases
+  # anything. It must sit outside: GitHub cancels a PENDING run when another
+  # queues behind it in the same group, so a run for an older commit (its CI
+  # finished late) that queued there could silently displace a pending release
+  # of a newer one and then hold itself, leaving neither deployed.
   #
-  # x86, NOT the `ubuntu-24.04-arm` runner the deploy job uses, and the
-  # difference is the whole point of this job's existence.
+  # `workflow_run` fires for every completed CI run on a branch named main, red
+  # ones and a fork's `main` included, so each guard below is load-bearing.
   #
-  # Measured 2026-08-11, not assumed: `docker manifest inspect
-  # postgis/postgis:17-3.5` publishes exactly one platform, linux/amd64. An ARM
-  # runner cannot pull it, so on `ubuntu-24.04-arm` there is no way to start the
-  # server the real-database suites need — and without a server those suites do
-  # not fail, they SKIP.
-  #
-  # That was the state this job was in until now, and it is why the mismatch
-  # with the arm64 deploy job is deliberate rather than something to tidy up.
-  # What the ARM runner bought was tests on the production architecture; what it
-  # cost was 354 of 695 tests, silently. Measured on 6f0dae4 with the exact
-  # command this job ran: `Tests 341 passed | 354 skipped (695)`, exit 0, in
-  # three seconds — every one of the 354 a real-database test, and the build
-  # green. The arm64 image is still built and its migrator entry point still
-  # asserted by the Dockerfile, so the architecture is not unexercised.
-  test:
+  # An older commit is held ONLY when a newer commit on main has a CI run of
+  # its own (queued, in progress or succeeded) — that commit's release will
+  # carry this one. A newer commit with NO CI run (pushed with GITHUB_TOKEN, as
+  # a bot merge is: automerge-first-party.yml, which starts no workflow) or
+  # whose CI failed holds nothing, so the newest CI-tested commit is never
+  # stranded behind it. Holding on "is this still main's head" alone strands
+  # exactly that commit.
+  gate:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      release: ${{ steps.newer.outputs.release }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.3
+          ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
 
-      - run: bun install --frozen-lockfile
-
-      - run: bun run --filter @moovo/backend lint
-
-      # Started from the SAME compose file a developer uses, and the same one
-      # `ci.yml` starts, rather than from a `services:` block — a `services:`
-      # block would restate the image pin, giving three places to disagree about
-      # the version under test. `--wait` because that file carries a
-      # `pg_isready` healthcheck, and a suite that starts before the server
-      # accepts connections fails as a connection error, which reads like a
-      # broken harness rather than a container that was not up yet.
-      - name: Start PostgreSQL
-        run: docker compose -f docker-compose.postgres.yml up -d --wait postgres
-
-      - name: Run API tests
-        # TEST_DATABASE_URL names the ADMIN database: each test file creates its
-        # own throwaway database on that server and drops it afterwards.
-        #
-        # MOOVO_REQUIRE_POSTGRES_TESTS is the load-bearing half and the reason
-        # this is not merely "start a container and hope". It turns "skip when
-        # unavailable" into a hard failure, so if the compose step above ever
-        # stops producing a reachable server — a renamed variable, a moved port,
-        # an image that will not pull — this job goes RED rather than green over
-        # 354 tests that did not run. Without it, every failure mode of the
-        # container is indistinguishable from success.
+      # One-shot, not a poll: a dispatch is a manual redeploy of a commit CI
+      # has already judged. `workflow_run` needs no such check; the guards
+      # above already read CI's conclusion for this exact SHA.
+      - name: Require a successful CI run on push for this commit (dispatch)
+        if: github.event_name == 'workflow_dispatch'
         env:
-          TEST_DATABASE_URL: postgres://moovo:moovo@127.0.0.1:5437/postgres
-          MOOVO_REQUIRE_POSTGRES_TESTS: '1'
-        run: bun run --filter @moovo/backend test
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$DEPLOY_SHA&event=push&branch=main&status=success&per_page=1" --jq '.total_count')
+          if [ "$passed" -lt 1 ]; then
+            echo "::error::CI has not succeeded on push to main for $DEPLOY_SHA; refusing to deploy it"
+            exit 1
+          fi
+          echo "CI succeeded on push for $DEPLOY_SHA"
 
-      # The image below runs the API on Bun, so the unit suite runs under Bun
-      # too (see `test:bun` and ci.yml for what stays on vitest only).
-      - name: Run API unit tests under Bun
-        run: bun run --filter @moovo/backend test:bun
+      - name: Hold only for a newer main commit that CI is testing or passed
+        id: newer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release() { echo "release=$1" >>"$GITHUB_OUTPUT"; echo "$2"; exit 0; }
+          main=$(git rev-parse origin/main)
+          if [ "$main" = "$DEPLOY_SHA" ]; then
+            release true "$DEPLOY_SHA is main's head"
+          fi
+          if ! git merge-base --is-ancestor "$DEPLOY_SHA" "$main"; then
+            release false "::notice::$DEPLOY_SHA is no longer on main ($main); not releasing it"
+          fi
+          # Newest first. A run counts unless it finished without succeeding.
+          for sha in $(git rev-list --first-parent "$DEPLOY_SHA..$main"); do
+            live=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$sha&event=push&per_page=20" \
+              --jq '[.workflow_runs[] | select(.status != "completed" or .conclusion == "success")] | length')
+            if [ "$live" -gt 0 ]; then
+              release false "::notice::newer main commit $sha has its own CI run; its release carries $DEPLOY_SHA"
+            fi
+            echo "newer main commit $sha has no live or successful CI run; it does not hold $DEPLOY_SHA"
+          done
+          release true "no newer main commit is being released; releasing $DEPLOY_SHA"
 
-      - run: bun run build:backend
-
+  # x86 is not needed here any more: the real-database suites that required an
+  # amd64 runner (postgis/postgis publishes linux/amd64 only) run in ci.yml's
+  # `Lint & Test`, which this job now waits on through `workflow_run`.
   deploy:
-    needs: test
+    needs: gate
+    if: needs.gate.outputs.release == 'true'
     runs-on: ubuntu-24.04-arm
+    # Image build, the pre migration task, `wait services-stable` (up to 10
+    # minutes on its own) and the post migration task.
+    timeout-minutes: 60
+    permissions:
+      id-token: write
+      contents: read
+    # ONE deploy at a time, and never cancel one that is already running.
+    #
+    # Two independent reasons, either of which alone justifies this:
+    #
+    # 1. THE MIGRATOR TAKES NO LOCK, and that is deliberate rather than an
+    #    oversight. `@oxy.so/db`'s runner documents it under a heading reading
+    #    "WHAT THIS DELIBERATELY DOES NOT DO": drizzle's migrator reads the
+    #    ledger's high-water mark OUTSIDE its transaction and replays everything
+    #    newer INSIDE one, so two runs both read the same mark and both attempt
+    #    the same DDL. It says a caller that can race itself "needs an interlock
+    #    of its own". This is that interlock.
+    #
+    #    Measured, not taken on trust: two `runMigrations` started together
+    #    against one fresh database both logged "Applying 1 migration(s)"; one
+    #    exited 0 and the other exited 1 on an already-applied statement. The
+    #    ledger ended with exactly one row — so the loser fails LOUDLY and
+    #    nothing is corrupted, but a deploy goes red for no reason, having
+    #    already pushed its image.
+    #
+    # 2. Even with a lock this would be right, because it is not only about
+    #    migrations. Three simultaneous `update-service --force-new-deployment`
+    #    calls, each followed by `wait services-stable`, is a deploy waiting on a
+    #    revision another deploy has already superseded — it times out and rolls
+    #    the service back to whatever IT captured at its start. That is not
+    #    hypothetical: it happened three times to a sibling service, whose
+    #    workflow HAS this block, so Moovo without one is strictly worse off.
+    #    Three runs were in flight here simultaneously on 2026-08-10.
+    #
+    # `cancel-in-progress: false` is the load-bearing half. Cancelling a run
+    # between `run-task` and its exit-code check ORPHANS a live migration task and
+    # reports nothing about it — and cancelling mid-rollout is itself what
+    # triggers the rollback above, measured on that same sibling service. A queued
+    # deploy is always better than a cancelled one here. A newer PENDING run may
+    # replace an older pending one, which is safe because the scope step releases
+    # everything between what is live and the newer commit. On the JOB, not the
+    # workflow, so only a run `gate` judged releasable ever enters the group.
+    concurrency:
+      group: deploy-aws-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+          # The scope step diffs from the commit that is live, which can be any
+          # number of commits back.
+          fetch-depth: 0
 
       - name: Configure AWS credentials (OIDC, no stored keys)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::237343248947:role/oxy-github-deploy
           aws-region: ${{ env.AWS_REGION }}
+
+      # Whether this commit changes what the API image or its rollout contains,
+      # measured from what production RUNS rather than from one push:
+      # `workflow_run` takes no `paths`, and a push's own diff would miss commits
+      # whose release was skipped or failed. The live image's 40-hex ECR tags
+      # name the commit(s) it was built from (this workflow tags every image
+      # with its SHA).
+      #
+      #   * live already contains this commit (a re-run, or CI finishing out of
+      #     order): skip, never roll production back to an older tree;
+      #   * no file changed since the live commit is a backend input: skip. The
+      #     inputs are what goes into the image or decides how it is rolled out —
+      #     packages/backend, packages/shared-types and packages/contracts
+      #     (workspace dependencies the image bundles), every manifest and the lockfile (they decide the
+      #     install), bunfig.toml, the Dockerfile and its ignore files, this
+      #     workflow and the scripts it runs. Markdown never counts. A frontend-
+      #     only merge therefore no longer rebuilds and rolls out the API; the
+      #     four Cloudflare workflows ship those apps;
+      #   * anything else, or anything this cannot establish (no live service,
+      #     no SHA tag, a live commit that is not an ancestor, an API error):
+      #     deploy. When unsure, deploy.
+      #
+      # A dispatch always deploys: it is the manual redeploy.
+      - name: Decide whether this commit changes what production runs
+        id: scope
+        run: |
+          set -uo pipefail
+          decide() { echo "deploy=$1" >>"$GITHUB_OUTPUT"; echo "$2"; exit 0; }
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            decide true "manual dispatch: deploying $DEPLOY_SHA"
+          fi
+
+          td=$(aws ecs describe-services --cluster "$CLUSTER" --services "$APP" \
+            --query 'services[0].taskDefinition' --output text 2>/dev/null) || td=
+          case "$td" in arn:aws:ecs:*) ;; *) decide true "no live task definition found; deploying" ;; esac
+          image=$(aws ecs describe-task-definition --task-definition "$td" \
+            --query 'taskDefinition.containerDefinitions[0].image' --output text 2>/dev/null) || image=
+          digest=${image#*@}
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || decide true "live image '$image' is not digest-pinned; deploying"
+          live_shas=$(aws ecr describe-images --repository-name "oxy/$APP" --image-ids "imageDigest=$digest" \
+            --query 'imageDetails[0].imageTags' --output json 2>/dev/null | jq -r '.[]? | select(test("^[0-9a-f]{40}$"))') || live_shas=
+          [ -n "$live_shas" ] || decide true "live image $digest carries no commit tag; deploying"
+
+          bases=()
+          for live in $live_shas; do
+            if ! git cat-file -e "$live^{commit}" 2>/dev/null; then
+              continue
+            fi
+            if git merge-base --is-ancestor "$DEPLOY_SHA" "$live"; then
+              decide false "live image (commit $live) already contains $DEPLOY_SHA; nothing to release"
+            fi
+            if git merge-base --is-ancestor "$live" "$DEPLOY_SHA"; then
+              bases+=("$live")
+            fi
+          done
+          [ "${#bases[@]}" -gt 0 ] || decide true "no live commit is an ancestor of $DEPLOY_SHA; deploying"
+
+          # Several tags on one digest (an identical rebuild): the union of the
+          # diffs, i.e. the widest one. A failed diff is its own line, which
+          # matches no exclusion below and so deploys.
+          changed=$(for base in "${bases[@]}"; do git diff --name-only "$base" "$DEPLOY_SHA" || echo '<diff failed>'; done | sort -u)
+          relevant=$(grep -vE '\.md$' <<<"$changed" \
+            | grep -E '^(packages/backend/|packages/shared-types/|packages/contracts/|packages/[^/]+/package\.json$|package\.json$|bun\.lock$|bunfig\.toml$|Dockerfile|\.dockerignore$|\.github/workflows/deploy-aws\.yml$|\.github/scripts/(run-migration-task\.sh|reviewed-image\.py|reviewed-images\.json)$|<diff failed>$)' || true)
+          if [ -z "$relevant" ]; then
+            decide false "no backend input changed since live ${bases[*]}; not deploying"
+          fi
+          echo "backend inputs changed since live ${bases[*]}:"
+          sed 's/^/  /' <<<"$relevant" | head -50
+          decide true "deploying $DEPLOY_SHA"
 
       # Runtime secrets live ONLY in SSM /oxy/moovo/* (SecureString) and the
       # oxy-infra-owned /oxy/_shared/*; the running task definition reads them
@@ -187,9 +297,11 @@ jobs:
       # so dropping OXY_SERVICE_API_* stays a terraform edit in oxy-infra.
 
       - name: Login to ECR
+        if: steps.scope.outputs.deploy == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
+        if: steps.scope.outputs.deploy == 'true'
         uses: docker/setup-buildx-action@v3
 
       # `--cache-from/--cache-to type=gha` below need the Actions runtime token
@@ -197,6 +309,7 @@ jobs:
       # steps. Without them buildx skipped the cache silently: this repository
       # held no buildkit cache entry at all (`gh cache list`, 2026-09-30).
       - name: Expose the Actions cache to buildx
+        if: steps.scope.outputs.deploy == 'true'
         uses: crazy-max/ghaction-github-runtime@v4
 
       # Production builds only what the owner reviewed. The Dockerfile, its
@@ -209,10 +322,12 @@ jobs:
       # check on every pull request (`reviewed-image.py check`, Lint (Biome)), so a
       # change that would stop here fails before it can merge.
       - name: Refuse unreviewed image build inputs
+        if: steps.scope.outputs.deploy == 'true'
         id: reviewed
         run: python3 -B .github/scripts/reviewed-image.py guard --recipe moovo
 
       - name: Build and push (linux/arm64)
+        if: steps.scope.outputs.deploy == 'true'
         id: build
         env:
           DOCKERFILE: ${{ steps.reviewed.outputs.dockerfile }}
@@ -227,11 +342,11 @@ jobs:
             --cache-from type=gha,scope=$APP-backend \
             --cache-to type=gha,scope=$APP-backend,mode=max \
             -f "$DOCKERFILE" \
-            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.revision=$DEPLOY_SHA" \
             --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
             --label "io.oxy.source.tree=$SOURCE_TREE" \
             --label "io.oxy.build-inputs.sha256=$BUILD_INPUTS_SHA256" \
-            -t "$IMG:${{ github.sha }}" \
+            -t "$IMG:$DEPLOY_SHA" \
             -t "$IMG:latest" \
             --metadata-file "$RUNNER_TEMP/build-metadata.json" \
             --push \
@@ -252,9 +367,10 @@ jobs:
       # where DATABASE_URL could be configured differently for migrations than
       # for the code those migrations are for.
       - name: Discover the ECS service
+        if: steps.scope.outputs.deploy == 'true'
         id: ecs
         env:
-          # Absent on a `push` trigger, where only the default is ever right.
+          # Absent on a `workflow_run` trigger, where only the default is ever right.
           REQUESTED_PHASE: ${{ github.event.inputs.migration_phase }}
           IMAGE_URI: ${{ steps.build.outputs.image_uri }}
         run: |
@@ -293,6 +409,7 @@ jobs:
       # well-formed marker; without that a typo would read as "no post migration"
       # and the drop would never be applied by anything.
       - name: Detect a post-rollout migration in this release
+        if: steps.scope.outputs.deploy == 'true'
         id: phases
         run: |
           if grep -rlE '^-- oxy:deploy-phase=post$' packages/backend/src/db/migrations >/dev/null 2>&1; then
@@ -310,7 +427,7 @@ jobs:
       # database no image is serving yet, which is also why it must never be the
       # default.
       - name: Migrate (all) — cutover only, never a normal release
-        if: steps.ecs.outputs.status == 'ACTIVE' && steps.ecs.outputs.phase_mode == 'all'
+        if: steps.scope.outputs.deploy == 'true' && steps.ecs.outputs.status == 'ACTIVE' && steps.ecs.outputs.phase_mode == 'all'
         run: .github/scripts/run-migration-task.sh all
         env:
           TASK_DEFINITION: ${{ steps.ecs.outputs.task_definition }}
@@ -322,7 +439,7 @@ jobs:
       # ordinary deploy; when the journal has nothing pending it is a no-op that
       # still proves the migrator could reach the database.
       - name: Migrate (pre) — before the rollout
-        if: steps.ecs.outputs.status == 'ACTIVE' && steps.ecs.outputs.phase_mode != 'all'
+        if: steps.scope.outputs.deploy == 'true' && steps.ecs.outputs.status == 'ACTIVE' && steps.ecs.outputs.phase_mode != 'all'
         run: .github/scripts/run-migration-task.sh pre
         env:
           TASK_DEFINITION: ${{ steps.ecs.outputs.task_definition }}
@@ -330,6 +447,7 @@ jobs:
           NETWORK_CONFIGURATION: ${{ steps.ecs.outputs.network }}
 
       - name: Deploy to ECS (rolling; skipped until the service exists)
+        if: steps.scope.outputs.deploy == 'true'
         # Through `env:` rather than `${{ }}` inside `run:`. Nothing here is
         # attacker-controlled today, but a workflow expression expanded into a
         # shell command is the shape of an injection, and the habit is what
@@ -351,7 +469,7 @@ jobs:
       # when the release carries none, so an ordinary deploy does not start a
       # Fargate task to do nothing.
       - name: Migrate (post) — after the rollout
-        if: steps.ecs.outputs.status == 'ACTIVE' && steps.ecs.outputs.phase_mode != 'all' && steps.phases.outputs.has_post == 'true'
+        if: steps.scope.outputs.deploy == 'true' && steps.ecs.outputs.status == 'ACTIVE' && steps.ecs.outputs.phase_mode != 'all' && steps.phases.outputs.has_post == 'true'
         run: .github/scripts/run-migration-task.sh post
         env:
           TASK_DEFINITION: ${{ steps.ecs.outputs.task_definition }}

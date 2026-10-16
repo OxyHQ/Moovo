@@ -14,7 +14,9 @@ name: Refresh image build cache
 
 on:
   schedule:
-    - cron: '17 4 * * 1'
+    # Saturday: the fleet's Monday 04:17 slot is staggered across repositories
+    # so their rebuilds do not all queue for runners at once.
+    - cron: '17 4 * * 6'
   workflow_dispatch:
 
 permissions:

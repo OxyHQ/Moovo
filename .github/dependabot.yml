@@ -2,8 +2,13 @@ version: 2
 updates:
   - package-ecosystem: bun
     directory: /
+    # Weekly, on a day of its own: the org shares 20 concurrent Actions jobs,
+    # and a daily bump PR (plus its CI and the push to main it merges as) on
+    # every repository at once queues the whole fleet. Security updates are not
+    # governed by this schedule and still open as soon as an advisory lands.
     schedule:
-      interval: daily
+      interval: weekly
+      day: "friday"
     open-pull-requests-limit: 5
     allow:
       - dependency-name: "@oxy.so/*"
@@ -11,12 +16,25 @@ updates:
       - dependency-name: "@clarity.surf/*"
     # First-party SDKs only; third-party updates stay manual. The group
     # auto-merges via .github/workflows/automerge-first-party.yml.
+    #
+    # `oxy` comes FIRST: an update joins the first group it matches, and
+    # automerge-first-party.yml recognises the PR by its `dependabot/bun/oxy-`
+    # branch. `minor-and-patch` catches any minor/patch version update that ever
+    # falls outside it (should `allow` widen), so the week still yields one PR
+    # rather than one per package.
     groups:
       oxy:
         patterns:
           - "@oxy.so/*"
           - "@alia.onl/*"
           - "@clarity.surf/*"
+      minor-and-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: github-actions
     directory: /

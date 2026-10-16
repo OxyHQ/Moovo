@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useMemo, useRef, useState } from 'react';
-import { View, Animated, StyleSheet, Platform } from 'react-native';
+import { ActivityIndicator, View, Animated, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   APP_COLOR_PRESETS,
@@ -8,7 +8,6 @@ import {
   type PersistedThemeState,
 } from '@oxy.so/bloom/theme';
 import { Logo } from '@/components/Logo';
-import { Loading } from '@oxy.so/bloom/loading';
 import { BLOOM_THEME_PERSIST_KEY, BLOOM_THEME_STORAGE } from '@/lib/themePersistence';
 
 interface AppSplashScreenProps {
@@ -22,7 +21,8 @@ const SPINNER_SIZE = 28;
 
 // The splash renders during font loading via BloomThemeProvider's `onFontsLoading`,
 // i.e. BEFORE the theme context is available — so it must NOT depend on `useTheme()`
-// (which throws outside the provider). Instead it reads the SAME persisted theme key
+// (which throws outside the provider) — nor may anything it draws: Bloom's `Loading` reads the
+// theme too, so the spinner is React Native's own `ActivityIndicator`. Instead it reads the SAME persisted theme key
 // that the provider writes (`BLOOM_THEME_PERSIST_KEY`) and derives a DARK gradient
 // from the active preset's seed. The logo + spinner are white, so the gradient must
 // stay dark enough for white to pop — we always resolve the preset's DARK roles here,
@@ -160,7 +160,7 @@ const AppSplashScreen: React.FC<AppSplashScreenProps> = ({ onFadeComplete, start
         <View style={styles.logoContainer}>
           <Logo size={LOGO_SIZE} color="white" />
           <View style={styles.spinnerContainer}>
-            <Loading iconSize={SPINNER_SIZE} color="white" showText={false} />
+            <ActivityIndicator size={SPINNER_SIZE} color="white" />
           </View>
         </View>
       </LinearGradient>

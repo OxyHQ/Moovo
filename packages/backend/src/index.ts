@@ -208,7 +208,6 @@ app.use('/reviews', reviewsRouter);
 app.use('/seller', sellerRouter);
 app.use('/courier', courierRouter);
 app.use('/shipments', shipmentsRouter);
-
 app.use('/jobs', jobsRouter);
 app.use('/reports', reportsRouter);
 app.use('/tracking', trackingRouter);
