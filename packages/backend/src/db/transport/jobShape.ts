@@ -75,6 +75,25 @@ export interface JobPaymentValue {
 }
 
 /**
+ * Payment states in which the payer's money is secured. Anything else
+ * (`unpaid`, `failed`, `refunded`) is not, so no courier may be sent for it.
+ */
+export const PAYMENT_SECURED: readonly JobPaymentValue['status'][] = ['authorized', 'paid'];
+
+/**
+ * Whether a courier may be dispatched to — or accept — this job.
+ *
+ * A courier who drives to a pickup is owed for it, so a job is dispatchable
+ * only when nothing is owed (an explicitly free transport, `total` 0) or the
+ * payer's payment is authorized or captured. Booking still creates the job and
+ * reports it as awaiting payment; it is dispatched once payment is confirmed.
+ * `listJobsAwaitingCourier` applies the same rule in SQL.
+ */
+export function isPaymentClearForDispatch(job: Pick<JobRecord, 'totals' | 'payment'>): boolean {
+  return job.totals.total.fairMinor === 0 || PAYMENT_SECURED.includes(job.payment.status);
+}
+
+/**
  * A persisted job WITHOUT its two child trails.
  *
  * `id` rather than `_id`: a uuid v7 string the application mints, and nothing

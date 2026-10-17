@@ -59,6 +59,12 @@ function deliveryEtaMin(distanceM: number): number {
 
 /** Build a mock `ProviderAdapter` for a carrier's pricing parameters. */
 function makeMockAdapter(params: MockCarrierParams): ProviderAdapter {
+  /**
+   * The simulated carrier's own record of what it booked, keyed by operation id
+   * — what a real carrier's idempotency store is. Process-local, so a restart
+   * forgets it, and a lookup after one honestly answers "no booking".
+   */
+  const bookings = new Map<string, ProviderBooking>();
   return {
     key: params.key,
 
@@ -84,13 +90,28 @@ function makeMockAdapter(params: MockCarrierParams): ProviderAdapter {
       return [quote];
     },
 
-    async book(shipment: ShipmentRecord, _quote: QuoteRecord): Promise<ProviderBooking> {
+    async book(
+      shipment: ShipmentRecord,
+      _quote: QuoteRecord,
+      { operationId }: { operationId: string },
+    ): Promise<ProviderBooking> {
+      const existing = bookings.get(operationId);
+      if (existing) return existing;
       const bookingRef = `${params.key}-bk-${shipment.id}-${Date.now()}`;
+      const booking = {
+        bookingRef,
+        trackingUrl: `https://example.invalid/${params.key}/${bookingRef}`,
+      };
+      bookings.set(operationId, booking);
       log.general.info(
         { providerKey: params.key, shipmentId: shipment.id, bookingRef },
         'Mock provider booking created',
       );
-      return { bookingRef, trackingUrl: `https://example.invalid/${params.key}/${bookingRef}` };
+      return booking;
+    },
+
+    async findBooking(operationId: string): Promise<ProviderBooking | null> {
+      return bookings.get(operationId) ?? null;
     },
 
     async cancel(bookingRef: string): Promise<void> {

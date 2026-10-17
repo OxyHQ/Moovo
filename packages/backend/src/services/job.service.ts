@@ -34,11 +34,13 @@
  * it, because an HTTP round trip does not belong inside an open transaction.
  */
 
-import { eq } from 'drizzle-orm';
+import { and, asc, eq, lt, sql } from 'drizzle-orm';
+import { sqlStateOf, UNIQUE_VIOLATION } from '@oxy.so/db';
 import { shipmentBookingAttempts, materialTransports } from '../db/schema/material-transports';
 import { findProviderById } from '../db/transport/providerRepository.js';
 import type {
   JobStatus,
+  PriceBreakdown,
   ProofOfDelivery,
   DeliverInput,
   ScanInput,
@@ -60,10 +62,11 @@ import {
   listJobs,
   type JobListFilter,
 } from '../db/transport/jobRepository.js';
-import type {
-  JobProofOfDeliveryValue,
-  JobRecord,
-  JobWithHistory,
+import {
+  isPaymentClearForDispatch,
+  type JobProofOfDeliveryValue,
+  type JobRecord,
+  type JobWithHistory,
 } from '../db/transport/jobShape.js';
 import {
   countOfferOutcomesForCourier,
@@ -83,6 +86,12 @@ import {
 } from '../db/fleet/courierProfileRepository.js';
 import { nextJobNumber } from '../db/sequences/numberRepository.js';
 import { getAdapter } from './providers/provider-registry.js';
+import {
+  ProviderBookingRejected,
+  type ProviderAdapter,
+  type ProviderBooking,
+} from './providers/provider-adapter.js';
+import type { ShipmentRecord } from '../db/transport/shipmentShape.js';
 import { emitJobStatus, emitJobLocation } from './job-events.service.js';
 import { verifyCode, generateCode, hashCode } from '../utils/job-codes.js';
 import { EVENTS } from '../lib/socket-events.js';
@@ -274,57 +283,304 @@ export async function bookShipment(
       throw conflict('This booking key already belongs to another shipment');
     }
   }
-  const operationId = `shipment_${shipmentId}`;
-  if (quote.source === 'external_provider') {
-    const [claim] = await getDb()
-      .insert(shipmentBookingAttempts)
-      .values({
-        shipmentId,
-        quoteId,
-        senderAccountId: senderOxyUserId,
-        operationId,
-        idempotencyKey,
-        status: quote.source === 'external_provider' ? 'unknown' : 'processing',
-      })
-      .onConflictDoNothing()
-      .returning();
-    if (!claim) {
-      const current = await findShipmentById(shipmentId);
-      if (current?.jobId) {
-        const job = await findJobWithHistory(current.jobId, config.jobs.maxLocationPings);
-        if (job) return job;
-      }
-      throw conflict(
-        'Booking is pending or its result is unknown. Reconcile this shipment before retrying; no second carrier request was sent.',
-      );
-    }
-  }
-
   // For an external-provider quote, book through the adapter to get a booking
   // ref. Outside the transaction below: an outbound HTTP call inside an open
   // transaction holds a connection for as long as somebody else's server takes.
   const isExternal = quote.source === 'external_provider';
-  let providerRef: string | undefined;
-  let carrierTrackingUrl: string | undefined;
-  if (isExternal) {
-    if (!quote.providerId) {
-      throw conflict('External quote is missing its provider');
-    }
-    const provider = await findProviderById(quote.providerId);
-    if (!provider) {
-      throw notFound('Provider not found for quote');
-    }
-    const adapter = getAdapter(provider.key);
-    if (!adapter) {
-      throw conflict('No adapter registered for the quoted provider');
-    }
-    const booking = await adapter.book(shipment, quote, { operationId });
-    providerRef = booking.bookingRef;
-    // Kept, at last. Every adapter has always returned this and `job.service`
-    // has always dropped it, so a customer whose parcel is on DHL had no way to
-    // reach DHL's own page from Moovo.
-    carrierTrackingUrl = booking.trackingUrl;
+  if (!isExternal) {
+    return commitBooking({
+      shipment,
+      quote,
+      materialTransport,
+      senderOxyUserId,
+      idempotencyKey,
+    });
   }
+
+  const adapter = await adapterForProvider(quote.providerId);
+  const claim = await claimExternalBooking(shipmentId, quote, senderOxyUserId, idempotencyKey);
+  if ('job' in claim) {
+    return claim.job;
+  }
+  let booking: ProviderBooking;
+  try {
+    booking = await adapter.book(shipment, quote, { operationId: claim.operationId });
+  } catch (err) {
+    if (err instanceof ProviderBookingRejected) {
+      // The carrier booked nothing: release the claim so the shipment can be
+      // booked again, under a new operation id.
+      await markAttemptFailed(shipmentId, claim.operationId);
+      throw conflict(`The carrier refused the booking: ${err.message}`);
+    }
+    // Anything else may have booked. The claim stays `unknown` and the
+    // reconciler asks the carrier by operation id; booking blind again is how
+    // one parcel becomes two.
+    log.general.warn(
+      { err, shipmentId, operationId: claim.operationId },
+      'Carrier booking outcome unknown; left for reconciliation',
+    );
+    throw err;
+  }
+  return commitBooking({
+    shipment,
+    quote,
+    materialTransport,
+    senderOxyUserId,
+    idempotencyKey,
+    booking,
+  });
+}
+
+type MaterialTransportRow = typeof materialTransports.$inferSelect;
+type BookingAttemptRow = typeof shipmentBookingAttempts.$inferSelect;
+
+/** The first attempt's carrier operation id; later attempts append their number. */
+function operationIdFor(shipmentId: string, attempt: number): string {
+  return attempt === 1 ? `shipment_${shipmentId}` : `shipment_${shipmentId}_${attempt}`;
+}
+
+/** The registered adapter that books for an external quote's provider, or a CONFLICT. */
+async function adapterForProvider(providerId: string | null | undefined): Promise<ProviderAdapter> {
+  if (!providerId) {
+    throw conflict('External quote is missing its provider');
+  }
+  const provider = await findProviderById(providerId);
+  if (!provider) {
+    throw notFound('Provider not found for quote');
+  }
+  const adapter = getAdapter(provider.key);
+  if (!adapter) {
+    throw conflict('No adapter registered for the quoted provider');
+  }
+  return adapter;
+}
+
+/**
+ * Take the durable claim that precedes any carrier I/O for this shipment.
+ *
+ * A fresh shipment gets attempt 1. An existing claim is reconciled first: a
+ * claim that turns out booked converges on its job, one that definitely failed
+ * is re-taken as the next attempt, and one still unknown refuses — no second
+ * carrier request is ever sent while the first one's outcome is unknown.
+ */
+async function claimExternalBooking(
+  shipmentId: string,
+  quote: QuoteRecord,
+  senderOxyUserId: string,
+  idempotencyKey: string | undefined,
+): Promise<{ operationId: string } | { job: JobWithHistory }> {
+  const [fresh] = await getDb()
+    .insert(shipmentBookingAttempts)
+    .values({
+      shipmentId,
+      quoteId: quote.id,
+      senderAccountId: senderOxyUserId,
+      operationId: operationIdFor(shipmentId, 1),
+      idempotencyKey,
+      status: 'unknown',
+      providerId: quote.providerId,
+      priceBreakdown: quote.priceBreakdown,
+    })
+    .onConflictDoNothing()
+    .returning();
+  if (fresh) {
+    return { operationId: fresh.operationId };
+  }
+
+  const outcome = await reconcileExternalBooking(shipmentId);
+  if (outcome.kind === 'booked') {
+    return { job: outcome.job };
+  }
+  if (outcome.kind === 'failed') {
+    let retaken: BookingAttemptRow | undefined;
+    try {
+      [retaken] = await getDb()
+        .update(shipmentBookingAttempts)
+        .set({
+          status: 'unknown',
+          quoteId: quote.id,
+          providerId: quote.providerId ?? null,
+          priceBreakdown: quote.priceBreakdown,
+          idempotencyKey: idempotencyKey ?? null,
+          attempt: sql`${shipmentBookingAttempts.attempt} + 1`,
+          operationId: sql`'shipment_' || ${shipmentBookingAttempts.shipmentId} || '_' || (${shipmentBookingAttempts.attempt} + 1)`,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(shipmentBookingAttempts.shipmentId, shipmentId),
+            eq(shipmentBookingAttempts.status, 'failed'),
+          ),
+        )
+        .returning();
+    } catch (err) {
+      if (sqlStateOf(err) === UNIQUE_VIOLATION) {
+        throw conflict('This booking key already belongs to another shipment');
+      }
+      throw err;
+    }
+    if (retaken) {
+      return { operationId: retaken.operationId };
+    }
+  }
+  if (outcome.kind === 'none') {
+    // The insert conflicted on the caller's key, not on this shipment.
+    throw conflict('This booking key already belongs to another shipment');
+  }
+  throw conflict(
+    'Booking is pending or its result is unknown. It is reconciled with the carrier automatically; no second carrier request was sent.',
+  );
+}
+
+/** Release a claim the carrier definitely did not book. Guarded on the attempt. */
+async function markAttemptFailed(shipmentId: string, operationId: string): Promise<void> {
+  await getDb()
+    .update(shipmentBookingAttempts)
+    .set({ status: 'failed', updatedAt: new Date() })
+    .where(
+      and(
+        eq(shipmentBookingAttempts.shipmentId, shipmentId),
+        eq(shipmentBookingAttempts.operationId, operationId),
+        eq(shipmentBookingAttempts.status, 'unknown'),
+      ),
+    );
+}
+
+/** What reconciling one shipment's carrier claim found. */
+export type BookingReconciliation =
+  | { kind: 'booked'; job: JobWithHistory }
+  | { kind: 'failed' }
+  | { kind: 'pending' }
+  | { kind: 'none' };
+
+/**
+ * Settle an external claim whose outcome is unknown, by asking the carrier.
+ *
+ * Only a claim `unknown` for longer than `bookingReconcileAfterMs` is asked
+ * about, and taking it is a compare-and-swap on `updated_at`, so one task — or
+ * one retrying sender — asks at a time and the next ask waits another window.
+ * The carrier holding a booking under the operation id completes the job with
+ * it; holding none marks the claim `failed`, which lets the sender book again.
+ * A carrier that cannot answer leaves it `unknown` for the next window.
+ */
+export async function reconcileExternalBooking(shipmentId: string): Promise<BookingReconciliation> {
+  const [attempt] = await getDb()
+    .select()
+    .from(shipmentBookingAttempts)
+    .where(eq(shipmentBookingAttempts.shipmentId, shipmentId));
+  if (!attempt) return { kind: 'none' };
+  if (attempt.jobId) {
+    const job = await findJobWithHistory(attempt.jobId, config.jobs.maxLocationPings);
+    return job ? { kind: 'booked', job } : { kind: 'pending' };
+  }
+  if (attempt.status === 'failed') return { kind: 'failed' };
+  if (attempt.status !== 'unknown') return { kind: 'pending' };
+
+  const [taken] = await getDb()
+    .update(shipmentBookingAttempts)
+    .set({ updatedAt: new Date() })
+    .where(
+      and(
+        eq(shipmentBookingAttempts.shipmentId, shipmentId),
+        eq(shipmentBookingAttempts.status, 'unknown'),
+        lt(
+          shipmentBookingAttempts.updatedAt,
+          new Date(Date.now() - config.jobs.bookingReconcileAfterMs),
+        ),
+      ),
+    )
+    .returning();
+  if (!taken) return { kind: 'pending' };
+
+  const shipment = await findShipmentById(shipmentId);
+  if (!shipment || !taken.priceBreakdown) {
+    log.general.error({ shipmentId }, 'Unknown carrier booking has no shipment or price');
+    return { kind: 'pending' };
+  }
+  let booking: ProviderBooking | null;
+  try {
+    booking = await (await adapterForProvider(taken.providerId)).findBooking(taken.operationId);
+  } catch (err) {
+    log.general.warn(
+      { err, shipmentId, operationId: taken.operationId },
+      'Carrier could not answer a booking lookup; still unknown',
+    );
+    return { kind: 'pending' };
+  }
+  if (!booking) {
+    await markAttemptFailed(shipmentId, taken.operationId);
+    log.general.info(
+      { shipmentId, operationId: taken.operationId },
+      'Carrier holds no booking for an unknown attempt; marked failed',
+    );
+    return { kind: 'failed' };
+  }
+  const job = await commitBooking({
+    shipment,
+    quote: { id: taken.quoteId, priceBreakdown: taken.priceBreakdown as PriceBreakdown },
+    materialTransport: undefined,
+    senderOxyUserId: taken.senderAccountId,
+    idempotencyKey: taken.idempotencyKey ?? undefined,
+    booking,
+  });
+  log.general.info(
+    { shipmentId, jobId: job.id, operationId: taken.operationId },
+    'Reconciled an unknown carrier booking into its job',
+  );
+  return { kind: 'booked', job };
+}
+
+/** Shipments whose carrier claim has been `unknown` past the reconcile window. */
+export async function listUnknownBookingShipments(limit: number): Promise<string[]> {
+  const rows = await getDb()
+    .select({ shipmentId: shipmentBookingAttempts.shipmentId })
+    .from(shipmentBookingAttempts)
+    .where(
+      and(
+        eq(shipmentBookingAttempts.status, 'unknown'),
+        lt(
+          shipmentBookingAttempts.updatedAt,
+          new Date(Date.now() - config.jobs.bookingReconcileAfterMs),
+        ),
+      ),
+    )
+    .orderBy(asc(shipmentBookingAttempts.updatedAt))
+    .limit(limit);
+  return rows.map((row) => row.shipmentId);
+}
+
+interface CommitBookingInput {
+  shipment: ShipmentRecord;
+  /** The quote booked against. Its row may already be reaped; the price is enough. */
+  quote: Pick<QuoteRecord, 'id' | 'priceBreakdown'>;
+  materialTransport: MaterialTransportRow | undefined;
+  senderOxyUserId: string;
+  idempotencyKey: string | undefined;
+  /** The carrier's booking; absent for a Moovo-courier job. */
+  booking?: ProviderBooking;
+}
+
+/**
+ * Write the job, its first status event, the selected quote, the booked
+ * shipment and the completed claim as ONE transaction, then dispatch a
+ * Moovo-courier job. Shared by a live booking and by reconciliation.
+ */
+async function commitBooking({
+  shipment,
+  quote,
+  materialTransport,
+  senderOxyUserId,
+  idempotencyKey,
+  booking,
+}: CommitBookingInput): Promise<JobWithHistory> {
+  const shipmentId = shipment.id;
+  const quoteId = quote.id;
+  const isExternal = booking !== undefined;
+  const providerRef = booking?.bookingRef;
+  // Kept, at last. Every adapter has always returned this and `job.service`
+  // has always dropped it, so a customer whose parcel is on DHL had no way to
+  // reach DHL's own page from Moovo.
+  const carrierTrackingUrl = booking?.trackingUrl;
 
   // For a Moovo-courier job, mint the two single-use QR proof codes at booking.
   // Store the HASH (verify source the courier scans against) AND the plaintext
@@ -360,7 +616,7 @@ export async function bookShipment(
           shipmentId,
           quoteId,
           senderAccountId: senderOxyUserId,
-          operationId,
+          operationId: operationIdFor(shipmentId, 1),
           idempotencyKey,
           status: 'processing',
         })
@@ -482,7 +738,8 @@ export async function bookShipment(
 
   // Real-time dispatch (Moovo-courier path only). Best-effort: booking succeeds
   // regardless — a dispatch failure is logged and the offer-expiry sweep recovers
-  // a still-`requested` job. The dynamic import breaks the module cycle.
+  // a still-`requested` job. `dispatchJob` sends no courier for a job whose
+  // payment is not confirmed. The dynamic import breaks the module cycle.
   if (!isExternal) {
     try {
       const { dispatchJob } = await import('./dispatch.service.js');
@@ -607,6 +864,10 @@ export async function accept(courierOxyUserId: string, jobId: string): Promise<J
   const job = await loadJob(jobId);
   if (job.fulfillmentType !== 'moovo_courier') {
     throw conflict('This job is fulfilled by an external provider');
+  }
+  // An offer made before its job's payment gate existed must not be acceptable.
+  if (!isPaymentClearForDispatch(job)) {
+    throw conflict('This job is awaiting payment');
   }
 
   // Offer gate: the caller must hold a live offer for this job.

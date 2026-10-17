@@ -23,7 +23,7 @@
 
 import type { JobOfferView, FiatCurrency, JobType, SizeClass } from '@moovo/shared-types';
 import { findJobById, setDispatchAttempts } from '../db/transport/jobRepository.js';
-import type { JobRecord } from '../db/transport/jobShape.js';
+import { isPaymentClearForDispatch, type JobRecord } from '../db/transport/jobShape.js';
 import { insertJobOffer, listCourierIdsWithLiveOffer } from '../db/transport/jobOfferRepository.js';
 import {
   findDispatchCandidates,
@@ -156,6 +156,15 @@ export async function dispatchJob(jobId: string): Promise<DispatchResult> {
   }
   if (job.status !== 'requested' && job.status !== 'offered') {
     // Already accepted/picked up/terminal — nothing to dispatch.
+    return { offered: 0, wave: job.dispatchAttempts };
+  }
+  if (!isPaymentClearForDispatch(job)) {
+    // No courier is sent for a job nobody has paid for. Not a wave: the job
+    // keeps all of its waves for when its payment is confirmed.
+    log.general.info(
+      { jobId, paymentStatus: job.payment.status },
+      'Dispatch skipped: job is awaiting payment',
+    );
     return { offered: 0, wave: job.dispatchAttempts };
   }
 

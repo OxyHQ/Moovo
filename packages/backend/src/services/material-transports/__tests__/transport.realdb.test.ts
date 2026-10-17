@@ -17,7 +17,9 @@ import {
 } from '../../../db/schema/material-transports';
 import { quotes, jobs, providers } from '../../../db/schema/transport';
 import { quoteTransport } from '../service';
-import { bookShipment } from '../../job.service';
+import { bookShipment, reconcileExternalBooking } from '../../job.service';
+import { reconcileUnknownBookings } from '../../booking-reconciler';
+import type { ProviderBooking } from '../../providers/provider-adapter';
 import { createShipment } from '../../shipment.service';
 import { insertQuotes, listActiveQuotesForShipment } from '../../../db/transport/quoteRepository';
 import { registerAdapter } from '../../providers/provider-registry';
@@ -547,7 +549,7 @@ describe('real transport HTTP, SDK, Oxy-linked source reads and PostgreSQL', () 
       1,
     );
   });
-  it('claims external provider booking before I/O and never repeats a lost reply', async () => {
+  it('claims external provider booking before I/O, never repeats a lost reply, and reconciles it by operation id', async () => {
     const body = input('external');
     const shipment = await createShipment(
       'donor',
@@ -567,15 +569,29 @@ describe('real transport HTTP, SDK, Oxy-linked source reads and PostgreSQL', () 
       .values({ id: providerId, key: 'lost-reply', name: 'Test carrier', enabled: false });
     let effects = 0;
     let operation = '';
+    // What the carrier holds per operation id, and how its next reply goes:
+    // lost before it booked, lost after it booked, or delivered.
+    const held = new Map<string, ProviderBooking>();
+    let reply: 'lost-before' | 'lost-after' | 'ok' = 'lost-before';
     registerAdapter({
       key: 'lost-reply',
       quote: async () => [],
       book: async (_s, _q, context) => {
         effects++;
-        operation = context?.operationId ?? '';
-        throw new Error('carrier response lost after booking');
+        operation = context.operationId;
+        if (reply === 'lost-before') throw new Error('carrier response lost after booking');
+        const booking = { bookingRef: `ref-${context.operationId}` };
+        held.set(context.operationId, booking);
+        if (reply === 'lost-after') throw new Error('carrier response lost after booking');
+        return booking;
       },
+      findBooking: async (operationId) => held.get(operationId) ?? null,
     });
+    const age = (shipmentId: string) =>
+      suite.db
+        .update(shipmentBookingAttempts)
+        .set({ updatedAt: new Date(Date.now() - 60 * 60_000) })
+        .where(eq(shipmentBookingAttempts.shipmentId, shipmentId));
     const [quote] = await insertQuotes([
       {
         shipmentId: shipment.id,
@@ -626,5 +642,53 @@ describe('real transport HTTP, SDK, Oxy-linked source reads and PostgreSQL', () 
           .where(eq(shipmentBookingAttempts.shipmentId, shipment.id))
       )[0].status,
     ).toBe('unknown');
+
+    // Inside the window nobody asks: the lookup must not race the request.
+    expect(await reconcileExternalBooking(shipment.id)).toEqual({ kind: 'pending' });
+    // Past it, a carrier holding nothing frees the shipment for a new attempt,
+    // booked under a new operation id.
+    await age(shipment.id);
+    expect(await reconcileExternalBooking(shipment.id)).toEqual({ kind: 'failed' });
+    reply = 'ok';
+    const rebooked = await bookShipment('donor', shipment.id, quote.id, 'provider_operation');
+    expect(rebooked.providerRef).toBe(`ref-shipment_${shipment.id}_2`);
+
+    // A reply lost AFTER the carrier booked becomes that booking's job, even
+    // once the quote row has been reaped.
+    const third = await createShipment(
+      'donor',
+      {
+        type: 'package',
+        pickup: { ...body.pickup, location: { type: 'Point', coordinates: [2.17, 41.38] } },
+        dropoff: { ...body.dropoff, location: { type: 'Point', coordinates: [2.17, 41.4] } },
+        parcel: body.parcel,
+        itemDescription: 'Booked, reply lost',
+      },
+      NO_FILE_AUTHORITY,
+    );
+    const [thirdQuote] = await insertQuotes([
+      {
+        shipmentId: third.id,
+        source: 'external_provider',
+        providerId,
+        priceBreakdown: internal.priceBreakdown,
+        expiresAt: new Date(Date.now() + 60000),
+        status: 'active',
+      },
+    ]);
+    reply = 'lost-after';
+    await expect(bookShipment('donor', third.id, thirdQuote.id, 'third_operation')).rejects.toThrow(
+      'response lost',
+    );
+    await suite.db.delete(quotes).where(eq(quotes.id, thirdQuote.id));
+    await age(third.id);
+    const outcomes = await reconcileUnknownBookings();
+    expect(outcomes.map((o) => o.kind)).toContain('booked');
+    const thirdJobs = await suite.db.select().from(jobs).where(eq(jobs.shipmentId, third.id));
+    expect(thirdJobs).toHaveLength(1);
+    expect(thirdJobs[0].providerRef).toBe(`ref-shipment_${third.id}`);
+    expect((await bookShipment('donor', third.id, thirdQuote.id, 'third_operation')).id).toBe(
+      thirdJobs[0].id,
+    );
   });
 });

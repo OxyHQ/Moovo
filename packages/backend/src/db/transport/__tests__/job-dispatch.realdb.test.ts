@@ -849,8 +849,10 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
       expect(page.map((job) => job.id)).toEqual([newer, older]);
     });
 
-    it('finds only moovo_courier jobs still awaiting one', async () => {
+    it('finds only paid-for moovo_courier jobs still awaiting one', async () => {
       const waiting = await createJob(minimalJob());
+      await client()`UPDATE jobs SET payment_status = 'authorized' WHERE id = ${waiting}`;
+      const unpaid = await createJob(minimalJob());
       const taken = await createJob(minimalJob());
       await casJobStatus({ jobId: taken, from: 'requested', to: 'offered' });
       await casJobAccepted(taken, 'courier-y');
@@ -862,6 +864,7 @@ describeIfPostgres('jobs and dispatch offers on a real server', () => {
 
       const ids = awaiting.map((job) => job.id);
       expect(ids).toContain(waiting);
+      expect(ids).not.toContain(unpaid);
       expect(ids).not.toContain(taken);
       expect(ids).not.toContain(external);
     });
