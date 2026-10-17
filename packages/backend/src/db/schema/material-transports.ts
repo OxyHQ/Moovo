@@ -1,4 +1,4 @@
-import { check, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
+import { check, integer, jsonb, pgTable, text, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createdAt, generatedId, timestamptz, updatedAt } from '@oxy.so/db';
 import { TRANSPORT_STATES } from '@oxy.so/moovo-contracts';
@@ -55,9 +55,30 @@ export const shipmentBookingAttempts = pgTable(
       .references(() => shipments.id),
     quoteId: text().notNull(),
     senderAccountId: foreignServiceId().notNull(),
+    /**
+     * The carrier idempotency key of the CURRENT attempt: `shipment_<id>` for
+     * the first, `shipment_<id>_<attempt>` after a definite failure. A new key
+     * per attempt, because a carrier may replay a cached refusal for a key.
+     */
     operationId: text().notNull(),
     idempotencyKey: text(),
+    /**
+     * `processing`: an internal admission in flight. `unknown`: a carrier call
+     * was (or is being) made and its outcome is not known. `failed`: the
+     * carrier definitely booked nothing, so the shipment may be booked again.
+     * `completed`: the job exists.
+     */
     status: text().notNull(),
+    /** 1-based attempt number; bumped each time a `failed` claim is re-taken. */
+    attempt: integer().notNull().default(1),
+    /**
+     * The carrier and the price an external attempt booked against, frozen at
+     * the claim. Reconciliation completes the job from these, because the
+     * quote row itself is reaped the moment it lapses — often before a lost
+     * reply is reconciled. Null for an internal admission.
+     */
+    providerId: text(),
+    priceBreakdown: jsonb(),
     jobId: text().references(() => jobs.id),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -69,6 +90,7 @@ export const shipmentBookingAttempts = pgTable(
     closedSet('shipment_booking_attempts_status_check', t.status, [
       'processing',
       'unknown',
+      'failed',
       'completed',
     ]),
   ],

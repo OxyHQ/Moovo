@@ -41,6 +41,7 @@ import type { JobStatus } from '@moovo/shared-types';
 import { getDb, type DatabaseOrTransaction } from '../postgres';
 import { jobLocationPings, jobs, jobStatusEvents } from '../schema/transport';
 import {
+  PAYMENT_SECURED,
   toJobColumns,
   toJobRecord,
   toLocationPingValue,
@@ -377,7 +378,15 @@ export async function listJobsAwaitingCourier(
   const rows = await db
     .select()
     .from(jobs)
-    .where(and(eq(jobs.fulfillmentType, 'moovo_courier'), inArray(jobs.status, [...statuses])));
+    .where(
+      and(
+        eq(jobs.fulfillmentType, 'moovo_courier'),
+        inArray(jobs.status, [...statuses]),
+        // A job waiting for its payment is not waiting for a courier: the sweep
+        // must neither offer it nor spend its waves and cancel it `no_courier`.
+        or(eq(jobs.totalFairMinor, 0), inArray(jobs.paymentStatus, [...PAYMENT_SECURED])),
+      ),
+    );
   return rows.map(toJobRecord);
 }
 

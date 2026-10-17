@@ -92,6 +92,7 @@ function mockJob(overrides: Record<string, unknown> = {}) {
     dropoffSnapshot: { address: { city: 'Girona' } },
     parcelSnapshot: { sizeClass: 'small', weightKg: 3 },
     totals: { total: { fairMinor: 600, originalCurrency: 'FAIR' } },
+    payment: { status: 'authorized', provider: 'peable' },
     ...overrides,
   };
 }
@@ -124,6 +125,19 @@ beforeEach(() => {
   );
   sendNotification.mockResolvedValue(undefined);
   isEligible.mockReturnValue(true);
+});
+
+describe('dispatchJob — payment gate', () => {
+  it('sends no courier for an unpaid job that owes money, and spends none of its waves', async () => {
+    findJobById.mockResolvedValue(mockJob({ payment: { status: 'unpaid', provider: 'peable' } }));
+
+    const result = await dispatchJob('job-1');
+
+    expect(result).toEqual({ offered: 0, wave: 0 });
+    expect(profileFind).not.toHaveBeenCalled();
+    expect(setDispatchAttempts).not.toHaveBeenCalled();
+    expect(insertJobOffer).not.toHaveBeenCalled();
+  });
 });
 
 describe('dispatchJob — candidate selection', () => {

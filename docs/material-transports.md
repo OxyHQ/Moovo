@@ -47,9 +47,17 @@ its current FAIR pricing. Moovo's `fairMinor` uses **100 units per FAIR**, unlik
 Mercaria's money contract. `formatTransportPrice` owns this conversion; consumers
 must not feed these amounts into Mercaria's money formatter.
 
-The request creates an actual Moovo courier job and dispatch offers. It reports
-`paymentStatus: pending`, `paymentCollectionAvailable: false`. No card capture or
-charge is performed or claimed. External provider adapters in this repository
+The request creates an actual Moovo courier job, but **no courier is dispatched
+for it while its payment is not confirmed**. Dispatch (the first wave, the
+offer-expiry sweep's re-dispatch and a courier's `accept`) requires the job's
+`payment.status` to be `authorized` or `paid`, or its total to be `0` — the
+explicit free-transport path. An unpaid priced job stays `requested`, is not
+offered, and spends none of its dispatch waves (so the sweep never cancels it as
+`no_courier`). The rule is `isPaymentClearForDispatch` in `db/transport/jobShape.ts`
+and its SQL twin in `listJobsAwaitingCourier`; it applies to every Moovo-courier
+job, not only material transports. The response reports `paymentStatus: pending`,
+`paymentCollectionAvailable: false`. No card capture or charge is performed or
+claimed, and nothing in Moovo yet marks a job paid. External provider adapters in this repository
 are still simulated; their quotes are excluded from this integration. Production
 provider/payment validation is not implied by the local tests.
 
@@ -65,7 +73,16 @@ provider/payment validation is not implied by the local tests.
 - Booking uses `material_<transport-id>` and provider operation
   `shipment_<shipment-id>`. A durable shipment claim and globally unique caller
   key precede any external carrier I/O. Lost external responses stay `unknown`;
-  they must be reconciled with that operation ID, never blindly retried.
+  they are reconciled with that operation ID, never blindly retried:
+  - A carrier's definite refusal (`ProviderBookingRejected`) marks the claim
+    `failed`; the next booking re-takes it as attempt *n* under operation
+    `shipment_<shipment-id>_<n>`.
+  - Any other error leaves it `unknown`. After `JOB_BOOKING_RECONCILE_AFTER_MS`
+    (5 min) the booking reconciler (every task, every minute) — or the sender's
+    own retry — asks the carrier `findBooking(operationId)`: a booking becomes
+    the job (from the carrier and price frozen on the claim, since the quote row
+    is reaped when it lapses); no booking marks the claim `failed`, freeing the
+    shipment; no answer leaves it `unknown` for the next window.
 - Own-courier admission and all effects commit in one local transaction. Recovery
   after the proposal’s 30-second lease is safe, including old interrupted claims.
   A database row lock fences old workers against cancellation/renewed approval.

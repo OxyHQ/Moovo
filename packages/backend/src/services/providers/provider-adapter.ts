@@ -34,18 +34,48 @@ export interface ProviderBooking {
   trackingUrl?: string;
 }
 
+/**
+ * Thrown by `book` ONLY when the carrier answered that it created NO booking —
+ * a refusal it documents as final (validation, unserviceable route, rejected
+ * account). The booking claim is marked `failed` and the shipment can be booked
+ * again under a new operation id.
+ *
+ * Every other throw — a timeout, a reset connection, a 5xx, an unparseable
+ * reply — is AMBIGUOUS: the carrier may have booked. Those leave the claim
+ * `unknown` until `findBooking` answers.
+ */
+export class ProviderBookingRejected extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'ProviderBookingRejected';
+  }
+}
+
 /** A pluggable external delivery provider. */
 export interface ProviderAdapter {
   /** Stable adapter key (matches `Provider.key`). */
   key: string;
   /** Price a shipment; returns zero or more FAIR-priced quotes. */
   quote(shipment: ShipmentRecord): Promise<ProviderQuote[]>;
-  /** Book a shipment against a selected quote; returns the booking reference. */
+  /**
+   * Book a shipment against a selected quote; returns the booking reference.
+   *
+   * `operationId` is the carrier-side idempotency key: the carrier must create
+   * at most one booking per operation id, and `findBooking` must find it by it.
+   */
   book(
     shipment: ShipmentRecord,
     quote: QuoteRecord,
-    context?: { operationId: string },
+    context: { operationId: string },
   ): Promise<ProviderBooking>;
+  /**
+   * The booking the carrier holds under `operationId`, or `null` when it holds
+   * none. Throws when the carrier cannot answer — which is NOT "none".
+   *
+   * This is how a booking whose reply was lost is reconciled: never by booking
+   * again blind, which is how one parcel becomes two.
+   */
+  findBooking(operationId: string): Promise<ProviderBooking | null>;
   /** Cancel a booking, when the provider supports cancellation. */
   cancel?(bookingRef: string): Promise<void>;
 }

@@ -36,6 +36,7 @@ import { createOxyFilesWebhookRoutes } from './routes/oxy-files-webhook.js';
 import { startModerationOutboxDispatcher } from './services/moderation/moderation-outbox.dispatcher.js';
 import { startTrackingPollDispatcher } from './services/tracking/tracking-poll.dispatcher.js';
 import { startFileReferenceDispatcher } from './services/files/file-references.dispatcher.js';
+import { startBookingReconciler, stopBookingReconciler } from './services/booking-reconciler.js';
 import { startExpirySweeper, stopExpirySweeper } from './db/expiry.js';
 
 // Socket.io
@@ -393,6 +394,13 @@ try {
     startFileReferenceDispatcher();
 
     /**
+     * Settles external-carrier bookings whose reply was lost, by asking the
+     * carrier what it holds under the attempt's operation id. On every task;
+     * each claim is taken by a compare-and-swap.
+     */
+    startBookingReconciler();
+
+    /**
      * Reaps the expired rows of the five tables `db/expiry.ts` registers.
      *
      * This call is the half of the expiry work that `@oxy.so/db` cannot
@@ -475,6 +483,8 @@ try {
       );
       await stopFileReferenceDispatcher();
       log.general.info('File reference dispatcher stopped');
+
+      await stopBookingReconciler();
 
       // Let a sweep in flight finish. Its DELETEs are bounded batches, so
       // this is short; abandoning one mid-batch is safe (the next run picks

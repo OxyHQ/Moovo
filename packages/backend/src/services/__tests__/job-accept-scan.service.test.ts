@@ -104,6 +104,8 @@ function job(overrides: Partial<JobRecord> = {}): JobRecord {
     fulfillmentType: 'moovo_courier',
     senderOxyUserId: 's1',
     status: 'offered',
+    totals: { total: { fairMinor: 600, originalCurrency: 'FAIR' } },
+    payment: { status: 'authorized', provider: 'peable' },
     ...overrides,
   } as JobRecord;
 }

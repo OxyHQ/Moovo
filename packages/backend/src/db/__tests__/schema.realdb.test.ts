@@ -89,6 +89,10 @@ const ID_COLUMNS_WITHOUT_FOREIGN_KEY: readonly { column: string; reason: string 
     column: 'shipment_booking_attempts.operation_id',
     reason: 'Provider operation idempotency token, not a row ID',
   },
+  {
+    column: 'shipment_booking_attempts.provider_id',
+    reason: 'Frozen record of the carrier a booking was sent to; must outlive the provider row',
+  },
 
   // Oxy owns identity. Moovo owns none of these rows and cannot enforce their
   // existence; a foreign key would either fail on a legitimate write or

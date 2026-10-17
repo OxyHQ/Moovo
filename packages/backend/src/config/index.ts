@@ -221,6 +221,14 @@ export interface JobsConfig {
    * window converges on the original job instead of creating a duplicate.
    */
   readonly idempotencyTtlMs: number;
+  /**
+   * How long an external-carrier booking may stay `unknown` before Moovo asks
+   * the carrier, by operation id, what it holds. Far longer than any carrier
+   * call takes, so a lookup never races the booking request it is asking about.
+   */
+  readonly bookingReconcileAfterMs: number;
+  /** Cadence of the loop that reconciles `unknown` carrier bookings. */
+  readonly bookingReconcileIntervalMs: number;
 }
 
 export interface DispatchConfig {
@@ -530,6 +538,8 @@ export const config: AppConfig = Object.freeze({
   jobs: Object.freeze({
     maxLocationPings: intEnv('JOB_MAX_LOCATION_PINGS', 100),
     idempotencyTtlMs: intEnv('JOB_BOOKING_IDEMPOTENCY_TTL_MS', 10 * MINUTE_MS),
+    bookingReconcileAfterMs: intEnv('JOB_BOOKING_RECONCILE_AFTER_MS', 5 * MINUTE_MS),
+    bookingReconcileIntervalMs: intEnv('JOB_BOOKING_RECONCILE_INTERVAL_MS', MINUTE_MS),
   }),
   dispatch: Object.freeze({
     radiusM: intEnv('DISPATCH_RADIUS_M', 5_000),
