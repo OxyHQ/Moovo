@@ -76,7 +76,16 @@ function rowKey(sync: Pick<FileReferenceSync, 'entityType' | 'entityId' | 'fileI
 /**
  * Claim up to `limit` due rows under a lease. Due: available, and not leased
  * by a live worker — an expired lease is reclaimable, so a dead task strands
- * nothing. `SKIP LOCKED` lets every API task drain at once without two of them
+ * nothing.
+ *
+ * Available means never attempted since it was (re-)enqueued — `attempts = 0`
+ * — or past a failed attempt's backoff by `now`. The first half does not read
+ * `availableAt` at all: the trigger writes it from the DATABASE clock, in
+ * microseconds, and `now` is the worker's, in milliseconds and possibly a
+ * little behind; a batch run the same millisecond as the write, or on a task
+ * whose clock lags the database's, would otherwise find a fresh request not
+ * yet due and leave it to the next drain. The backoff and the lease are both
+ * written from the worker's clock, so only they are compared with it. `SKIP LOCKED` lets every API task drain at once without two of them
  * taking the same row, and steps over a row a writer is re-enqueueing right
  * now (its transaction holds the row lock until it commits).
  */
@@ -86,7 +95,7 @@ export async function claimFileReferenceSyncs(
 ): Promise<FileReferenceSync[]> {
   const now = options.now ?? new Date();
   const due = and(
-    lte(fileReferenceSyncs.availableAt, now),
+    or(eq(fileReferenceSyncs.attempts, 0), lte(fileReferenceSyncs.availableAt, now)),
     or(isNull(fileReferenceSyncs.leaseUntil), lte(fileReferenceSyncs.leaseUntil, now)),
   );
   const rows = await db

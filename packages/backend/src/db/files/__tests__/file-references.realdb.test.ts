@@ -330,6 +330,92 @@ describeIfPostgres('Oxy file references on Postgres', () => {
       expect(new Set(keys).size).toBe(keys.length);
     });
 
+    // `available_at` is stamped by the trigger from the DATABASE clock, in
+    // microseconds; the worker's clock is JavaScript's, in milliseconds, and may
+    // run behind it. A worker a minute behind stands for both, deterministically.
+    describe('on a worker whose clock is behind the database’s', () => {
+      const behind = () => new Date(Date.now() - 60_000);
+      const batch = () =>
+        runFileReferenceSyncBatch({
+          leaseOwner: 'worker',
+          leaseMs: 60_000,
+          limit: 100,
+          maxBackoffMs: 60_000,
+          now: behind,
+        });
+
+      it('tells Oxy about a request no attempt has claimed yet at once', async () => {
+        const logo = fileId();
+        const storeId = await insertStore(logo, null);
+        const { client, calls } = fakeOxy();
+        setFileReferenceClientForTesting(client);
+
+        await batch();
+        expect(calls.add.flat().map((reference) => reference.fileId)).toContain(logo);
+        expect(await pending(storeId)).toEqual([]);
+      });
+
+      it('tells Oxy at once about a request re-enqueued after a failed attempt', async () => {
+        const logo = fileId();
+        const storeId = await insertStore(logo, null);
+        setFileReferenceClientForTesting(
+          fakeOxy({
+            add: async () => {
+              throw new Error('503 from Oxy');
+            },
+          }).client,
+        );
+        await batch();
+        expect((await pending(storeId))[0]?.attempts).toBe(1);
+
+        // The owner removes the logo: new information, worth asking about now.
+        await db().update(stores).set({ logoFileId: null }).where(eq(stores.id, storeId));
+        const { client, calls } = fakeOxy();
+        setFileReferenceClientForTesting(client);
+        await batch();
+        expect(calls.remove.flat().map((reference) => reference.fileId)).toContain(logo);
+        expect(await pending(storeId)).toEqual([]);
+      });
+
+      it('still waits out a failed attempt’s backoff', async () => {
+        const storeId = await insertStore(fileId(), null);
+        setFileReferenceClientForTesting(
+          fakeOxy({
+            add: async () => {
+              throw new Error('503 from Oxy');
+            },
+          }).client,
+        );
+        await batch();
+        const { client, calls } = fakeOxy();
+        setFileReferenceClientForTesting(client);
+        const report = await batch();
+        expect(calls.add.flat().filter((reference) => reference.entityId === storeId)).toEqual([]);
+        expect(report.claimed).toBe(0);
+        expect(await pending(storeId)).toHaveLength(1);
+      });
+
+      it('never claims a re-enqueued request another worker still holds', async () => {
+        const storeId = await insertStore(fileId(), null);
+        const [held] = await claimFileReferenceSyncs({
+          leaseOwner: 'a',
+          leaseMs: 60_000,
+          limit: 100,
+        });
+        expect(held?.entityId).toBe(storeId);
+        await db().update(stores).set({ logoFileId: fileId() }).where(eq(stores.id, storeId));
+
+        const taken = await claimFileReferenceSyncs({
+          leaseOwner: 'b',
+          leaseMs: 60_000,
+          limit: 100,
+        });
+        expect(
+          taken.filter((row) => row.entityId === storeId && row.fileId === held?.fileId),
+        ).toEqual([]);
+      });
+    });
+
     it('backs off 30 s doubling, capped', () => {
       expect(syncBackoffMs(1, 3_600_000)).toBe(30_000);
       expect(syncBackoffMs(3, 3_600_000)).toBe(120_000);
