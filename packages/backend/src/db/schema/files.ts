@@ -43,7 +43,14 @@ export const fileReferenceSyncs = pgTable(
     /** An Oxy file id. Oxy owns files: no FK. */
     fileId: foreignServiceId().notNull(),
     generation: integer().notNull().default(1),
+    /** Attempts since the last (re-)enqueue, which resets it to 0. */
     attempts: integer().notNull().default(0),
+    /**
+     * When a failed attempt's backoff ends, written from the worker's clock.
+     * Not read while `attempts` is 0: a request never attempted is due at once
+     * (`db/files/fileReferenceRepository`), since the trigger stamps this from
+     * the DATABASE clock, which the worker's may lag.
+     */
     availableAt: timestamptz().notNull().defaultNow(),
     leaseOwner: text(),
     leaseUntil: timestamptz(),
