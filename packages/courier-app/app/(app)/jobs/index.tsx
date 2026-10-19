@@ -3,7 +3,7 @@ import { View, ScrollView, ActivityIndicator, Pressable } from 'react-native';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import type { JobSummary } from '@moovo/shared-types';
 import { ChevronRight } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
@@ -103,7 +103,7 @@ function JobSection({ title, jobs }: { title: string; jobs: JobSummary[] }) {
  * cancelled). Gates on Oxy cold-boot auth, then reads `GET /jobs?role=courier`.
  */
 function JobsBody() {
-  const { isAuthenticated, isAuthResolved, canUsePrivateApi } = useOxy();
+  const { isAuthenticated, isAuthResolved, canUsePrivateApi, openAccountDialog } = useOxy();
   const { colors } = useColorScheme();
 
   const jobsQuery = useQuery({

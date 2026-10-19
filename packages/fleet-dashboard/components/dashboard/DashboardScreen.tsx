@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { View, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import Head from 'expo-router/head';
-import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
 import { MoovoWordmark } from '@/components/ui/moovo-wordmark';
@@ -34,7 +34,7 @@ interface DashboardScreenProps {
 export function DashboardScreen({ title, children, gate = true }: DashboardScreenProps) {
   const { colors } = useColorScheme();
   const { t } = useTranslation();
-  const { isAuthenticated, isAuthResolved } = useOxy();
+  const { isAuthenticated, isAuthResolved, openAccountDialog } = useOxy();
   const isWeb = Platform.OS === 'web';
 
   let body: ReactNode = children;

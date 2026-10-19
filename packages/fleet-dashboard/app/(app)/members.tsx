@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { Link } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useOxy } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { UserPlus, Trash2, Settings } from 'lucide-react-native';
 import type { Company, CompanyMember, CompanyRole } from '@moovo/shared-types';
 import { Text } from '@/components/ui/text';

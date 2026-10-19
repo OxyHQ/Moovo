@@ -7,7 +7,7 @@ import { Text } from '@/components/ui/text';
 import { Logo } from '@/components/Logo';
 import { useColorScheme } from '@/lib/useColorScheme';
 import { cn } from '@/lib/utils';
-import { useAuth, ProfileButton } from '@oxy.so/services';
+import { useAuth, ProfileButton } from '@oxy.so/services/ui/client';
 import { NAV_ITEMS, isNavItemActive, type NavItem } from './nav-items';
 
 const IS_WEB = Platform.OS === 'web';
@@ -125,21 +125,15 @@ function NavRailItem({ icon: Icon, label, isActive, onPress }: NavRailItemProps)
    ================================================================ */
 
 function ProfileButtonRail() {
-  const router = useRouter();
   const { signIn } = useAuth();
 
-  const onNavigateManage = useCallback(() => router.push('/settings'), [router]);
   const onAddAccount = useCallback(() => {
     signIn().catch(() => {});
   }, [signIn]);
 
   return (
     <View className="items-center justify-center">
-      <ProfileButton
-        expanded={false}
-        onNavigateManage={onNavigateManage}
-        onAddAccount={onAddAccount}
-      />
+      <ProfileButton expanded={false} onAddAccount={onAddAccount} />
     </View>
   );
 }

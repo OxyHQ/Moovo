@@ -11,7 +11,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { useOxy } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { io as socketIO } from 'socket.io-client';
 import config from '@/lib/config';
 import apiClient from '@/lib/api/client';

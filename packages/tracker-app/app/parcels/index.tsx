@@ -3,7 +3,7 @@ import { Link } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { openAccountDialog, useOxy } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 
 import { ParcelSummaryCard } from '@/components/ParcelSummaryCard';
 import { TrackingSearch } from '@/components/TrackingSearch';
@@ -13,7 +13,7 @@ import { fetchMyParcels } from '@/lib/api/tracking';
 /** The signed-in user's saved parcels — the only surface that needs an account. */
 export default function ParcelsScreen() {
   const insets = useSafeAreaInsets();
-  const { isAuthenticated, isAuthResolved } = useOxy();
+  const { isAuthenticated, isAuthResolved, openAccountDialog } = useOxy();
 
   const parcels = useQuery({
     queryKey: ['tracker', 'parcels'],

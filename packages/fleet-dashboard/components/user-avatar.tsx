@@ -1,6 +1,6 @@
 import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
-import { useOxy } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 
 interface UserAvatarProps {
   size?: number;

@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { View, Text } from 'react-native';
 import axios from 'axios';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { openAccountDialog } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { AuthContainer, AuthLogo, AuthInput, AuthButton, AuthError } from '@/components/auth';
 import apiClient from '@/lib/api/client';
 import { toast } from '@oxy.so/bloom/toast';
 import { useTranslation } from '@/hooks/useTranslation';
 
 export default function ResetPasswordScreen() {
+  const { openAccountDialog } = useOxy();
   const { t } = useTranslation();
   const router = useRouter();
   const { token } = useLocalSearchParams<{ token: string }>();

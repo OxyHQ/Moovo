@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useOxy } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import type { JobView, JobSummary, PaginatedResponse } from '@moovo/shared-types';
 import { fetchMyJobs, fetchJob, cancelJob, type JobQuery } from '@/lib/api/jobs';
 import { queryKeys } from '@/lib/hooks/query-keys';
