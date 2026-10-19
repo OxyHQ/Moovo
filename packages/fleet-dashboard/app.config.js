@@ -44,7 +44,9 @@ module.exports = () => ({
       favicon: './assets/icon-192.png',
     },
     plugins: [
-      'expo-router',
+      // SDK 58 splits web routes into lazy chunks by default; keep the single
+      // bundle SDK 57 shipped.
+      ['expo-router', { asyncRoutes: { web: false } }],
       'expo-localization',
       'expo-font',
       'expo-image',

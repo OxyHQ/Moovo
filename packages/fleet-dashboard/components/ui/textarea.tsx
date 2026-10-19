@@ -12,7 +12,7 @@ interface TextareaProps extends React.ComponentPropsWithoutRef<typeof TextInput>
 type AutoSizingTextStyle = TextStyle & { fieldSizing?: 'content' | 'fixed' };
 const webAutoGrowStyle: AutoSizingTextStyle = { fieldSizing: 'content' };
 
-const Textarea = React.forwardRef<TextInput, TextareaProps>(
+const Textarea = React.forwardRef<React.ComponentRef<typeof TextInput>, TextareaProps>(
   ({ className, style, variant = 'default', ...props }, ref) => {
     return (
       <TextInput

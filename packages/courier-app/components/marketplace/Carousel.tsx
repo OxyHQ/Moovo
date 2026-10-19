@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react';
+import { type ComponentRef, useRef, type ReactNode } from 'react';
 import {
   Platform,
   Pressable,
@@ -61,7 +61,7 @@ export function Carousel<T>({
   showArrows,
 }: CarouselProps<T>) {
   const { colors } = useColorScheme();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   // Mutable scroll metrics kept in refs so updating them never re-renders.
   const scrollX = useRef(0);
   const contentWidth = useRef(0);
