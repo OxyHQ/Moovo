@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { type ComponentRef, useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import {
   Map as MapLibreMap,
@@ -53,7 +53,7 @@ function toBounds(points: LngLat[]): LngLatBoundsLike {
 }
 
 export default function JobMap({ markers, route, className }: JobMapProps) {
-  const containerRef = useRef<View | null>(null);
+  const containerRef = useRef<ComponentRef<typeof View>>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<MapLibreMarker[]>([]);
 

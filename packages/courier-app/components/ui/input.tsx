@@ -3,7 +3,7 @@ import { TextInput } from 'react-native';
 import { cn } from '@/lib/utils';
 
 const Input = React.forwardRef<
-  TextInput,
+  React.ComponentRef<typeof TextInput>,
   React.ComponentPropsWithoutRef<typeof TextInput> & {
     noFocus?: boolean;
   }

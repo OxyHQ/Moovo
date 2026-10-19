@@ -14,7 +14,7 @@ import {
 import { useTranslation } from '@/hooks/useTranslation';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useRouter, usePathname, useNavigation } from 'expo-router';
-import type { DrawerNavigationProp } from '@react-navigation/drawer';
+import type { DrawerNavigationProp } from 'expo-router/drawer';
 import { SettingsSidebar } from '@/components/settings/settings-sidebar';
 import { UserAvatar } from '@/components/user-avatar';
 import { useOxy, openAccountDialog } from '@oxy.so/services';

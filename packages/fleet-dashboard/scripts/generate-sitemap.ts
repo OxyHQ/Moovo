@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Auto-generated sitemap.xml for Moovo Hub
  * Run: bun run generate-sitemap

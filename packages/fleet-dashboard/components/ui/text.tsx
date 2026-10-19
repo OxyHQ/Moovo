@@ -8,20 +8,22 @@ export type TextProps = RNTextProps & {
   className?: string;
 };
 
-const Text = React.forwardRef<RNText, TextProps>(({ className, ...props }, ref) => {
-  const textClass = React.useContext(TextClassContext);
-  return (
-    <RNText
-      className={cn(
-        'text-base leading-7 text-foreground web:select-text font-sans',
-        textClass,
-        className,
-      )}
-      ref={ref}
-      {...props}
-    />
-  );
-});
+const Text = React.forwardRef<React.ComponentRef<typeof RNText>, TextProps>(
+  ({ className, ...props }, ref) => {
+    const textClass = React.useContext(TextClassContext);
+    return (
+      <RNText
+        className={cn(
+          'text-base leading-7 text-foreground web:select-text font-sans',
+          textClass,
+          className,
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
+);
 Text.displayName = 'Text';
 
 export { Text, TextClassContext };
