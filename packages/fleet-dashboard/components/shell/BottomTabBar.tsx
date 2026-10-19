@@ -18,7 +18,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { useColorScheme } from '@/lib/useColorScheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useTheme } from '@oxy.so/bloom/theme';
-import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { AccountMenu } from './AccountMenu';
 import { NAV_ITEMS, isNavItemActive, isAuthTabActive, type NavItem } from './nav-items';
 
@@ -113,7 +113,7 @@ interface AuthTabProps {
 function AuthTab({ isActive }: AuthTabProps) {
   const { colors } = useColorScheme();
   const { t } = useTranslation();
-  const { isAuthenticated } = useOxy();
+  const { isAuthenticated, openAccountDialog } = useOxy();
 
   const label = isAuthenticated ? t('account.menuLabel') : t('companies.signInButton');
 

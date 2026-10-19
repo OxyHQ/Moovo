@@ -17,7 +17,7 @@ import * as Haptics from 'expo-haptics';
 import { UserAvatar } from '@/components/user-avatar';
 import { useColorScheme } from '@/lib/useColorScheme';
 import { useTheme } from '@oxy.so/bloom/theme';
-import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { NAV_ITEMS, isNavItemActive, isAuthTabActive, type NavItem } from './nav-items';
 
 /**
@@ -110,14 +110,14 @@ interface AuthTabProps {
 
 function AuthTab({ isActive }: AuthTabProps) {
   const { colors } = useColorScheme();
-  const { isAuthenticated } = useOxy();
+  const { isAuthenticated, openAccountDialog } = useOxy();
 
   const label = isAuthenticated ? 'Account' : 'Sign in';
 
   const onPress = useCallback(() => {
     triggerHaptic();
     if (!isAuthenticated) openAccountDialog();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, openAccountDialog]);
 
   return (
     <Pressable

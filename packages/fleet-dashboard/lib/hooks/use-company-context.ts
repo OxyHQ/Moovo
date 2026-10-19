@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useOxy } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import type { Company, CompanyMember, CompanyPermission } from '@moovo/shared-types';
 import { fetchCompanies, fetchCompany } from '@/lib/api/companies';
 import { queryKeys } from '@/lib/hooks/query-keys';

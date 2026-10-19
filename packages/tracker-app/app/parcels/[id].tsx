@@ -12,7 +12,7 @@ import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { openAccountDialog, useOxy } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { toast } from '@oxy.so/bloom/toast';
 
 import { StatusBadge } from '@/components/StatusBadge';
@@ -38,7 +38,7 @@ export default function ParcelDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [refreshRequested, setRefreshRequested] = useState(false);
-  const { isAuthenticated, isAuthResolved } = useOxy();
+  const { isAuthenticated, isAuthResolved, openAccountDialog } = useOxy();
 
   const detail = useQuery({
     queryKey: ['tracker', 'parcels', id],

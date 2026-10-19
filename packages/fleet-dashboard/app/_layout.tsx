@@ -3,7 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { preventNativeSplashAutoHide, useHideNativeSplashWhenReady } from '@oxy.so/expo-splash';
 import { useCallback, useEffect, useState } from 'react';
-import { OxyProvider, useOxy } from '@oxy.so/services';
+import { OxyProvider, useOxy } from '@oxy.so/services/ui/client';
 import { BloomThemeProvider } from '@oxy.so/bloom/theme';
 import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 import * as Linking from 'expo-linking';

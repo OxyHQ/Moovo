@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { View, ScrollView, Pressable, ActivityIndicator, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
-import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { ChevronRight, PackagePlus } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { Footer } from '@/components/shell/Footer';
@@ -124,6 +124,7 @@ function EmptyOrders() {
 
 /** Signed-out prompt — orders are owner-scoped, so ask the visitor to sign in. */
 function SignedOutPrompt() {
+  const { openAccountDialog } = useOxy();
   return (
     <View className="items-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-12">
       <Text className="text-sm font-medium text-foreground">Sign in to see your orders</Text>

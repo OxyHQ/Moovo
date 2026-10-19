@@ -17,7 +17,7 @@ import { useRouter, usePathname, useNavigation } from 'expo-router';
 import type { DrawerNavigationProp } from 'expo-router/drawer';
 import { SettingsSidebar } from '@/components/settings/settings-sidebar';
 import { UserAvatar } from '@/components/user-avatar';
-import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { MoovoWordmark } from '@/components/ui/moovo-wordmark';
 import { Logo } from '@/components/Logo';
 import * as DropdownMenu from '@/components/ui/dropdown-menu';
@@ -106,7 +106,7 @@ const MainSidebar = React.memo(function MainSidebar() {
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebarCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
 
-  const { user, isAuthenticated, logout, showBottomSheet } = useOxy();
+  const { user, isAuthenticated, logout, showBottomSheet, openAccountDialog } = useOxy();
 
   const isCollapsed = isLargeScreen && sidebarCollapsed;
 
@@ -132,7 +132,7 @@ const MainSidebar = React.memo(function MainSidebar() {
     logout();
     router.replace('/(app)');
   }, [router, logout]);
-  const handleLogin = React.useCallback(() => openAccountDialog(), []);
+  const handleLogin = React.useCallback(() => openAccountDialog(), [openAccountDialog]);
 
   const isHome =
     pathname === '/' ||

@@ -3,7 +3,7 @@ import Head from 'expo-router/head';
 import type { ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import type { JobSummary } from '@moovo/shared-types';
 import { ChevronRight } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
@@ -39,6 +39,7 @@ function HomeLoading() {
 
 /** Branded sign-in prompt shown once auth is resolved and the courier is out. */
 function SignedOutPrompt() {
+  const { openAccountDialog } = useOxy();
   return (
     <View className="min-h-[480px] items-center justify-center gap-6 px-8 py-24">
       <MoovoWordmark width={160} />

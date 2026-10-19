@@ -1,7 +1,7 @@
 import { View, ScrollView, Pressable, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
-import { useOxy, openAccountDialog } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 import { ChevronRight } from 'lucide-react-native';
 import { Text } from '@/components/ui/text';
 import { AskAlia } from '@/components/ask-alia';
@@ -23,7 +23,7 @@ const GUTTER_MASK_SPREAD = 40;
 function SendCta() {
   const router = useRouter();
   const { colors } = useColorScheme();
-  const { isAuthenticated } = useOxy();
+  const { isAuthenticated, openAccountDialog } = useOxy();
 
   const handlePick = (type: ShipmentType) => {
     if (!isAuthenticated) {
@@ -160,6 +160,7 @@ function RecentActivity() {
 
 /** The signed-out marketing prompt under the CTA. */
 function SignedOutPrompt() {
+  const { openAccountDialog } = useOxy();
   return (
     <View className="px-4 pt-8">
       <View className="items-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-10">

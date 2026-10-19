@@ -3,7 +3,7 @@ import { Link, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { openAccountDialog, useOxy } from '@oxy.so/services';
+import { useOxy } from '@oxy.so/services/ui/client';
 
 import { TrackingSearch } from '@/components/TrackingSearch';
 import { readRecents } from '@/lib/recents';
@@ -18,7 +18,7 @@ import { readRecents } from '@/lib/recents';
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isAuthenticated } = useOxy();
+  const { isAuthenticated, openAccountDialog } = useOxy();
 
   // The signed-out visitor's recent numbers live on THEIR DEVICE — an anonymous
   // lookup persists nothing per person, by design. React Query owns the read so

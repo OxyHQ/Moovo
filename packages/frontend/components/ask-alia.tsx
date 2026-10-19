@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef } from 'react';
 import { AliaChatSheet, type AliaChatSheetRef } from '@alia.onl/sdk';
 import { AliaAvatarIcon } from '@alia.onl/sdk/avatar';
 import { Button } from '@oxy.so/bloom/button';
-import { useAuth } from '@oxy.so/services';
+import { useAuth } from '@oxy.so/services/ui/client';
 import i18n from '@/lib/i18n';
 
 /**
