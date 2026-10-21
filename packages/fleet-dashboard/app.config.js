@@ -71,6 +71,10 @@ module.exports = () => ({
       // Moovo Hub, on its own Android UID, can ask Commons for the Oxy identity
       // ("sign in once, use everywhere").
       '@oxy.so/services/plugins/withOxySharedPermissions',
+      // Drops React Native's GIF/WebP decoders from the Android build (Expo SDK 58+):
+      // nothing here renders an image through react-native's own Image — app
+      // images, Bloom and @oxy.so/services all draw with expo-image on device.
+      ['expo-build-properties', { android: { gifEnabled: false, webpEnabled: false } }],
       // Release-signs with the ONE Oxy ecosystem key (OXY_UPLOAD_* Gradle
       // properties) and swaps in the optimising ProGuard file. Without it a
       // local release build is debug-signed, which Commons' signature-level
