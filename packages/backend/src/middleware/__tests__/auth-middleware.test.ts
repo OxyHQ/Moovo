@@ -16,10 +16,6 @@ vi.mock('../../lib/logger.js', () => ({
   },
 }));
 
-vi.mock('../../lib/net-utils.js', () => ({
-  getClientIp: vi.fn(() => '127.0.0.1'),
-}));
-
 vi.mock('@oxy.so/core/server', async (importOriginal?: () => Promise<Record<string, unknown>>) => {
   const actual = importOriginal ? await importOriginal() : realOxyServer;
 

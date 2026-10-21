@@ -4,6 +4,7 @@ import {
   ecosystemActivityMiddleware,
 } from './ecosystemActivity';
 import express from 'express';
+import { oxyTrustProxy } from '@oxy.so/core/server';
 import http from 'node:http';
 import cors from 'cors';
 import { log } from './lib/logger.js';
@@ -48,6 +49,13 @@ import { makeRateLimiter } from './lib/rate-limit.js';
 // reads packages/backend/.env. Variables already in the environment win.
 
 const app = express();
+// Before every middleware that reads `req.ip` (the global rate limiter keys
+// anonymous callers on it). The socket peer is the ALB; behind the Cloudflare
+// proxy the ALB's X-Forwarded-For entry is Cloudflare's edge, which this
+// trusts only when it is a published Cloudflare address, so `req.ip` is the
+// real client whether api.moovo.now is proxied or DNS-only, and a forged
+// header is never believed.
+app.set('trust proxy', oxyTrustProxy);
 app.use(ecosystemActivityMiddleware);
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
