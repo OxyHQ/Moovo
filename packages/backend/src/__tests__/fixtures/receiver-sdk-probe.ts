@@ -81,7 +81,7 @@ async function run(): Promise<void> {
     process.env.OXY_API_URL = await listen(issuer);
     // Configuration syntax only: this test never opens a product database.
     process.env.DATABASE_URL = 'postgres://unused:unused@127.0.0.1:1/receiver_fixture_unused';
-    const { authenticateToken: middleware } = await import('../../middleware/auth.js');
+    const { authenticateToken: middleware, oxyClient } = await import('../../middleware/auth.js');
     const app = express();
     app.get('/owned-fixture', middleware, (req, res) => {
       admitted += 1;
@@ -109,14 +109,20 @@ async function run(): Promise<void> {
       assert.equal(admitted, before);
     }
 
-    // revalidates on the next call and refuses revocation without a cached admit
+    // reuses a validated admit for the same bearer, and refuses a revocation
+    // once Oxy announces it (`oxy:user:invalidate` drops the cached validation)
     {
       active = true;
-      assert.equal((await request(bearer())).status, 200);
-      const before = admitted;
+      oxyClient.invalidateSessionValidations({ sessionId: 'receiver-session' });
+      const token = bearer();
+      assert.equal((await request(token)).status, 200);
       const checks = validations;
+      assert.equal((await request(token)).status, 200);
+      assert.equal(validations, checks);
+      const before = admitted;
       active = false;
-      assert.equal((await request(bearer())).status, 401);
+      oxyClient.invalidateSessionValidations({ sessionId: 'receiver-session' });
+      assert.equal((await request(token)).status, 401);
       assert.equal(validations, checks + 1);
       assert.equal(admitted, before);
     }

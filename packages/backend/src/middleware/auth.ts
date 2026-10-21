@@ -10,7 +10,6 @@ import {
   type OxyServiceEnvironment,
 } from '@oxy.so/core/server';
 import { log } from '../lib/logger.js';
-import { getClientIp } from '../lib/net-utils.js';
 
 // The backend's Oxy client: `OxyServer` carries the server half (middleware,
 // service tokens) that `OxyServices` no longer does.
@@ -170,7 +169,7 @@ export async function authenticateTelegramBot(
 
     // Verify secret provided
     if (!botSecret) {
-      log.auth.warn({ ip: getClientIp(req) }, 'Missing bot secret');
+      log.auth.warn({ endpoint: req.path }, 'Missing bot secret');
       res.status(401).json({ error: 'Bot authentication required' });
       return;
     }
@@ -180,14 +179,14 @@ export async function authenticateTelegramBot(
     const providedBuffer = Buffer.from(botSecret);
 
     if (expectedBuffer.length !== providedBuffer.length) {
-      log.auth.warn({ ip: getClientIp(req) }, 'Invalid bot secret length');
+      log.auth.warn({ endpoint: req.path }, 'Invalid bot secret length');
       res.status(401).json({ error: 'Invalid bot authentication' });
       return;
     }
 
     const crypto = await import('node:crypto');
     if (!crypto.timingSafeEqual(expectedBuffer, providedBuffer)) {
-      log.auth.warn({ ip: getClientIp(req) }, 'Invalid bot secret');
+      log.auth.warn({ endpoint: req.path }, 'Invalid bot secret');
       res.status(401).json({ error: 'Invalid bot authentication' });
       return;
     }
@@ -205,7 +204,6 @@ export async function authenticateTelegramBot(
       {
         telegramId,
         oxyUserId: oxyUserId || 'unknown',
-        ip: getClientIp(req),
         endpoint: req.path,
         durationMs: duration,
       },
