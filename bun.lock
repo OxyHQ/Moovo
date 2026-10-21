@@ -108,6 +108,7 @@
         "expo": "^58.0.0",
         "expo-asset": "~58.0.16",
         "expo-blur": "~58.0.4",
+        "expo-build-properties": "~58.0.11",
         "expo-camera": "~58.0.10",
         "expo-clipboard": "~58.0.3",
         "expo-constants": "~58.0.12",
@@ -222,6 +223,7 @@
         "expo": "^58.0.0",
         "expo-asset": "~58.0.16",
         "expo-blur": "~58.0.4",
+        "expo-build-properties": "~58.0.11",
         "expo-clipboard": "~58.0.3",
         "expo-constants": "~58.0.12",
         "expo-dev-client": "~58.0.14",
@@ -335,6 +337,7 @@
         "expo-asset": "~58.0.16",
         "expo-audio": "~58.0.9",
         "expo-blur": "~58.0.4",
+        "expo-build-properties": "~58.0.11",
         "expo-clipboard": "~58.0.3",
         "expo-constants": "~58.0.12",
         "expo-dev-client": "~58.0.14",
@@ -455,6 +458,7 @@
         "clsx": "^2.1.1",
         "expo": "^58.0.0",
         "expo-asset": "~58.0.16",
+        "expo-build-properties": "~58.0.11",
         "expo-clipboard": "~58.0.3",
         "expo-constants": "~58.0.12",
         "expo-font": "~58.0.8",
@@ -1774,6 +1778,8 @@
     "expo-audio": ["expo-audio@58.0.9", "", { "peerDependencies": { "expo": "*", "expo-asset": "*", "react": "*", "react-native": "*" } }, "sha512-oLH9ocd3qVBytMUIqYtqwbgnQuSOWFgW0NCqbkyt2B+uHbuZNQcmAdaUfuBgRyXXPCdWCV8gnTWwKhZzFa7wAA=="],
 
     "expo-blur": ["expo-blur@58.0.4", "", { "peerDependencies": { "expo": "*", "react": "*", "react-native": "*" } }, "sha512-GtRPQ+w2SGNiDUTtwLaVHuFnP+aGjYVjbD7kPEPhXWLmyT+Nan1J5/KbbGLJ14LXJezIqShS42JXXcRDfXuU+w=="],
+
+    "expo-build-properties": ["expo-build-properties@58.0.11", "", { "dependencies": { "@expo/schema-utils": "^58.0.2", "resolve-from": "^5.0.0", "semver": "^7.7.4" }, "peerDependencies": { "expo": "*" } }, "sha512-8vjp+RSD7VW/VeEpG9l1YON4ZqOqQXPmtMYFqmh41I7cBGwELRYybHFrh2P3uBgzWlRBuQrRLO5UAtAYfT7HLg=="],
 
     "expo-camera": ["expo-camera@58.0.10", "", { "dependencies": { "barcode-detector": "^3.0.0" }, "peerDependencies": { "expo": "*", "react": "*", "react-native": "*", "react-native-web": "*" }, "optionalPeers": ["react-native-web"] }, "sha512-QXs93Kd2oZO2VuiCUPPHZgzUIPazdURx9Mse+i03U+74K5Vy7FT1F4ONp21w91aTIp1NbWtmJAcJNjSnTE+5bQ=="],
 

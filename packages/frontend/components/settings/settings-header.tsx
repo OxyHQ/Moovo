@@ -1,10 +1,8 @@
-import { View, useWindowDimensions } from 'react-native';
+import { View } from 'react-native';
 import { Text } from '@/components/ui/text';
 import { Button } from '@/components/ui/button';
-import { useNavigation } from 'expo-router';
 import { useRouter } from 'expo-router';
-import type { DrawerNavigationProp } from 'expo-router/drawer';
-import { Menu, ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface SettingsHeaderProps {
@@ -14,11 +12,13 @@ interface SettingsHeaderProps {
   onBack?: () => void;
 }
 
+/**
+ * Header for the settings screens. There is no menu button: the app shell is a
+ * Stack with the bottom tab bar (and the NavRail on wide web) as its navigation,
+ * and no drawer exists to open.
+ */
 export function SettingsHeader({ title, subtitle, showBack = false, onBack }: SettingsHeaderProps) {
-  const navigation = useNavigation<DrawerNavigationProp<Record<string, object | undefined>>>();
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isLargeScreen = width >= 768;
   const insets = useSafeAreaInsets();
 
   const handleBack = () => {
@@ -34,16 +34,6 @@ export function SettingsHeader({ title, subtitle, showBack = false, onBack }: Se
       className="flex-row items-center gap-2 px-4 border-b border-border"
       style={{ paddingTop: insets.top, height: 56 + insets.top }}
     >
-      {!isLargeScreen && (
-        <Button
-          variant="ghost"
-          size="icon"
-          onPress={() => navigation.toggleDrawer()}
-          className="h-9 w-9 rounded-full"
-        >
-          <Menu size={20} className="text-muted-foreground" />
-        </Button>
-      )}
       {showBack && (
         <Button variant="ghost" size="icon" onPress={handleBack} className="h-9 w-9 rounded-full">
           <ArrowLeft size={20} className="text-muted-foreground" />
