@@ -8,6 +8,8 @@
  *   recorded in `file_takedown_actions`. Oxy no longer serves the bytes, so
  *   keeping the id would only render a broken image — and for a takedown,
  *   keep pointing at content somebody established a claim against.
+ * - `file.lost` (the bytes are gone for good, ADR 0043 D13): cleared exactly as
+ *   `file.deleted` is, since the file is never served again. Nothing restores it.
  * - `file.unblocked` (a counter-notice succeeded): what the block cleared is
  *   put back where it was, unless the slot has been reused since.
  * - `file.trashed`, `file.restored`, `file.visibility_changed`: recorded and
@@ -43,7 +45,11 @@ export interface FileEventOutcome {
   changes: FileTakedownChange[];
 }
 
-const CLEARING_EVENTS: ReadonlySet<FileEvent['type']> = new Set(['file.blocked', 'file.deleted']);
+const CLEARING_EVENTS: ReadonlySet<FileEvent['type']> = new Set([
+  'file.blocked',
+  'file.deleted',
+  'file.lost',
+]);
 
 export async function handleFileEvent(event: FileEvent): Promise<FileEventOutcome> {
   const outcome = await getDb().transaction(async (tx): Promise<FileEventOutcome> => {
