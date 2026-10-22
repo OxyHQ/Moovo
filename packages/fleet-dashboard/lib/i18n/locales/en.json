@@ -256,7 +256,8 @@
       "system": "System"
     },
     "accentColor": {
-      "title": "App Color"
+      "title": "App Color",
+      "saveFailed": "Could not save your color. Try again."
     },
     "sections": {
       "account": "Account",
