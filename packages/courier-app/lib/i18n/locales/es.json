@@ -94,7 +94,8 @@
       "system": "Sistema"
     },
     "accentColor": {
-      "title": "Color de la app"
+      "title": "Color de la app",
+      "saveFailed": "No se pudo guardar tu color. Inténtalo de nuevo."
     },
     "sections": {
       "account": "Cuenta",
