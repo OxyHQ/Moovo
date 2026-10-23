@@ -1,31 +1,17 @@
-import { canAttestWorkloadIdentity, createEcosystemTraffic } from '@oxy.so/core/server';
+import { createEcosystemTraffic } from '@oxy.so/core/server';
 import type { RequestHandler } from 'express';
+import { workloadCredentials } from './workload.js';
 
 let activity: ReturnType<typeof createEcosystemTraffic> | undefined;
 
-/** Own identity comes from the registered workload, never a customer key pair. */
-export function canAuthenticateAsOxyService(): boolean {
-  return canAttestWorkloadIdentity();
-}
-
-/** Start only at process bootstrap; constructing a test app starts no publisher. */
-export function startEcosystemActivity(ready: () => boolean): void {
-  /**
-   * Skipped rather than thrown, which is the shape this already had and worth
-   * keeping: a laptop and a CI box have no identity to offer, and refusing to
-   * boot the API over a telemetry publisher would trade a missing dashboard line
-   * for a service that does not run. The SDK throws in exactly this case, so the
-   * check has to stay in front of the call rather than be delegated to it.
-   */
-  if (!canAuthenticateAsOxyService()) {
-    console.warn('Ecosystem activity is disabled for moovo: no attestable workload identity');
-    return;
-  }
-  if (activity) return;
-  activity = createEcosystemTraffic({
-    service: 'moovo',
-    ready,
-  });
+/** Region config enables telemetry; credentials are resolved by the shared provider on demand. */
+export function startEcosystemActivity(
+  ready: () => boolean,
+  create: typeof createEcosystemTraffic = createEcosystemTraffic,
+  region = process.env.AWS_REGION,
+): void {
+  if (activity || !region) return;
+  activity = create({ service: 'moovo', ready, region, workloadCredentials });
   activity.installFetch();
 }
 
