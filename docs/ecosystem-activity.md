@@ -7,8 +7,10 @@ the service process regardless of whether somebody opens the dashboard.
 Activation follows the registered workload identity. Set `AWS_REGION`; the ECS
 role `oxy-moovo-task` attests with its administratively bound environment (Oxy
 ADR 0049). Own services need no OAuth scopes, application grants or customer key
-pairs. Local publishing also needs a registered attestable workload. Missing
-identity disables collection with a warning; that state is not zero traffic.
+pairs. The shared temporary AWS role provider also supports authenticated development/SSO
+roles. A missing region omits only telemetry; missing/revoked identity follows the
+shared retry policy and must not be read as zero traffic. The same provider
+authenticates Files references, whose durable outbox retries failed requests.
 
 HTTP middleware is mounted before body parsers and routers, including public
 routes, webhooks, failures and authenticated internal calls. Outgoing fetch and

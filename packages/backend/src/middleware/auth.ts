@@ -1,3 +1,4 @@
+import { workloadCredentials } from '../workload.js';
 import type { Request, Response, NextFunction } from 'express';
 import {
   OxyServer,
@@ -11,6 +12,7 @@ import {
 const OXY_API_URL = process.env.OXY_API_URL || 'https://api.oxy.so';
 export const oxyClient = new OxyServer({
   baseURL: OXY_API_URL,
+  workloadCredentials,
 });
 
 // Product context accompanying the shared Oxy session principal.

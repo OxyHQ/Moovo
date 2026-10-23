@@ -40,7 +40,8 @@
     "web-push": "^3.6.7",
     "zod": "^3.24.1",
     "@oxy.so/moovo-contracts": "workspace:*",
-    "@mercaria.co/sdk": "0.4.0"
+    "@mercaria.co/sdk": "0.4.0",
+    "@aws-sdk/credential-provider-node": "3.972.84"
   },
   "devDependencies": {
     "@swc/cli": "^0.5.2",

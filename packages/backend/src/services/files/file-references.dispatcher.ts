@@ -14,7 +14,6 @@
 import { randomUUID } from 'node:crypto';
 import { config } from '../../config/index.js';
 import { log } from '../../lib/logger.js';
-import { canAuthenticateAsOxyService } from '../../ecosystemActivity.js';
 import { FILE_REFERENCE_ENTITY_TYPES } from '../../db/schema/valueSets.js';
 import {
   claimDueReconciliation,
@@ -106,12 +105,8 @@ export function startFileReferenceDispatcher(): void {
     log.general.info('[Files] reference dispatcher not started: OXY_FILE_REFERENCES_ENABLED=false');
     return;
   }
-  if (!canAuthenticateAsOxyService()) {
-    // Announced, not silent: "references are not being sent" must be a log
-    // line. The outbox keeps filling and drains once a task can authenticate.
-    log.general.warn('[Files] reference dispatcher not started: no attestable workload identity');
-    return;
-  }
+  // Missing/revoked workload identity follows the durable outbox retry path.
+  // ECS environment markers cannot decide whether a development role can attest.
   stopping = false;
   timer = setInterval(() => {
     if (inFlight) return;

@@ -462,7 +462,7 @@ suite.
 
 **Moovo holds no CrowdSource key and no Oxy service key.** The client is
 `crowdSourceForOxyService()` from `@crowdsource.you/core`, which presents the Oxy
-service token this process mints by attesting its ECS task role (oxy ADR 0026);
+service token minted through its registered temporary role identity (oxy ADR 0049);
 CrowdSource resolves the tenant from the Oxy application that token names. The
 wrapper the three sibling apps each carried is that one call now — anything
 genuinely Moovo's lives where it is acted on, not at the client.
