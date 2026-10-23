@@ -11,9 +11,8 @@
  * ## Moovo holds no CrowdSource key
  *
  * `CROWDSOURCE_SERVICE_KEY` is gone with the wrapper. The client presents the
- * Oxy service token this process already mints — by attesting its ECS task role
- * in a deployment, or from a credential pair in a checkout that has one (oxy ADR
- * 0026) — and CrowdSource resolves the tenant from the Oxy application that
+ * live own workload identity — by attesting its ECS task role
+ * with an administratively bound environment (Oxy ADR 0049) — and CrowdSource resolves the tenant from the Oxy application that
  * token names. Nothing is issued by hand, stored in a parameter store or rotated
  * by a person, and `applicationId` still appears nowhere: the client asks
  * CrowdSource which tenant the token names, once, and remembers the answer.

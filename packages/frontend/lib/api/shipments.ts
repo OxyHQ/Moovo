@@ -15,7 +15,7 @@ import apiClient from './client';
  *
  * Typed against the shared `@moovo/shared-types` contract so the frontend and
  * backend agree on the shipment/quote/job shapes. Every call is bearer-auth'd by
- * the axios request interceptor (`client.ts`); ownership is enforced server-side.
+ * the shared Oxy transport (`client.ts`); ownership is enforced server-side.
  * Each helper unwraps the canonical `ApiResponse<T>` envelope and returns the
  * payload (throwing if the backend reported a non-`data` failure).
  */

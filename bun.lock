@@ -432,7 +432,7 @@
         "vitest": "^4.0.18",
       },
       "peerDependencies": {
-        "@oxy.so/core": "^4.5.0 || ^5.0.0 || ^6.0.0",
+        "@oxy.so/core": "^4.5.0 || ^5.0.0 || ^6.0.0 || ^7.0.0",
       },
     },
     "packages/shared-types": {

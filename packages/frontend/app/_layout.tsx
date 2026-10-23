@@ -13,7 +13,7 @@ import { AppErrorBoundary } from '@/components/error-boundary';
 import AppSplashScreen from '@/components/AppSplashScreen';
 import { KeyboardProvider } from '@/lib/keyboard';
 import { useColorScheme } from '@/lib/useColorScheme';
-import { setTokenGetter } from '@/lib/api/client';
+import { setOxyServices } from '@/lib/api/client';
 import { OXY_CLIENT_ID } from '@/lib/config';
 import { BLOOM_THEME_PERSIST_KEY, BLOOM_THEME_STORAGE } from '@/lib/themePersistence';
 import 'react-native-reanimated';
@@ -34,7 +34,7 @@ const AUTH_REDIRECT_URI = Linking.createURL('/');
 function AuthSetup({ children }: { children: React.ReactNode }) {
   const { oxyServices } = useOxy();
 
-  setTokenGetter(() => oxyServices.session.accessToken || null);
+  setOxyServices(oxyServices);
 
   // Resolve Oxy file IDs to download URLs for any Bloom component that reads
   // useImageResolver() (e.g. Avatar with a raw file id `source`). Honors the

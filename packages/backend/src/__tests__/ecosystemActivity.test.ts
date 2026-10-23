@@ -47,7 +47,7 @@ describe('ecosystem activity lifecycle', () => {
     stubEnv('OXY_SERVICE_API_SECRET', 'test-secret');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.clearAllMocks();
-    canAttest.mockReturnValue(false);
+    canAttest.mockReturnValue(true);
   });
   afterEach(async () => {
     await stopEcosystemActivity();
@@ -55,7 +55,8 @@ describe('ecosystem activity lifecycle', () => {
     vi.restoreAllMocks();
   });
 
-  it('does not start or publish with neither an attestable identity nor a pair', () => {
+  it('does not start without an attestable workload identity', () => {
+    canAttest.mockReturnValue(false);
     stubEnv('OXY_SERVICE_API_KEY', undefined);
     startEcosystemActivity(() => true);
     expect(create).not.toHaveBeenCalled();
@@ -67,8 +68,9 @@ describe('ecosystem activity lifecycle', () => {
     expect(publisher.observeSocket).not.toHaveBeenCalled();
   });
 
-  it('does not start or publish when the API secret is blank', () => {
-    stubEnv('OXY_SERVICE_API_SECRET', '   ');
+  it('does not promote customer keys to own identity', () => {
+    canAttest.mockReturnValue(false);
+
     startEcosystemActivity(() => true);
     expect(create).not.toHaveBeenCalled();
     expect(console.warn).toHaveBeenCalled();
