@@ -37,8 +37,3 @@ const KeyboardStickyView = React.forwardRef<
 KeyboardStickyView.displayName = 'KeyboardStickyView';
 
 export { KeyboardAwareScrollView, KeyboardAvoidingView, KeyboardStickyView };
-
-// No-op provider on web — keyboard-controller is native-only
-export function KeyboardProvider({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
