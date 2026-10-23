@@ -16,8 +16,7 @@
     "dev": "tsc --watch",
     "clean": "rm -rf dist tsconfig.tsbuildinfo",
     "lint": "biome check .",
-    "test": "echo \"No tests specified\" && exit 0",
-    "prepublishOnly": "bun run build"
+    "test": "echo \"No tests specified\" && exit 0"
   },
   "keywords": [
     "typescript",

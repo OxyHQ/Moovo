@@ -124,6 +124,14 @@ jobs:
       - name: Build SDK
         run: bun run build:sdk
 
+      # The published contracts and SDK: what gates their npm release, which
+      # runs no tests of its own.
+      - name: Typecheck contracts and SDK, test SDK
+        run: |
+          bun run --filter @oxy.so/moovo-contracts typecheck
+          bun run --filter @oxy.so/moovo-sdk typecheck
+          bun run --filter @oxy.so/moovo-sdk test
+
       - name: Typecheck API
         run: bun run --filter @moovo/backend typecheck
 
