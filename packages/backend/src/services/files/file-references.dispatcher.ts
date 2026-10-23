@@ -109,10 +109,7 @@ export function startFileReferenceDispatcher(): void {
   if (!canAuthenticateAsOxyService()) {
     // Announced, not silent: "references are not being sent" must be a log
     // line. The outbox keeps filling and drains once a task can authenticate.
-    log.general.warn(
-      '[Files] reference dispatcher not started: no attestable workload identity and no ' +
-        'OXY_SERVICE_API_KEY/OXY_SERVICE_API_SECRET pair',
-    );
+    log.general.warn('[Files] reference dispatcher not started: no attestable workload identity');
     return;
   }
   stopping = false;

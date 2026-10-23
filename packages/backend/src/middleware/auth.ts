@@ -1,15 +1,10 @@
-import crypto from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 import {
   OxyServer,
   createOptionalOxyAuth,
   createOxyAuthMiddleware,
-  OXY_SERVICE_ENVIRONMENTS,
   type OxyRequestUser,
-  type OxyServiceAppContext,
-  type OxyServiceEnvironment,
 } from '@oxy.so/core/server';
-import { log } from '../lib/logger.js';
 
 // The backend's Oxy client: `OxyServer` carries the server half (middleware,
 // service tokens) that `OxyServices` no longer does.
@@ -18,27 +13,13 @@ export const oxyClient = new OxyServer({
   baseURL: OXY_API_URL,
 });
 
-// The internal service-secret caller is not a registered application credential, so
-// it has no environment of its own — it reports the one this process runs in, which
-// is the test/live segregation `OxyServiceAppContext.environment` expresses. Matched
-// against the SDK's own union so the two cannot drift.
-const SERVICE_ENVIRONMENT: OxyServiceEnvironment =
-  OXY_SERVICE_ENVIRONMENTS.find((env) => env === process.env.NODE_ENV) ?? 'development';
-
-// Extend Express Request for API keys and service tokens
+// Product context accompanying the shared Oxy session principal.
 declare global {
   namespace Express {
     interface Request {
       userId?: string;
       accessToken?: string;
       user?: OxyRequestUser | null;
-      apiKey?: {
-        id: string;
-        appId: string;
-        userId: string;
-        scopes: string[];
-      };
-      serviceApp?: OxyServiceAppContext;
       workspace?: {
         id: string | null;
         role?: 'owner' | 'admin' | 'member';
@@ -49,175 +30,14 @@ declare global {
 
 /**
  * Oxy authentication middleware (official @oxy.so/core/server)
- * Validates JWT tokens (including service tokens) and sets req.userId, req.user, req.accessToken
+ * Validates shared sessions and attaches the verified user context.
  */
 export const authenticateToken = createOxyAuthMiddleware(oxyClient, { auth: { debug: true } });
 
-/**
- * Service-only auth — rejects anything that isn't a service token.
- * Use for internal-only endpoints (e.g., /internal/trigger).
- */
-export const oxyServiceAuth = oxyClient.middleware.service({ debug: true });
-
-/**
- * Optional auth - attaches user if token present, doesn't block if absent
- * Tries bot auth first (Telegram), then Oxy JWT auth
- */
+/** Optional shared session validation; anonymous requests remain anonymous. */
 const oxyOptionalAuth = createOptionalOxyAuth(oxyClient, { auth: { debug: true } });
 
 export function optionalAuth(req: Request, res: Response, next: NextFunction): void {
   // Uses @oxy.so/core/server optional auth — attaches user if valid, continues if not.
   oxyOptionalAuth(req, res, next);
-}
-
-/**
- * Accepts Oxy JWT tokens and the internal service secret.
- */
-export function authenticateTokenOrApiKey(req: Request, res: Response, next: NextFunction): void {
-  // Already authenticated (e.g., by channel bot pre-middleware)
-  if (req.user) {
-    next();
-    return;
-  }
-
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-
-  if (!token) {
-    res.status(401).json({ error: 'Authentication required' });
-    return;
-  }
-
-  // Internal service auth (server-to-server calls using the shared service secret)
-  const serviceSecret = process.env.SERVICE_SECRET;
-  if (
-    serviceSecret &&
-    token.length === serviceSecret.length &&
-    crypto.timingSafeEqual(Buffer.from(token), Buffer.from(serviceSecret))
-  ) {
-    req.userId = 'system';
-    req.user = { id: 'system' };
-    req.serviceApp = {
-      appId: 'internal',
-      appName: 'internal',
-      credentialId: 'service-secret',
-      ownerAccountId: 'internal',
-      scopes: ['internal'],
-      environment: SERVICE_ENVIRONMENT,
-      tier: 'internal',
-    };
-    next();
-    return;
-  }
-
-  // Oxy JWT auth
-  authenticateToken(req, res, next);
-}
-
-/**
- * Check if API key has a specific scope
- */
-export function requireScope(scope: string) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    // Session users have all scopes
-    if (req.user && !req.apiKey) {
-      next();
-      return;
-    }
-
-    if (req.apiKey?.scopes.includes(scope)) {
-      next();
-      return;
-    }
-
-    res.status(403).json({
-      error: 'Insufficient permissions',
-      required_scope: scope,
-    });
-  };
-}
-
-/**
- * Authenticate internal Telegram bot requests
- * The bot is a trusted server component that can act on behalf of linked users
- *
- * Security layers:
- * 1. Verifies bot secret matches server-side secret
- * 2. Validates user ID is provided
- * 3. Uses constant-time comparison to prevent timing attacks
- * 4. Logs authentication attempts for audit trail
- */
-export async function authenticateTelegramBot(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const startTime = Date.now();
-
-  try {
-    const botSecret = req.headers['x-telegram-bot-secret'] as string;
-    const oxyUserId = req.headers['x-oxy-user-id'] as string;
-    const telegramId = req.headers['x-telegram-id'] as string;
-
-    // Verify bot secret is configured
-    const expectedSecret = process.env.TELEGRAM_BOT_SECRET;
-    if (!expectedSecret) {
-      log.auth.error('TELEGRAM_BOT_SECRET not configured');
-      res.status(500).json({ error: 'Bot authentication not configured' });
-      return;
-    }
-
-    // Verify secret provided
-    if (!botSecret) {
-      log.auth.warn({ endpoint: req.path }, 'Missing bot secret');
-      res.status(401).json({ error: 'Bot authentication required' });
-      return;
-    }
-
-    // Use crypto.timingSafeEqual to prevent timing attacks
-    const expectedBuffer = Buffer.from(expectedSecret);
-    const providedBuffer = Buffer.from(botSecret);
-
-    if (expectedBuffer.length !== providedBuffer.length) {
-      log.auth.warn({ endpoint: req.path }, 'Invalid bot secret length');
-      res.status(401).json({ error: 'Invalid bot authentication' });
-      return;
-    }
-
-    const crypto = await import('node:crypto');
-    if (!crypto.timingSafeEqual(expectedBuffer, providedBuffer)) {
-      log.auth.warn({ endpoint: req.path }, 'Invalid bot secret');
-      res.status(401).json({ error: 'Invalid bot authentication' });
-      return;
-    }
-
-    // Verify telegram ID is provided
-    if (!telegramId) {
-      log.auth.warn('Missing telegram ID in bot request');
-      res.status(400).json({ error: 'Telegram ID required for bot requests' });
-      return;
-    }
-
-    // Log successful auth for audit trail
-    const duration = Date.now() - startTime;
-    log.auth.info(
-      {
-        telegramId,
-        oxyUserId: oxyUserId || 'unknown',
-        endpoint: req.path,
-        durationMs: duration,
-      },
-      'Telegram bot authenticated',
-    );
-
-    // Set user context if provided - the bot is acting on behalf of this user
-    if (oxyUserId) {
-      req.userId = oxyUserId;
-      req.user = { id: oxyUserId };
-    }
-    next();
-  } catch (error) {
-    log.auth.error({ err: error }, 'Bot authentication error');
-    res.status(500).json({ error: 'Authentication failed' });
-  }
 }

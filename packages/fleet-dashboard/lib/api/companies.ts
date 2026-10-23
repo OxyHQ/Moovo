@@ -11,7 +11,7 @@ import apiClient from './client';
  *
  * Typed against the shared `@moovo/shared-types` contract so the frontend and
  * backend agree on the `Company` shape. Bearer-authenticated via the shared
- * `apiClient` token interceptor; the API scopes results to the authenticated
+ * `apiClient` shared Oxy transport; the API scopes results to the authenticated
  * Oxy user's company memberships and gates writes by the caller's role.
  *
  * Mount prefix (verified in `routes/admin/index.ts`): `/admin/companies`.

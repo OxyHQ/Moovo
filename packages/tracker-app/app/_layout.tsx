@@ -10,7 +10,7 @@ import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 
 import { AppErrorBoundary } from '@/components/error-boundary';
 import { QueryProvider } from '@/lib/query-client';
-import { setTokenGetter } from '@/lib/api/client';
+import { setOxyServices } from '@/lib/api/client';
 import { OXY_CLIENT_ID } from '@/lib/config';
 import { useColorScheme } from '@/lib/useColorScheme';
 import { BLOOM_THEME_PERSIST_KEY, BLOOM_THEME_STORAGE } from '@/lib/themePersistence';
@@ -31,7 +31,7 @@ const AUTH_REDIRECT_URI = Linking.createURL('/');
 function AuthSetup({ children }: { children: React.ReactNode }) {
   const { oxyServices } = useOxy();
 
-  setTokenGetter(() => oxyServices.session.accessToken || null);
+  setOxyServices(oxyServices);
 
   const resolveImageSource = useCallback(
     (fileId: string, variant?: string): string | undefined => {
