@@ -37,16 +37,10 @@ module.exports = (() => {
   // Add web-specific resolver settings to handle ESM modules
   config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs', 'cjs'];
 
-  // SVG support for react-native-svg-transformer (Expo transformer)
-  const { transformer, resolver } = config;
-  config.transformer = {
-    ...transformer,
-    babelTransformerPath: require.resolve('react-native-svg-transformer/expo'),
-  };
+  const { resolver } = config;
   config.resolver = {
     ...resolver,
-    assetExts: [...resolver.assetExts.filter((ext) => ext !== 'svg'), 'wasm', 'woff2', 'woff'],
-    sourceExts: [...resolver.sourceExts, 'svg'],
+    assetExts: [...resolver.assetExts, 'wasm', 'woff2', 'woff'],
     // On web, replace react-native-track-player with a no-op shim so the
     // bundler never pulls in shaka-player (TTS uses expo-speech on web).
     resolveRequest: (context, moduleName, platform) => {
