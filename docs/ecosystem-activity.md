@@ -4,20 +4,13 @@ The backend publishes aggregate traffic and its infrastructure heartbeat to the
 Oxy API, which broadcasts changes to the website dashboard. Collection runs in
 the service process regardless of whether somebody opens the dashboard.
 
-Activation follows IDENTITY, not a separate flag and no longer a credential
-pair: set `AWS_REGION`, and collection runs wherever the process can act as the
-Oxy application `moovo`. There are two ways to be it, and a deployment has one
-of them without anybody configuring it — on ECS the task role attests and no
-secret exists anywhere (oxy ADR 0026), while a local checkout presents an
-`OXY_SERVICE_API_KEY` and `OXY_SERVICE_API_SECRET` pair. A process with neither
-disables collection and emits a warning; it must not be interpreted as zero
-traffic.
-
-**The deployed API carries neither variable, and gating on them would be the
-silent failure this page warns about.** A check for the pair reads an attesting
-task as unconfigured, publishes nothing, and puts one warning in a log — while
-the dashboard shows a service with no traffic and no infrastructure, which is
-indistinguishable from a service nobody is using.
+Activation follows the registered workload identity. Set `AWS_REGION`; the ECS
+role `oxy-moovo-task` attests with its administratively bound environment (Oxy
+ADR 0049). Own services need no OAuth scopes, application grants or customer key
+pairs. The shared temporary AWS role provider also supports authenticated development/SSO
+roles. A missing region omits only telemetry; missing/revoked identity follows the
+shared retry policy and must not be read as zero traffic. The same provider
+authenticates Files references, whose durable outbox retries failed requests.
 
 HTTP middleware is mounted before body parsers and routers, including public
 routes, webhooks, failures and authenticated internal calls. Outgoing fetch and

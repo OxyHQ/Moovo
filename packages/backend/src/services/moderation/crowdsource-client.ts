@@ -11,9 +11,9 @@
  * ## Moovo holds no CrowdSource key
  *
  * `CROWDSOURCE_SERVICE_KEY` is gone with the wrapper. The client presents the
- * Oxy service token this process already mints — by attesting its ECS task role
- * in a deployment, or from a credential pair in a checkout that has one (oxy ADR
- * 0026) — and CrowdSource resolves the tenant from the Oxy application that
+ * live own workload identity through temporary AWS role credentials, including
+ * authenticated development/SSO, and an administratively bound environment
+ * (Oxy ADR 0049). CrowdSource resolves the tenant from the Oxy application that
  * token names. Nothing is issued by hand, stored in a parameter store or rotated
  * by a person, and `applicationId` still appears nowhere: the client asks
  * CrowdSource which tenant the token names, once, and remembers the answer.
@@ -30,8 +30,8 @@
  * The flag gates the delivery LOOP, in the outbox dispatcher, which is the place
  * that acts on it. Repeating it here would be a second answer to one question —
  * and the wrong one for the state it describes, because `undefined` from this
- * factory means "this process cannot authenticate", which is what a local
- * checkout genuinely is. A report filed against either state must still be
+ * factory means the optional shared workload SDK is unavailable. Missing or
+ * revoked role identity fails requests through the shared retry path. A report filed against either state must still be
  * STORED; the durable outbox row is never gated, and the delivery worker is what
  * notices there is nowhere to send it.
  */

@@ -20,10 +20,10 @@
     "db:check-locks": "oxy-db-check-migration-locks --migrations=src/db/migrations --after=13 --hot-tables=jobs,job_location_pings,job_offers,job_status_events,notifications,shipments,tracked_parcels,tracking_checkpoints"
   },
   "dependencies": {
-    "@crowdsource.you/contracts": "1.1.0",
-    "@crowdsource.you/core": "3.0.3",
+    "@crowdsource.you/contracts": "1.1.1",
+    "@crowdsource.you/core": "3.1.0",
     "@moovo/shared-types": "workspace:*",
-    "@oxy.so/core": "6.14.0",
+    "@oxy.so/core": "7.1.0",
     "@oxy.so/db": "1.3.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "bullmq": "^5.34.0",
@@ -40,7 +40,8 @@
     "web-push": "^3.6.7",
     "zod": "^3.24.1",
     "@oxy.so/moovo-contracts": "workspace:*",
-    "@mercaria.co/sdk": "0.4.0"
+    "@mercaria.co/sdk": "0.4.0",
+    "@aws-sdk/credential-provider-node": "3.972.84"
   },
   "devDependencies": {
     "@swc/cli": "^0.5.2",

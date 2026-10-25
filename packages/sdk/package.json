@@ -1,6 +1,6 @@
 {
   "name": "@oxy.so/moovo-sdk",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/OxyHQ/Moovo.git",
@@ -32,7 +32,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "zod": "^4.5.4"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
@@ -43,6 +43,6 @@
     "@oxy.so/moovo-contracts": "workspace:*"
   },
   "peerDependencies": {
-    "@oxy.so/core": "^4.5.0 || ^5.0.0 || ^6.0.0"
+    "@oxy.so/core": ">=7.0.0 <8"
   }
 }
