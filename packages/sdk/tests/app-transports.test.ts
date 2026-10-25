@@ -35,9 +35,17 @@ vi.mock('../../tracker-app/lib/config', () => ({
 
 let server: Server;
 let requests = 0;
+const bodies: { path: string | undefined; body: string; type: string | undefined }[] = [];
 let rejectNext = false;
 beforeAll(async () => {
-  server = createServer((req, res) => {
+  server = createServer(async (req, res) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(Buffer.from(chunk));
+    bodies.push({
+      path: req.url,
+      body: Buffer.concat(chunks).toString(),
+      type: req.headers['content-type'],
+    });
     requests++;
     res.setHeader('content-type', 'application/json');
     if (rejectNext) {
@@ -100,6 +108,20 @@ for (const [name, load] of [
       rejectNext = true;
       expect((await client.get('/refresh')).data.authorization).toBe(`Bearer ${fresh}`);
       expect(refresh).toHaveBeenCalledTimes(1);
+      const previous = bodies.length;
+      rejectNext = true;
+      await client.post('/refresh-post', { title: 'Original JSON' });
+      expect(refresh).toHaveBeenCalledTimes(2);
+      expect(bodies.slice(previous).map(({ path, body, type }) => ({ path, body, type }))).toEqual([
+        { path: '/refresh-post', body: '{"title":"Original JSON"}', type: 'application/json' },
+        { path: '/refresh-post', body: '{"title":"Original JSON"}', type: 'application/json' },
+      ]);
+      const form = new FormData();
+      form.append('file', new Blob(['Exact upload bytes']), 'sample.txt');
+      await client.post('/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      expect(bodies.at(-1)?.type).toMatch(/^multipart\/form-data; boundary=/);
+      expect(bodies.at(-1)?.body).toContain('Exact upload bytes');
+      expect(bodies.at(-1)?.body).toContain('filename="sample.txt"');
       await expect(client.get('/forbidden')).rejects.toMatchObject({
         response: { status: 403, data: { message: 'resource denied' } },
       });
