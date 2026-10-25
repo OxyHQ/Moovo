@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/deploy-cloudflare-go.yml'
       - 'packages/courier-app/**'
+      - 'shared/**'
       - 'package.json'
       - 'bun.lock'
 

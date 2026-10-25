@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/deploy-cloudflare-hub.yml'
       - 'packages/fleet-dashboard/**'
+      - 'shared/**'
       - 'package.json'
       - 'bun.lock'
 

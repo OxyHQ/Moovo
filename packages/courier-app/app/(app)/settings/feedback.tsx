@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
 import { useOxy } from '@oxy.so/services/ui/client';
 import { useRouter } from 'expo-router';
-import { generateAPIUrl } from '@/lib/generate-api-url';
+import apiClient from '@/lib/api/client';
+import { isAxiosError } from 'axios';
 import { MessageSquare, Bug, Lightbulb, Sparkles, Star } from 'lucide-react-native';
 import { SettingsHeader } from '@/components/settings/settings-header';
 import { toast } from '@oxy.so/bloom/toast';
@@ -74,42 +75,28 @@ export default function FeedbackScreen() {
       return;
     }
 
+    const epoch = oxyServices.http.getSessionEpoch();
     try {
       setSubmitting(true);
 
-      const apiUrl = generateAPIUrl('/feedback');
-      const token = oxyServices.session.accessToken;
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          type: selectedType,
-          message: message.trim(),
-          rating: rating,
-          metadata: {
-            platform: Platform.OS,
-            appVersion: '1.0.0',
-          },
-        }),
+      await apiClient.post('/feedback', {
+        type: selectedType,
+        message: message.trim(),
+        rating,
+        metadata: { platform: Platform.OS, appVersion: '1.0.0' },
       });
-
-      if (response.ok) {
-        toast.success(t('feedback.thankYou'));
-        setSelectedType(null);
-        setMessage('');
-        setRating(null);
-        router.back();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || t('feedback.submitFailed'));
-      }
+      if (oxyServices.http.getSessionEpoch() !== epoch) return;
+      toast.success(t('feedback.thankYou'));
+      setSelectedType(null);
+      setMessage('');
+      setRating(null);
+      router.back();
     } catch (error) {
-      console.error('Error submitting feedback:', error);
-      toast.error(t('feedback.submitFailed'));
+      if (oxyServices.http.getSessionEpoch() !== epoch) return;
+      const message = isAxiosError<{ error?: string }>(error)
+        ? error.response?.data.error
+        : undefined;
+      toast.error(message || t('feedback.submitFailed'));
     } finally {
       setSubmitting(false);
     }

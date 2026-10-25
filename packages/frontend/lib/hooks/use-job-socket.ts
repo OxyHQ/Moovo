@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { GeoPoint, JobStatus } from '@moovo/shared-types';
-import { getSocket } from '@/lib/socket';
+import { openMoovoSocket } from '@/lib/socket';
 import { queryKeys } from '@/lib/hooks/query-keys';
 
 /**
@@ -51,7 +51,7 @@ export interface LiveCourierPosition {
  * lifecycle transition (accepted/picked_up/in_transit/delivered/cancelled) it
  * invalidates the job's detail query so the screen refetches the authoritative
  * `JobView` (status timeline, courier info, codes). Subscriptions are scoped to
- * the given `jobId` and cleaned up on unmount or when the job/token changes.
+ * the given `jobId` and cleaned up on unmount or when the job or account changes.
  *
  * Socket subscription is a legitimate `useEffect` use (an external event source
  * with required teardown), not a data-fetching effect.
@@ -59,28 +59,29 @@ export interface LiveCourierPosition {
 export function useJobSocket(jobId: string | undefined): LiveCourierPosition | null {
   const { oxyServices, isAuthenticated } = useOxy();
   const queryClient = useQueryClient();
+  const sessionEpoch = oxyServices.http.getSessionEpoch();
+  const [stateEpoch, setStateEpoch] = useState(sessionEpoch);
   const [courierPosition, setCourierPosition] = useState<LiveCourierPosition | null>(null);
 
   useEffect(() => {
+    setCourierPosition(null);
+    setStateEpoch(sessionEpoch);
     if (!jobId || !isAuthenticated) {
       return;
     }
 
-    const token = oxyServices.session.accessToken;
-    const socket = getSocket(token);
-    if (!socket) {
-      return;
-    }
+    const connection = openMoovoSocket(oxyServices);
+    const { socket } = connection;
 
     const handleLocation = (payload: JobLocationPayload) => {
-      if (payload.jobId !== jobId) {
+      if (!connection.isCurrent() || payload.jobId !== jobId) {
         return;
       }
       setCourierPosition({ coordinates: payload.location.coordinates, at: payload.at });
     };
 
     const handleLifecycle = (payload: JobStatusPayload) => {
-      if (payload.jobId !== jobId) {
+      if (!connection.isCurrent() || payload.jobId !== jobId) {
         return;
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) });
@@ -94,7 +95,9 @@ export function useJobSocket(jobId: string | undefined): LiveCourierPosition | n
     socket.on(JOB_EVENTS.DELIVERED, handleLifecycle);
     socket.on(JOB_EVENTS.CANCELLED, handleLifecycle);
 
+    connection.connect();
     return () => {
+      connection.dispose();
       socket.off(JOB_EVENTS.LOCATION, handleLocation);
       socket.off(JOB_EVENTS.ACCEPTED, handleLifecycle);
       socket.off(JOB_EVENTS.PICKED_UP, handleLifecycle);
@@ -102,7 +105,7 @@ export function useJobSocket(jobId: string | undefined): LiveCourierPosition | n
       socket.off(JOB_EVENTS.DELIVERED, handleLifecycle);
       socket.off(JOB_EVENTS.CANCELLED, handleLifecycle);
     };
-  }, [jobId, isAuthenticated, oxyServices, queryClient]);
+  }, [jobId, isAuthenticated, oxyServices, queryClient, sessionEpoch]);
 
-  return courierPosition;
+  return isAuthenticated && stateEpoch === sessionEpoch ? courierPosition : null;
 }

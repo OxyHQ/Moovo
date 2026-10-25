@@ -12,8 +12,7 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
-import { io as socketIO } from 'socket.io-client';
-import config from '@/lib/config';
+import { openMoovoSocket } from '@/lib/socket';
 import apiClient from '@/lib/api/client';
 
 // ── Constants ──────────────────────────────────────────────────────
@@ -21,13 +20,11 @@ const PROJECT_ID = Constants.expoConfig?.extra?.eas?.projectId;
 
 export function useNotificationSetup() {
   const { user, oxyServices, isAuthenticated } = useOxy();
+  const sessionEpoch = oxyServices.http.getSessionEpoch();
   const router = useRouter();
   const queryClient = useQueryClient();
-  // Re-establish the notification socket when the access token changes so the
-  // handshake always carries a valid token.
-  const accessToken = oxyServices.session.accessToken;
-  const tokenRef = useRef<string | null>(null);
-  const webPushRegisteredRef = useRef(false);
+  const tokenRef = useRef<{ accountId: string; token: string } | null>(null);
+  const webPushRegisteredRef = useRef<string | null>(null);
 
   // ── Foreground notification display (once, native only) ────────
   useEffect(() => {
@@ -47,6 +44,8 @@ export function useNotificationSetup() {
     if (!isAuthenticated || !user?.id || Platform.OS === 'web') return;
 
     let cancelled = false;
+    const epoch = sessionEpoch;
+    const current = () => !cancelled && oxyServices.http.getSessionEpoch() === epoch;
 
     (async () => {
       try {
@@ -65,7 +64,7 @@ export function useNotificationSetup() {
           const { status } = await Notifications.requestPermissionsAsync();
           finalStatus = status;
         }
-        if (finalStatus !== 'granted' || cancelled) return;
+        if (finalStatus !== 'granted' || !current()) return;
 
         // A configured EAS projectId is required to mint an Expo push token.
         // Until the app is registered with EAS, skip native push registration.
@@ -75,15 +74,19 @@ export function useNotificationSetup() {
         const { data: token } = await Notifications.getExpoPushTokenAsync({
           projectId: PROJECT_ID,
         });
-        if (cancelled || !token || token === tokenRef.current) return;
-
-        tokenRef.current = token;
+        if (
+          !current() ||
+          !token ||
+          (tokenRef.current?.accountId === user.id && tokenRef.current.token === token)
+        )
+          return;
 
         // Register with backend
         await apiClient.post('/notifications/push-token', {
           token,
           platform: Platform.OS,
         });
+        if (current()) tokenRef.current = { accountId: user.id, token };
       } catch {
         // Non-critical — expected to fail in dev without FCM credentials
       }
@@ -92,7 +95,7 @@ export function useNotificationSetup() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, sessionEpoch, oxyServices]);
 
   // ── Notification tap handler (deep-link) ───────────────────────
   useEffect(() => {
@@ -112,15 +115,17 @@ export function useNotificationSetup() {
   useEffect(() => {
     if (Platform.OS !== 'web' || !isAuthenticated || !user?.id) return;
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    if (webPushRegisteredRef.current) return;
+    if (webPushRegisteredRef.current === user.id) return;
 
     let cancelled = false;
+    const epoch = sessionEpoch;
+    const current = () => !cancelled && oxyServices.http.getSessionEpoch() === epoch;
 
     (async () => {
       try {
         // Fetch VAPID public key from backend
         const { data: vapidData } = await apiClient.get('/notifications/vapid-public-key');
-        if (cancelled || !vapidData?.publicKey) return;
+        if (!current() || !vapidData?.publicKey) return;
 
         // Register service worker
         const registration = await navigator.serviceWorker.register('/sw.js');
@@ -132,7 +137,7 @@ export function useNotificationSetup() {
         if (!subscription) {
           // Request permission
           const permission = await Notification.requestPermission();
-          if (cancelled || permission !== 'granted') return;
+          if (!current() || permission !== 'granted') return;
 
           // Convert VAPID key from base64url to Uint8Array
           const vapidKey = urlBase64ToUint8Array(vapidData.publicKey);
@@ -144,7 +149,7 @@ export function useNotificationSetup() {
           });
         }
 
-        if (cancelled || !subscription) return;
+        if (!current() || !subscription) return;
 
         // Send subscription to backend
         const subJson = subscription.toJSON();
@@ -153,7 +158,7 @@ export function useNotificationSetup() {
           keys: subJson.keys,
         });
 
-        if (!cancelled) webPushRegisteredRef.current = true;
+        if (current()) webPushRegisteredRef.current = user.id;
       } catch {
         // Non-critical — web push not available in all browsers/contexts
       }
@@ -162,32 +167,24 @@ export function useNotificationSetup() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, sessionEpoch, oxyServices]);
 
   // ── Socket.IO real-time notification subscription ──────────────
   useEffect(() => {
-    if (!isAuthenticated || !accessToken) return;
-
-    const socket = socketIO(config.apiUrl, {
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-      // Callback form so each (re)connect reads a FRESH token; the server
-      // verifies it (io.use(authSocket())) and auto-joins the user's room.
-      auth: (cb) => cb({ token: oxyServices.session.accessToken ?? '' }),
-    });
+    if (!isAuthenticated || !user?.id || oxyServices.http.getSessionEpoch() !== sessionEpoch)
+      return;
+    const connection = openMoovoSocket(oxyServices);
+    const { socket } = connection;
 
     socket.on('notification', () => {
+      if (!connection.isCurrent()) return;
       // Invalidate React Query caches so notification list + unread count refresh
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     });
 
-    return () => {
-      socket.disconnect();
-    };
-  }, [isAuthenticated, accessToken, oxyServices, queryClient]);
+    connection.connect();
+    return () => connection.dispose();
+  }, [isAuthenticated, sessionEpoch, user?.id, oxyServices, queryClient]);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────

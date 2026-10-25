@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { JobOfferView, JobView } from '@moovo/shared-types';
-import { connectSocket } from '@/lib/socket';
+import { openMoovoSocket } from '@/lib/socket';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import type { JobLocationEvent } from '@/lib/api/types';
 
@@ -42,16 +42,18 @@ export interface JobSocketState {
 /**
  * Subscribe the signed-in courier to their real-time job stream.
  *
- * Opens (or reuses) the shared authenticated socket and wires the dispatch +
+ * Opens an account-bound authenticated socket and wires the dispatch +
  * lifecycle events: an incoming `job:offer` becomes the live `offer` (an
  * `job:offer_taken` for the same job clears it); every lifecycle transition
  * invalidates the courier job list and any open job-detail query so the UI
  * re-fetches the authoritative state. The socket effect is a legitimate
- * subscription with full listener cleanup on unmount / token change.
+ * subscription with full connection cleanup on unmount or account change.
  */
 export function useJobSocket(): JobSocketState {
   const { oxyServices, isAuthenticated } = useOxy();
   const queryClient = useQueryClient();
+  const sessionEpoch = oxyServices.http.getSessionEpoch();
+  const [stateEpoch, setStateEpoch] = useState(sessionEpoch);
 
   const [offer, setOffer] = useState<JobOfferView | null>(null);
   const [lastLocation, setLastLocation] = useState<JobLocationEvent | null>(null);
@@ -62,29 +64,38 @@ export function useJobSocket(): JobSocketState {
   const offerRef = useRef<JobOfferView | null>(null);
   offerRef.current = offer;
 
-  const token = isAuthenticated ? oxyServices.session.accessToken : null;
-
   useEffect(() => {
-    if (!token) {
+    setOffer(null);
+    setLastLocation(null);
+    setConnected(false);
+    setStateEpoch(sessionEpoch);
+    if (!isAuthenticated) {
       setConnected(false);
       return;
     }
 
-    const socket = connectSocket(token);
+    const connection = openMoovoSocket(oxyServices);
+    const { socket } = connection;
 
-    const onConnect = () => setConnected(true);
+    const onConnect = () => {
+      if (connection.isCurrent()) setConnected(true);
+    };
     const onDisconnect = () => setConnected(false);
 
     const invalidateJobs = (jobId?: string) => {
+      if (!connection.isCurrent()) return;
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.courier });
       if (jobId) {
         queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(jobId) });
       }
     };
 
-    const onOffer = (incoming: JobOfferView) => setOffer(incoming);
+    const onOffer = (incoming: JobOfferView) => {
+      if (connection.isCurrent()) setOffer(incoming);
+    };
 
     const onOfferTaken = (taken: OfferTakenEvent) => {
+      if (!connection.isCurrent()) return;
       const current = offerRef.current;
       if (current && (taken.jobId === current.jobId || taken.offerId === current.offerId)) {
         setOffer(null);
@@ -98,6 +109,7 @@ export function useJobSocket(): JobSocketState {
     const onCancelled = (job: JobView) => invalidateJobs(job.id);
 
     const onLocation = (event: JobLocationEvent) => {
+      if (!connection.isCurrent()) return;
       setLastLocation(event);
       invalidateJobs(event.jobId);
     };
@@ -114,7 +126,9 @@ export function useJobSocket(): JobSocketState {
     socket.on(EVENTS.JOB_CANCELLED, onCancelled);
     socket.on(EVENTS.JOB_LOCATION, onLocation);
 
+    connection.connect();
     return () => {
+      connection.dispose();
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off(EVENTS.JOB_OFFER, onOffer);
@@ -126,11 +140,17 @@ export function useJobSocket(): JobSocketState {
       socket.off(EVENTS.JOB_CANCELLED, onCancelled);
       socket.off(EVENTS.JOB_LOCATION, onLocation);
     };
-  }, [token, queryClient]);
+  }, [isAuthenticated, sessionEpoch, oxyServices, queryClient]);
 
   // Stable so consumers can safely list it in effect deps (e.g. the offer
   // countdown timer) without re-subscribing every render.
   const clearOffer = useCallback(() => setOffer(null), []);
 
-  return { offer, clearOffer, lastLocation, connected };
+  const current = isAuthenticated && stateEpoch === sessionEpoch;
+  return {
+    offer: current ? offer : null,
+    clearOffer,
+    lastLocation: current ? lastLocation : null,
+    connected: current && connected,
+  };
 }

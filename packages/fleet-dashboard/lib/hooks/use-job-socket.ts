@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { GeoPoint } from '@moovo/shared-types';
-import { connectMoovoSocket, type JobStatusPayload, type JobLocationPayload } from '@/lib/socket';
+import { openMoovoSocket, type JobStatusPayload, type JobLocationPayload } from '@/lib/socket';
 import { queryKeys } from '@/lib/hooks/query-keys';
 
 /** A job's most-recent live courier position, keyed by job id. */
@@ -38,23 +38,33 @@ export interface JobSocketState {
 export function useJobSocket(enabled: boolean): JobSocketState {
   const { oxyServices, hasAccessToken } = useOxy();
   const queryClient = useQueryClient();
+  const sessionEpoch = oxyServices.http.getSessionEpoch();
+  const [stateEpoch, setStateEpoch] = useState(sessionEpoch);
 
   const [connected, setConnected] = useState(false);
   const [liveLocations, setLiveLocations] = useState<Record<string, LiveJobLocation>>({});
   const [lastTransition, setLastTransition] = useState<JobStatusPayload | null>(null);
 
   useEffect(() => {
+    setLiveLocations({});
+    setLastTransition(null);
+    setConnected(false);
+    setStateEpoch(sessionEpoch);
     if (!enabled || !hasAccessToken) {
       setConnected(false);
       return;
     }
 
-    const socket = connectMoovoSocket(() => oxyServices.session.accessToken);
+    const connection = openMoovoSocket(oxyServices);
+    const { socket } = connection;
 
-    socket.on('connect', () => setConnected(true));
+    socket.on('connect', () => {
+      if (connection.isCurrent()) setConnected(true);
+    });
     socket.on('disconnect', () => setConnected(false));
 
     const onLocation = (payload: JobLocationPayload) => {
+      if (!connection.isCurrent()) return;
       setLiveLocations((prev) => ({
         ...prev,
         [payload.jobId]: {
@@ -66,6 +76,7 @@ export function useJobSocket(enabled: boolean): JobSocketState {
     };
 
     const onTransition = (payload: JobStatusPayload) => {
+      if (!connection.isCurrent()) return;
       setLastTransition(payload);
       // A lifecycle change can affect either role-scoped list; invalidate both.
       void queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
@@ -78,12 +89,18 @@ export function useJobSocket(enabled: boolean): JobSocketState {
     socket.on('job:delivered', onTransition);
     socket.on('job:cancelled', onTransition);
 
+    connection.connect();
     return () => {
       socket.off('job:location', onLocation);
-      socket.disconnect();
+      connection.dispose();
       setConnected(false);
     };
-  }, [enabled, hasAccessToken, oxyServices, queryClient]);
+  }, [enabled, hasAccessToken, oxyServices, queryClient, sessionEpoch]);
 
-  return { connected, liveLocations, lastTransition };
+  const current = hasAccessToken && enabled && stateEpoch === sessionEpoch;
+  return {
+    connected: current && connected,
+    liveLocations: current ? liveLocations : {},
+    lastTransition: current ? lastTransition : null,
+  };
 }
