@@ -40,7 +40,8 @@
     "esbuild": "^0.28.2",
     "rollup": "^4.59.0",
     "rollup-plugin-dts": "~6.4.1",
-    "@oxy.so/moovo-contracts": "workspace:*"
+    "@oxy.so/moovo-contracts": "workspace:*",
+    "socket.io": "^4.8.1"
   },
   "peerDependencies": {
     "@oxy.so/core": ">=7.0.0 <8"
