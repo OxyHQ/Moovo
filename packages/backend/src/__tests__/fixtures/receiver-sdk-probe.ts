@@ -54,6 +54,7 @@ globalThis.fetch = new Proxy(originalFetch, {
 });
 
 async function run(): Promise<void> {
+  let disposeClient: (() => void) | undefined;
   try {
     issuer = createServer((req, res) => {
       // The SDK validates the PRESENTED bearer against its session
@@ -81,7 +82,8 @@ async function run(): Promise<void> {
     process.env.OXY_API_URL = await listen(issuer);
     // Configuration syntax only: this test never opens a product database.
     process.env.DATABASE_URL = 'postgres://unused:unused@127.0.0.1:1/receiver_fixture_unused';
-    const { authenticateToken: middleware } = await import('../../middleware/auth.js');
+    const { authenticateToken: middleware, oxyClient } = await import('../../middleware/auth.js');
+    disposeClient = () => oxyClient.dispose();
     const app = express();
     app.get('/owned-fixture', middleware, (req, res) => {
       admitted += 1;
@@ -131,6 +133,7 @@ async function run(): Promise<void> {
         '\n',
     );
   } finally {
+    disposeClient?.();
     try {
       await close(receiver);
     } finally {

@@ -22,15 +22,24 @@ material transport and financial rules are unchanged.
 
 ## Release gate
 
-Candidate validation used Oxy core 7/contracts 6 including the optional linked
-fetch contract (`d44ecbe4d`) and CrowdSource SDK source `99db506ab`. Publish the
-shared SDK changes and update registry pins/lockfile before deploying this
-source. Temporary tarball paths are not committed. The Moovo SDK peer range
-accepts core 7 while retaining supported earlier external consumers.
+The application lockfile uses published core7.1/contracts6/services13 and
+protocol1.5.1, with CrowdSource SDK3.1/contracts1.1.1. The four app adapters use
+the shared optional linked fetch, preserving anonymous reads and session-bound
+writes. No candidate tarball is committed. Moovo SDK0.3 declares its tested
+Oxy peer as >=7 <8; standalone external clients keep their existing
+explicit credential callback. Moovo contracts0.2.1 and SDK0.3 use the patched
+Zod4.6.7 floor.
 
-Validation: 79 backend suites by union, 925 passing tests and one existing
-opt-in browser test skipped; 417 Bun tests across 43 files; SDK and four-app
+Validation against the published registry packages: 79 backend suites, 924 passing tests and one existing
+opt-in browser test skipped; 416 Bun tests across 43 files; SDK and four-app
 HTTP transport tests (seven total). The HTTP tests cover anonymous calls,
 refresh, account switches, forged header removal, cancellation, foreign origins
 and Axios error envelopes. Backend and SDK builds and typechecks passed, as did TypeScript checks for all
 four applications.
+
+The final full run used two local worker processes and passed all 79 suites
+without diagnostic instrumentation. An earlier concurrent run exhausted the
+shared local PostgreSQL connection limit; two subsequent teardown timeouts were
+investigated with per-stage timing (32 pools closed within 19 ms, database drops
+within 993 ms). No timeout, assertion or database guard was relaxed. The receiver
+HTTP fixture now disposes its Oxy client, so it exits without a leaked feed.
