@@ -4,7 +4,8 @@ import { Stack } from 'expo-router';
 import { preventNativeSplashAutoHide, useHideNativeSplashWhenReady } from '@oxy.so/expo-splash';
 import { useCallback, useEffect, useState } from 'react';
 import { OxyProvider, useAccountColor, useOxy } from '@oxy.so/services/ui/client';
-import { BloomThemeProvider } from '@oxy.so/bloom/theme';
+import { BloomProvider } from '@oxy.so/bloom/provider';
+import { expoRouterScrollAdapter } from '@oxy.so/bloom/scroll/expo-router';
 import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
@@ -129,7 +130,8 @@ function RootLayout() {
 
   return (
     <AppErrorBoundary>
-      <BloomThemeProvider
+      <BloomProvider
+        scrollAdapter={expoRouterScrollAdapter}
         defaultMode="system"
         defaultColorPreset="blue"
         persistKey={BLOOM_THEME_PERSIST_KEY}
@@ -159,7 +161,7 @@ function RootLayout() {
         >
           <AppContent />
         </OxyProvider>
-      </BloomThemeProvider>
+      </BloomProvider>
     </AppErrorBoundary>
   );
 }
