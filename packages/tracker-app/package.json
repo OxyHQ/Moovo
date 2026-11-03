@@ -18,7 +18,7 @@
     "@expo/html-elements": "^0.13.8",
     "@expo/vector-icons": "^15.1.1",
     "@moovo/shared-types": "workspace:*",
-    "@oxy.so/app-preset": "^3.4.0",
+    "@oxy.so/app-preset": "^5.2.1",
     "@oxy.so/bloom": "16.5.0",
     "@oxy.so/core": "7.11.1",
     "@oxy.so/services": "14.0.1",

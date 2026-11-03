@@ -22,7 +22,7 @@
     "@expo/vector-icons": "^15.1.1",
     "@hugeicons/react-native": "^1.0.11",
     "@moovo/shared-types": "workspace:*",
-    "@oxy.so/app-preset": "^3.4.0",
+    "@oxy.so/app-preset": "^5.2.1",
     "@oxy.so/bloom": "16.5.0",
     "@oxy.so/contracts": "6.3.0",
     "@oxy.so/core": "7.11.1",
