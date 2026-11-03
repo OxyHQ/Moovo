@@ -75,13 +75,6 @@ module.exports = () => ({
       // nothing here renders an image through react-native's own Image — app
       // images, Bloom and @oxy.so/services all draw with expo-image on device.
       ['expo-build-properties', { android: { gifEnabled: false, webpEnabled: false } }],
-      // Release-signs with the ONE Oxy ecosystem key (OXY_UPLOAD_* Gradle
-      // properties) and swaps in the optimising ProGuard file. Without it a
-      // local release build is debug-signed, which Commons' signature-level
-      // permissions refuse. Falls back to debug signing when the properties
-      // are absent, so verify the shipped certificate
-      // (`apksigner verify --print-certs`).
-      '@oxy.so/app-preset/plugin/withOxyAndroidRelease',
     ],
     experiments: {
       typedRoutes: true,
