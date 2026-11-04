@@ -7,14 +7,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { LanguageSelector } from '@/components/language-selector';
 import { COLOR_PRESET_REGISTRY, useBloomTheme, type AppColorName } from '@oxy.so/bloom/theme';
 import { getPresetVars } from '@oxy.so/bloom/design-tokens';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectItemText,
-  SelectTrigger,
-  SelectValue,
-} from '@oxy.so/bloom/select';
+import { SettingsSelect } from '@oxy.so/bloom/settings-modal/rows';
 import { toast } from '@oxy.so/bloom/toast';
 import { useAccountColorSave } from '@oxy.so/services/ui/client';
 
@@ -164,26 +157,15 @@ export function GeneralSection() {
           {t('settings.accentColor.title')}
         </Text>
 
-        <Select
+        <SettingsSelect
+          label={t('settings.accentColor.title')}
           value={colorValue}
-          onValueChange={(value) => {
-            const next = colors.find((option) => option.value === value);
-            if (next)
-              saveColor(next.value).catch(() => toast.error(t('settings.accentColor.saveFailed')));
-          }}
-        >
-          <SelectTrigger label={t('settings.accentColor.title')}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent
-            items={colors}
-            renderItem={(item) => (
-              <SelectItem value={item.value} label={item.label}>
-                <SelectItemText>{item.label}</SelectItemText>
-              </SelectItem>
-            )}
-          />
-        </Select>
+          onChange={(next) =>
+            saveColor(next).catch(() => toast.error(t('settings.accentColor.saveFailed')))
+          }
+          items={colors}
+          compact={false}
+        />
       </View>
     </View>
   );

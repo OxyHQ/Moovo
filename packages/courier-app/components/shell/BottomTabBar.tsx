@@ -12,10 +12,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { LogIn, type LucideIcon } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
 
 import { UserAvatar } from '@/components/user-avatar';
 import { useColorScheme } from '@/lib/useColorScheme';
+import { useHaptics } from '@oxy.so/bloom/hooks';
 import { useTheme } from '@oxy.so/bloom/theme';
 import { useOxy } from '@oxy.so/services/ui/client';
 import { NAV_ITEMS, isNavItemActive, isAuthTabActive, type NavItem } from './nav-items';
@@ -75,11 +75,6 @@ const tabStyle = {
   ...(Platform.OS === 'web' ? { cursor: 'pointer' as const } : {}),
 };
 
-function triggerHaptic() {
-  if (Platform.OS === 'web') return;
-  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-}
-
 /* ================================================================
    Tab icon — lucide single icon, color/opacity swap for active state
    ================================================================ */
@@ -109,15 +104,16 @@ interface AuthTabProps {
 }
 
 function AuthTab({ isActive }: AuthTabProps) {
+  const haptic = useHaptics();
   const { colors } = useColorScheme();
   const { isAuthenticated, openAccountDialog } = useOxy();
 
   const label = isAuthenticated ? 'Account' : 'Sign in';
 
   const onPress = useCallback(() => {
-    triggerHaptic();
+    haptic();
     if (!isAuthenticated) openAccountDialog();
-  }, [isAuthenticated, openAccountDialog]);
+  }, [haptic, isAuthenticated, openAccountDialog]);
 
   return (
     <Pressable
@@ -145,6 +141,7 @@ function AuthTab({ isActive }: AuthTabProps) {
    ================================================================ */
 
 export function BottomTabBar() {
+  const haptic = useHaptics();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -199,10 +196,10 @@ export function BottomTabBar() {
   // pressing an unavailable item is a safe no-op (no missing-route navigation).
   const handlePress = useCallback(
     (item: NavItem) => {
-      triggerHaptic();
+      haptic();
       if (item.available) router.push(item.href);
     },
-    [router],
+    [haptic, router],
   );
 
   // Layout + shadow only. The border and background colors are driven by
