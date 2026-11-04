@@ -1,5 +1,4 @@
 import { workloadCredentials } from '../workload.js';
-import type { Request, Response, NextFunction } from 'express';
 import {
   OxyServer,
   createOptionalOxyAuth,
@@ -7,12 +6,15 @@ import {
   type OxyRequestUser,
 } from '@oxy.so/core/server';
 
-// The backend's Oxy client: `OxyServer` carries the server half (middleware,
-// service tokens) that `OxyServices` no longer does.
-const OXY_API_URL = process.env.OXY_API_URL || 'https://api.oxy.so';
+// The process's ONE Oxy client, authenticated as Moovo's workload. Calls as a
+// person go through `oxyClient.withUser(req, …)`; nothing else constructs an
+// Oxy client. `serviceIdentity` sends session-less reads (profiles, the
+// organization directory) with the workload token instead of anonymously,
+// which oxy-api charges to the shared NAT address and slows past 100 per 15 min.
 export const oxyClient = new OxyServer({
-  baseURL: OXY_API_URL,
+  baseURL: process.env.OXY_API_URL || 'https://api.oxy.so',
   workloadCredentials,
+  serviceIdentity: 'when-anonymous',
 });
 
 // Product context accompanying the shared Oxy session principal.
@@ -30,16 +32,8 @@ declare global {
   }
 }
 
-/**
- * Oxy authentication middleware (official @oxy.so/core/server)
- * Validates shared sessions and attaches the verified user context.
- */
-export const authenticateToken = createOxyAuthMiddleware(oxyClient, { auth: { debug: true } });
+/** A verified Oxy session is required; attaches the caller (`getRequiredOxyUserId`). */
+export const authenticateToken = createOxyAuthMiddleware(oxyClient);
 
-/** Optional shared session validation; anonymous requests remain anonymous. */
-const oxyOptionalAuth = createOptionalOxyAuth(oxyClient, { auth: { debug: true } });
-
-export function optionalAuth(req: Request, res: Response, next: NextFunction): void {
-  // Uses @oxy.so/core/server optional auth — attaches user if valid, continues if not.
-  oxyOptionalAuth(req, res, next);
-}
+/** Attaches the caller when a valid session is present; anonymous requests stay anonymous. */
+export const optionalAuth = createOptionalOxyAuth(oxyClient);

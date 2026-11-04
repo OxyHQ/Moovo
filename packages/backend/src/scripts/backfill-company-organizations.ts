@@ -4,7 +4,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import postgres from 'postgres';
 import { z } from 'zod';
-import { OxyServices } from '@oxy.so/core';
+import { oxyClient } from '../middleware/auth.js';
 
 async function main() {
   const { values } = parseArgs({
@@ -99,12 +99,9 @@ async function main() {
         throw new Error('Invalid, duplicate or conflicting reviewed mapping');
       ids.add(mapping.companyId);
     }
-    const oxy = new OxyServices({
-      baseURL: process.env.OXY_API_URL || 'https://api.oxy.so',
-      enableCache: false,
-    });
-    oxy.session.setAccessToken(process.env.OXY_ADMIN_ACCESS_TOKEN);
-    try {
+    // The staff session is the authority Oxy checks; it rides only on a user
+    // client of the process's one OxyServer, disposed when the loop settles.
+    await oxyClient.withUser(process.env.OXY_ADMIN_ACCESS_TOKEN, async (oxy) => {
       for (const mapping of mappings) {
         const record = records.find((row) => row.id === mapping.companyId);
         if (!record) throw new Error('Missing source evidence');
@@ -119,14 +116,16 @@ async function main() {
           await db`update courier_companies set oxy_account_id=${linked.accountId} where id=${record.id} and (oxy_account_id is null or oxy_account_id=${linked.accountId}) returning id`;
         if (updated.length !== 1) throw new Error('Mapping changed; stop and review a fresh plan');
       }
-    } finally {
-      oxy.dispose();
-    }
+    });
   } finally {
     await db.end();
   }
 }
-void main().catch((error) => {
-  console.error(error instanceof Error ? error.message : 'Organization backfill failed');
-  process.exitCode = 1;
-});
+// Exit explicitly, like the other operator scripts that load the shared Oxy client.
+void main().then(
+  () => process.exit(0),
+  (error) => {
+    console.error(error instanceof Error ? error.message : 'Organization backfill failed');
+    process.exit(1);
+  },
+);

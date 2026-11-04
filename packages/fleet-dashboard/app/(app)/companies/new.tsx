@@ -44,12 +44,14 @@ export default function NewCompanyScreen() {
     enabled: canUsePrivateApi,
     queryFn: async () => {
       const nodes = await oxyServices.accounts.list();
+      // The organizations the API will let this person register: the same
+      // `account:update` permission it asks Oxy for (grants and revokes applied).
       const ids = nodes
         .filter(
           (node) =>
             node.kind === 'organization' &&
             node.callerMembership?.status === 'active' &&
-            ['owner', 'admin'].includes(node.callerMembership.role),
+            node.callerMembership.permissions.includes('account:update'),
         )
         .map((node) => node.accountId);
       const organizations = [];

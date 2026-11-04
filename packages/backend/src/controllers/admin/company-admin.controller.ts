@@ -120,7 +120,7 @@ export async function createCompanyHandler(req: Request, res: Response): Promise
     const company = await createCompany(
       oxyUserId,
       req.body as CreateCompanyInput,
-      req.accessToken,
+      req,
       fileAuthorityFor(req),
     );
     sendSuccess(res, toCompanyDTO(company), 201);

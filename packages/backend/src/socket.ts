@@ -1,29 +1,22 @@
 import { observeEcosystemSocket } from './ecosystemActivity';
 import { Server } from 'socket.io';
+import { createOxySocketCors } from '@oxy.so/core/server';
 import { createAdapter } from '@socket.io/redis-adapter';
 import type http from 'node:http';
 import { getRedisClient, getRedisSubClient } from './lib/redis.js';
 import { oxyClient } from './middleware/auth.js';
 import { log } from './lib/logger.js';
-
-const ALLOWED_ORIGINS: (string | RegExp)[] = [
-  process.env.WEB_URL || 'http://localhost:3000',
-  'https://moovo.now',
-  // Any one-level *.moovo.now subdomain (go = Moovo Go, hub = Moovo Hub, …).
-  /^https:\/\/[a-z0-9-]+\.moovo\.now$/,
-];
+import { MOOVO_APP_ORIGINS } from './lib/origins.js';
 
 let io: Server | null = null;
 
 export function initSocket(server: http.Server) {
   // Hold the instance in a local const so the async adapter callback below
   // references a provably-defined server (no module-level non-null assertion).
+  // The same browser origins as HTTP, on the polling transport AND the
+  // WebSocket handshake (which browsers never subject to CORS).
   const socketServer = new Server(server, {
-    cors: {
-      origin: ALLOWED_ORIGINS,
-      methods: ['GET', 'POST'],
-      credentials: true,
-    },
+    ...createOxySocketCors({ appOrigins: [...MOOVO_APP_ORIGINS] }),
     transports: ['websocket', 'polling'],
   });
   io = socketServer;

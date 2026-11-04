@@ -10,6 +10,7 @@
  */
 
 import type { Response } from 'express';
+import { OxyAccessError, accessErrorStatus } from '@oxy.so/core/server';
 import { ErrorCodes, sendError, type ErrorCode } from '../../utils/api-response.js';
 
 /** The error code vocabulary, identical to the API envelope's `ErrorCode`. */
@@ -89,14 +90,46 @@ export function outOfStock(message: string): MoovoError {
 }
 
 /**
+ * Oxy's answer to "may this person …?" (`oxyClient.accountAccessFor`, a user
+ * client) as a Moovo error, through the SDK's one mapping: the session is gone
+ * → 401, a definitive no → 403, Oxy could not say → 503. An outage is never a
+ * refusal, and the SDK never caches either.
+ */
+export function fromOxyAccessError(err: OxyAccessError): MoovoError {
+  const status = accessErrorStatus(err);
+  switch (status) {
+    case 401:
+      return new MoovoError({
+        code: ErrorCodes.UNAUTHORIZED,
+        message: 'Your Oxy session is no longer valid',
+        cause: err,
+      });
+    case 503:
+      return new MoovoError({
+        code: ErrorCodes.INTERNAL_ERROR,
+        httpStatus: 503,
+        message: 'Oxy account access is temporarily unavailable',
+        cause: err,
+      });
+    default:
+      return new MoovoError({
+        code: ErrorCodes.FORBIDDEN,
+        message: 'Oxy account access is required',
+        cause: err,
+      });
+  }
+}
+
+/**
  * Map a caught error onto the response. A `MoovoError` (thrown by the service
- * layer) is emitted with its own code + HTTP status; anything else is treated as
- * an unexpected internal error (500, `INTERNAL_ERROR`) with a generic message so
- * internals never leak.
+ * layer) is emitted with its own code + HTTP status, an `OxyAccessError` through
+ * {@link fromOxyAccessError}; anything else is treated as an unexpected internal
+ * error (500, `INTERNAL_ERROR`) with a generic message so internals never leak.
  */
 export function respondWithError(res: Response, err: unknown, fallbackMessage: string): void {
-  if (isMoovoError(err)) {
-    sendError(res, err.code, err.message, err.httpStatus);
+  const known = err instanceof OxyAccessError ? fromOxyAccessError(err) : err;
+  if (isMoovoError(known)) {
+    sendError(res, known.code, known.message, known.httpStatus);
     return;
   }
   sendError(res, ErrorCodes.INTERNAL_ERROR, fallbackMessage, 500);

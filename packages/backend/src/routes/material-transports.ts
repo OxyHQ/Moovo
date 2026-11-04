@@ -11,7 +11,12 @@ import {
 } from '@oxy.so/moovo-contracts';
 import { optionalAuth } from '../middleware/auth';
 import { makeRateLimiter } from '../lib/rate-limit';
-import { transportCaller, TransportError } from '../services/material-transports/access';
+import { OxyAccessError } from '@oxy.so/core/server';
+import {
+  transportAccessError,
+  transportCaller,
+  TransportError,
+} from '../services/material-transports/access';
 import {
   quoteTransport,
   createTransport,
@@ -54,22 +59,8 @@ router.use((_req, res, next) => {
 });
 router.get('/openapi.json', (_req, res) => res.json(openapi()));
 router.use(optionalAuth);
-const rateLimit = makeRateLimiter('material-transports');
-// Existing rate limiter uses legacy envelopes; normalize it at this new API boundary.
-router.use((req, res, next) => {
-  const json = res.json.bind(res);
-  res.json = ((body: unknown) =>
-    res.statusCode === 429
-      ? json({
-          error: {
-            code: 'rate_limited',
-            message: 'Too many requests',
-            details: { retryAfterSeconds: Number(res.getHeader('Retry-After') || 60) },
-          },
-        })
-      : json(body)) as typeof res.json;
-  rateLimit(req, res, next);
-});
+// The SDK limiter already answers 429 in this API's `{ error: { code, message, details } }` envelope.
+router.use(makeRateLimiter('material-transports'));
 for (const route of routes) {
   router[route.method](
     route.path.replace('{id}', ':id'),
@@ -111,18 +102,20 @@ router.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => 
       ? new TransportError('bad_request', 'Malformed JSON')
       : err instanceof TransportError
         ? err
-        : isContractError(err)
-          ? new TransportError(
-              err.issues.some(
-                (issue) => issue.code === 'invalid_type' || issue.code === 'unrecognized_keys',
+        : err instanceof OxyAccessError
+          ? transportAccessError(err)
+          : isContractError(err)
+            ? new TransportError(
+                err.issues.some(
+                  (issue) => issue.code === 'invalid_type' || issue.code === 'unrecognized_keys',
+                )
+                  ? 'bad_request'
+                  : 'validation_failed',
+                'Invalid transport input',
               )
-                ? 'bad_request'
-                : 'validation_failed',
-              'Invalid transport input',
-            )
-          : err instanceof MoovoError && err.httpStatus === 409
-            ? new TransportError('conflict', err.message)
-            : new TransportError('internal_error', 'Transport could not be processed');
+            : err instanceof MoovoError && err.httpStatus === 409
+              ? new TransportError('conflict', err.message)
+              : new TransportError('internal_error', 'Transport could not be processed');
   res.status(error.status).json({ error: { code: error.code, message: error.message } });
 });
 export default router;

@@ -21,7 +21,6 @@
  * here.
  */
 
-import type { OxyServices } from '@oxy.so/core';
 import type {
   Listing,
   ListingImage,
@@ -185,20 +184,11 @@ export function toMerchantSummary(
   return summary;
 }
 
-/** Options for hydrating listings. */
-export interface HydrateOptions {
-  /** Reserved for future linked-client injection; defaults to the shared client. */
-  oxyClient?: OxyServices;
-}
-
 /**
  * Hydrate listing records into client-ready `Listing` DTOs with batched
  * PostgreSQL/Oxy lookups. Preserves input order.
  */
-export async function hydrateListings(
-  listingRecords: ListingRecord[],
-  _opts: HydrateOptions = {},
-): Promise<Listing[]> {
+export async function hydrateListings(listingRecords: ListingRecord[]): Promise<Listing[]> {
   if (listingRecords.length === 0) {
     return [];
   }

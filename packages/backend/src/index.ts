@@ -4,9 +4,8 @@ import {
   ecosystemActivityMiddleware,
 } from './ecosystemActivity';
 import express from 'express';
-import { oxyTrustProxy } from '@oxy.so/core/server';
+import { createOxyCors, createOxySecurityHeaders, oxyTrustProxy } from '@oxy.so/core/server';
 import http from 'node:http';
-import cors from 'cors';
 import { log } from './lib/logger.js';
 import { isAbortError, isFatalError, isTransientNetworkError } from './lib/error-classification.js';
 
@@ -43,6 +42,7 @@ import { startExpirySweeper, stopExpirySweeper } from './db/expiry.js';
 // Socket.io
 import { initSocket } from './socket.js';
 import { makeRateLimiter } from './lib/rate-limit.js';
+import { MOOVO_APP_ORIGINS } from './lib/origins.js';
 
 // Bun loads `.env` from the working directory before any module runs, and every
 // script that starts this server (`dev`, `start`) runs in packages/backend, so it
@@ -89,68 +89,25 @@ server.on('connection', (socket) => {
 startEcosystemActivity(() => server.listening);
 initSocket(server);
 
-// CORS — restricted to the Moovo first-party origins: the apex (customer app)
-// plus any one-level *.moovo.now subdomain (go = Moovo Go, hub = Moovo Hub, …).
-const MOOVO_APEX_ORIGIN = 'https://moovo.now';
-const MOOVO_SUBDOMAIN_ORIGIN = /^https:\/\/[a-z0-9-]+\.moovo\.now$/;
+// Security headers (Helmet with the Oxy CSP baseline). Resources stay
+// loadable cross-origin: the four web apps live on other moovo.now hosts.
+app.use(
+  createOxySecurityHeaders({ helmet: { crossOriginResourcePolicy: { policy: 'cross-origin' } } }),
+);
 
-const DEV_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://localhost:8081',
-  'exp://localhost:8081',
-  'http://10.0.2.2:8081',
-];
-
-const staticAllowedOrigins = [
-  ...(process.env.WEB_URL ? [process.env.WEB_URL] : []),
-  MOOVO_APEX_ORIGIN,
-  ...DEV_ORIGINS,
-];
-
-const isAllowedOrigin = (origin: string): boolean =>
-  staticAllowedOrigins.includes(origin) || MOOVO_SUBDOMAIN_ORIGIN.test(origin);
-
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api/v1/')) return next();
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
-
-      if (isAllowedOrigin(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-Requested-With',
-      'Accept',
-      'Origin',
-      'X-Service-Name',
-      'X-Timestamp',
-      'X-Signature',
-      'X-Session-Id',
-      'X-Device-Info',
-      'X-Oxy-User-Id',
-      'X-Workspace-Id',
-      'X-Oxy-Edge-Region',
-      'X-Oxy-Activity-Id',
-    ],
-    optionsSuccessStatus: 200,
-  })(req, res, next);
+// CORS for Moovo's own web apps (`lib/origins.ts`). The bearer-only public API
+// under `/api/v1` answers any origin without credentials and owns its CORS.
+const appCors = createOxyCors({
+  appOrigins: [...MOOVO_APP_ORIGINS],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'X-Oxy-Edge-Region',
+    'X-Oxy-Activity-Id',
+  ],
 });
-
-// Allow cross-origin resource loading (fixes ERR_BLOCKED_BY_RESPONSE.NotSameOrigin)
-app.use((_req, res, next) => {
-  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-  next();
-});
+app.use((req, res, next) => (req.path.startsWith('/api/v1/') ? next() : appCors(req, res, next)));
 
 /**
  * CrowdSource decisions — MOUNTED BEFORE THE JSON PARSER, DELIBERATELY.

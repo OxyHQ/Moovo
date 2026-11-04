@@ -12,6 +12,7 @@
  * response. The creating user becomes the sole `owner` with all permissions.
  */
 
+import type { OxyCallerRequest } from '@oxy.so/core/server';
 import type {
   CreateCompanyInput,
   UpdateCompanyInput,
@@ -80,10 +81,10 @@ function toServiceArea(
 export async function createCompany(
   ownerOxyUserId: string,
   input: CreateCompanyInput,
-  accessToken: string | undefined,
+  caller: OxyCallerRequest,
   files: FileAuthority,
 ): Promise<FleetCompany> {
-  const organization = await requireOrganizationAdministrator(input.oxyAccountId, accessToken);
+  const organization = await requireOrganizationAdministrator(caller, input.oxyAccountId);
   if (input.coverFileId) {
     await assertFilesAttachable(
       [input.coverFileId],

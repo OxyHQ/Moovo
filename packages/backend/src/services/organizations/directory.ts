@@ -1,13 +1,8 @@
-import { OxyApiError, OxyServices } from '@oxy.so/core';
+import { OxyApiError } from '@oxy.so/core';
+import type { OxyCallerRequest } from '@oxy.so/core/server';
 import type { CourierCompanyRecord } from '../../db/fleet/courierCompanyRepository.js';
 import { oxyClient } from '../../middleware/auth.js';
-import {
-  forbidden,
-  notFound,
-  unauthorized,
-  MoovoError,
-  isMoovoError,
-} from '../../lib/errors/error-codes.js';
+import { forbidden, notFound, MoovoError } from '../../lib/errors/error-codes.js';
 
 export type FleetCompany = CourierCompanyRecord & { name: string; logoFileId?: string };
 
@@ -41,47 +36,34 @@ export async function hydrateCompanies(rows: CourierCompanyRecord[]): Promise<Fl
   });
 }
 
-/** The original verified session is sent only to Oxy, using a disposable request-scoped client. */
+/**
+ * Registering a fleet needs a person who may administer the claimed Oxy
+ * organization: Oxy answers with the caller's own verified session
+ * (`accountAccessFor`, fresh — this precedes a write), gated on the
+ * `account:update` permission rather than a role name, so a per-member revoke
+ * is honoured. A refusal is 403, a gone session 401, and Oxy being unreachable
+ * 503 (`respondWithError`), never a "no".
+ */
 export async function requireOrganizationAdministrator(
+  caller: OxyCallerRequest,
   accountId: string,
-  accessToken: string | undefined,
 ) {
-  if (!accessToken) throw unauthorized('An Oxy session is required');
-  const client = new OxyServices({
-    baseURL: process.env.OXY_API_URL || 'https://api.oxy.so',
-    enableCache: false,
-    enableRetry: false,
-    requestTimeout: 5000,
-  });
-  client.session.setAccessToken(accessToken);
-  try {
-    const node = await client.accounts.get(accountId);
-    const membership = node.callerMembership;
-    if (
-      node.kind !== 'organization' ||
-      !membership ||
-      membership.status !== 'active' ||
-      !['owner', 'admin'].includes(membership.role)
-    )
-      throw forbidden('Only an Oxy organization administrator may register its fleet');
-    const organization = await client.organizations.get(accountId);
-    if (organization.status !== 'active' || organization.claimStatus !== 'claimed')
+  const access = await oxyClient.accountAccessFor(caller, accountId, { fresh: true });
+  if (access.kind !== 'organization' || !access.has('account:update'))
+    throw forbidden('Only an Oxy organization administrator may register its fleet');
+  const organization = await oxyClient.organizations.get(accountId).catch((error: unknown) => {
+    if (error instanceof OxyApiError && error.status === 404)
       throw forbidden('Claim an active organization in Oxy before registering its fleet');
-    return organization;
-  } catch (error) {
-    if (isMoovoError(error)) throw error;
-    if (error instanceof OxyApiError && [403, 404].includes(error.status))
-      throw forbidden('Organization administrator access is required');
-    if (error instanceof OxyApiError && error.status === 401)
-      throw unauthorized('Your Oxy session is no longer valid');
     throw new MoovoError({
       code: 'INTERNAL_ERROR',
       httpStatus: 503,
       message: 'Organization access is temporarily unavailable',
+      cause: error,
     });
-  } finally {
-    client.dispose();
-  }
+  });
+  if (organization.status !== 'active' || organization.claimStatus !== 'claimed')
+    throw forbidden('Claim an active organization in Oxy before registering its fleet');
+  return organization;
 }
 
 export async function hydrateCompany(row: CourierCompanyRecord): Promise<FleetCompany> {
