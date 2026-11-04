@@ -5,6 +5,7 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { eq, sql } from 'drizzle-orm';
 import { OxyServices } from '@oxy.so/core';
+import { OxyServer } from '@oxy.so/core/server';
 import { moovoForOxy, createMoovoClient } from '@oxy.so/moovo-sdk';
 import {
   createSuiteDatabase,
@@ -26,9 +27,19 @@ import { registerAdapter } from '../../providers/provider-registry';
 import type { TransportCaller } from '../access';
 import { NO_FILE_AUTHORITY } from '../../files/file-ownership';
 
+// The real SDK readers, against the fake Oxy below. Built on first use: this
+// factory runs at import time, before `beforeAll` knows the fake's address.
+let realOxy: OxyServer | undefined;
+const oxy = () => {
+  realOxy ??= new OxyServer({ baseURL: process.env.OXY_API_URL || 'http://127.0.0.1' });
+  return realOxy;
+};
 vi.mock('../../../middleware/auth', () => ({
   oxyClient: {
     middleware: { auth: () => (_req: Request, _res: Response, next: NextFunction) => next() },
+    accountAccessFor: (...args: Parameters<OxyServer['accountAccessFor']>) =>
+      oxy().accountAccessFor(...args),
+    withUser: (...args: Parameters<OxyServer['withUser']>) => oxy().withUser(...args),
   },
   optionalAuth: (req: Request, _res: Response, next: NextFunction) => {
     const token = tokenName(req.headers.authorization);
@@ -45,6 +56,7 @@ vi.mock('../../../middleware/auth', () => ({
     )
       Object.assign(req, {
         userId: token.startsWith('sponsor') ? 'sponsor' : token,
+        sessionId: `session-${token}`,
         accessToken: req.headers.authorization?.slice(7),
         user: { id: token },
         oxyActor: {
@@ -79,6 +91,7 @@ let suite: SuiteDatabase;
 let api: string;
 let browserOrigin: string;
 const state = new Map<string, string>();
+let accountsDown = false;
 const sourceTokens: string[] = [];
 const end = {
   address: { line1: 'Test street 1', city: 'Barcelona', postalCode: '08001', country: 'ES' },
@@ -103,7 +116,7 @@ const caller: TransportCaller = {
   accountId: 'donor',
   actorAccountId: 'donor',
   delegated: false,
-  accessToken: token('donor'),
+  request: { userId: 'donor', sessionId: 'session-donor', accessToken: token('donor') },
 };
 beforeAll(async () => {
   suite = await createSuiteDatabase();
@@ -133,25 +146,33 @@ beforeAll(async () => {
   source.get('/cors-test', (_req, res) =>
     res.type('html').send('<!doctype html><title>Transport CORS verification</title>'),
   );
+  // Oxy's `GET /accounts/:id`: the caller's effective access, or 403 for a
+  // person with none (a removed member included).
   source.get('/accounts/:id', (req, res) => {
-    const token = tokenName(req.headers.authorization);
-    if (req.params.id !== 'sponsor' || !token?.startsWith('sponsor')) {
-      res.status(404).json({ error: 'Not found' });
+    if (accountsDown) {
+      res.status(503).json({ error: { code: 'service_unavailable', message: 'Down' } });
       return;
     }
+    const token = tokenName(req.headers.authorization);
+    if (req.params.id !== 'sponsor' || !['sponsor-owner', 'sponsor-editor'].includes(token)) {
+      res.status(403).json({ error: { code: 'forbidden', message: 'No access' } });
+      return;
+    }
+    const owner = token === 'sponsor-owner';
     res.json({
       account: {
         accountId: 'sponsor',
         kind: 'organization',
-        relationship: token === 'sponsor-owner' ? 'owner' : 'member',
-        ...(token === 'sponsor-owner'
-          ? {}
-          : {
-              callerMembership: {
-                role: 'editor',
-                status: token === 'sponsor-removed' ? 'removed' : 'active',
-              },
-            }),
+        relationship: owner ? 'owner' : 'member',
+        callerMembership: owner ? null : { role: 'editor', status: 'active' },
+        callerAccess: {
+          role: owner ? 'owner' : 'editor',
+          permissions: owner
+            ? ['account:read', 'account:update', 'account:act_as', 'billing:manage']
+            : ['account:read', 'account:act_as'],
+          status: 'active',
+          source: 'direct',
+        },
       },
     });
   });
@@ -332,6 +353,13 @@ describe('real transport HTTP, SDK, Oxy-linked source reads and PostgreSQL', () 
     await expect(client('sponsor-removed').get(request.id, 'sponsor')).rejects.toMatchObject({
       code: 'forbidden',
     });
+    // An Oxy outage is "cannot verify", never a refusal, and is not remembered.
+    accountsDown = true;
+    await expect(client('sponsor-editor').get(request.id, 'sponsor')).rejects.toMatchObject({
+      code: 'service_unavailable',
+    });
+    accountsDown = false;
+    expect((await client('sponsor-editor').get(request.id, 'sponsor')).id).toBe(request.id);
     const approved = await client('sponsor-owner').authorize(request.id, auth);
     expect(approved.authorization?.actorAccountId).toBe('sponsor-owner');
     await expect(

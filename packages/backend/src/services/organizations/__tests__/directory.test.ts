@@ -1,6 +1,8 @@
 import { createServer, type Server } from 'node:http';
 import { afterAll, beforeAll, beforeEach, expect, it } from 'vitest';
+import { OxyAccessError } from '@oxy.so/core/server';
 import type { CourierCompanyRecord } from '../../../db/fleet/courierCompanyRepository.js';
+import { fromOxyAccessError, type MoovoError } from '../../../lib/errors/error-codes.js';
 let server: Server;
 let directory: typeof import('../directory.js');
 let status = 200;
@@ -8,6 +10,22 @@ let role = 'owner';
 let memberStatus = 'active';
 const token = (id: string) =>
   `${Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify({ sub: id, exp: 4102444800 })).toString('base64url')}.unsigned`;
+/** A request `middleware.auth()` verified: the person, their session and its bearer. */
+const caller = (id: string) => ({ userId: id, sessionId: `session-${id}`, accessToken: token(id) });
+/** The HTTP status `respondWithError` answers a settled registration check with. */
+const statusOf = (check: Promise<unknown>) =>
+  check.then(
+    () => 200,
+    (error: unknown) =>
+      (error instanceof OxyAccessError ? fromOxyAccessError(error) : (error as MoovoError))
+        .httpStatus,
+  );
+/** Effective account permissions Oxy answers per role (the baseline, no grants). */
+const PERMISSIONS: Record<string, string[]> = {
+  owner: ['account:read', 'account:update', 'account:act_as', 'members:update'],
+  admin: ['account:read', 'account:update', 'account:act_as', 'members:update'],
+  viewer: ['account:read', 'members:read'],
+};
 const seen: { path: string; authorization?: string; ids?: string[] }[] = [];
 function organization(id: string) {
   return {
@@ -41,18 +59,30 @@ beforeAll(async () => {
       res.end(JSON.stringify({ message: 'unavailable' }));
       return;
     }
-    if (path.startsWith('/accounts/'))
+    if (path.startsWith('/accounts/')) {
+      // Oxy answers a person with no active membership 403, with no access in the body.
+      if (memberStatus !== 'active') {
+        res.statusCode = 403;
+        res.end(JSON.stringify({ error: { code: 'forbidden', message: 'No access' } }));
+        return;
+      }
       res.end(
         JSON.stringify({
           account: {
             accountId: path.split('/').pop(),
             kind: 'organization',
-            relationship: 'owner',
+            relationship: role === 'owner' ? 'owner' : 'member',
             callerMembership: { status: memberStatus, role },
+            callerAccess: {
+              role,
+              permissions: PERMISSIONS[role],
+              status: 'active',
+              source: 'direct',
+            },
           },
         }),
       );
-    else if (path === '/organizations/batch')
+    } else if (path === '/organizations/batch')
       res.end(
         JSON.stringify({
           items: body.ids
@@ -84,10 +114,10 @@ beforeEach(() => {
   role = 'owner';
   memberStatus = 'active';
 });
-it('uses each original verified bearer without shared client mutation and public reads omit it', async () => {
+it("asks Oxy with each caller's own verified bearer; the public organization read carries none", async () => {
   await Promise.all([
-    directory.requireOrganizationAdministrator('one', token('one')),
-    directory.requireOrganizationAdministrator('two', token('two')),
+    directory.requireOrganizationAdministrator(caller('one'), 'one'),
+    directory.requireOrganizationAdministrator(caller('two'), 'two'),
   ]);
   expect(seen.filter((row) => row.path.startsWith('/accounts/'))).toEqual(
     expect.arrayContaining([
@@ -99,24 +129,37 @@ it('uses each original verified bearer without shared client mutation and public
     seen.filter((row) => row.path.startsWith('/organizations/')).every((row) => !row.authorization),
   ).toBe(true);
 });
-it('refuses revoked/viewer memberships and fails closed on directory outage', async () => {
+it('gates on account:update, so a viewer or a removed member is refused 403', async () => {
   role = 'viewer';
+  expect(await statusOf(directory.requireOrganizationAdministrator(caller('owner'), 'one'))).toBe(
+    403,
+  );
+  role = 'admin';
   await expect(
-    directory.requireOrganizationAdministrator('one', token('owner')),
-  ).rejects.toMatchObject({ httpStatus: 403 });
-  role = 'owner';
+    directory.requireOrganizationAdministrator(caller('owner'), 'one'),
+  ).resolves.toMatchObject({ accountId: 'one' });
   memberStatus = 'removed';
-  await expect(
-    directory.requireOrganizationAdministrator('one', token('owner')),
-  ).rejects.toMatchObject({ httpStatus: 403 });
-  memberStatus = 'active';
+  expect(await statusOf(directory.requireOrganizationAdministrator(caller('owner'), 'one'))).toBe(
+    403,
+  );
+});
+// The SDK retries a 5xx with backoff before giving up, hence the longer timeout.
+it('answers an Oxy outage 503, never caches it, and asks again on the next request', async () => {
   status = 503;
+  expect(await statusOf(directory.requireOrganizationAdministrator(caller('owner'), 'one'))).toBe(
+    503,
+  );
+  status = 200;
+  seen.length = 0;
   await expect(
-    directory.requireOrganizationAdministrator('one', token('owner')),
-  ).rejects.toMatchObject({ httpStatus: 503 });
-  await expect(directory.requireOrganizationAdministrator('one', undefined)).rejects.toMatchObject({
-    httpStatus: 401,
-  });
+    directory.requireOrganizationAdministrator(caller('owner'), 'one'),
+  ).resolves.toMatchObject({ accountId: 'one' });
+  expect(seen.some((row) => row.path === '/accounts/one')).toBe(true);
+}, 30_000);
+it('answers 401 for a request with no person (anonymous, or a service token)', async () => {
+  for (const request of [{}, { ...caller('owner'), serviceApp: { id: 'app' } }]) {
+    expect(await statusOf(directory.requireOrganizationAdministrator(request, 'one'))).toBe(401);
+  }
 });
 it('deduplicates bounded company hydration and respects canonical redirects, missing/suppressed records', async () => {
   const ids = [

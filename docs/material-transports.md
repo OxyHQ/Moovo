@@ -15,12 +15,15 @@ book/cancel` signatures. `moovoForOxy` uses Oxy's official linked client; produc
 frontends send user writes directly to Moovo. No product backend forwards a
 bearer manually, persists a user's token, or writes to the other product.
 
-For each source read the backend creates a request-local Oxy client and invokes
-Mercaria's SDK against `MERCARIA_API_URL` (default `https://api.mercaria.co`).
-This is a live, authorized read of the reservation. Source content is not
-replicated. Organization authority is checked without Oxy response caching:
-owner relationship or active owner/admin membership can approve expenditure;
-editors can prepare proposals but cannot approve expenditure. The source read
+For each source read the backend opens a user client on the caller's own session
+(`oxyClient.withUser`) and invokes Mercaria's SDK against `MERCARIA_API_URL`
+(default `https://api.mercaria.co`). This is a live, authorized read of the
+reservation. Source content is not replicated. Organization authority is read
+fresh with `oxyClient.accountAccessFor` and gated on the caller's effective Oxy
+permissions, never a role name: `account:update` (owner, admin) approves
+expenditure; `account:act_as` (owner, admin, editor) prepares proposals. A
+per-member revoke therefore takes effect, and an Oxy outage answers
+`service_unavailable`, never `forbidden`. The source read
 must authorize the acting donation participant. A sponsor must be an Oxy
 organization; selecting another person as sponsor cannot authorize them.
 
