@@ -23,7 +23,7 @@
     "@crowdsource.you/contracts": "1.1.1",
     "@crowdsource.you/core": "3.1.0",
     "@moovo/shared-types": "workspace:*",
-    "@oxy.so/core": "7.17.0",
+    "@oxy.so/core": "7.23.0",
     "@oxy.so/db": "1.4.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "bullmq": "^5.34.0",
