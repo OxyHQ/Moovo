@@ -62,8 +62,8 @@ to see which files fall back to Babel and why (`transform:noxcturnal:fallback`).
 
 Material donation transport, payer authorization and retry behavior are documented
 in `docs/material-transports.md`. Its FAIR cents differ from Mercaria's money scale;
-consumers use the owning SDK formatter. Backend contracts inline their Zod 4
-runtime while legacy backend routes still use Zod 3.
+consumers use the owning SDK formatter. Contracts, SDK and the legacy backend
+route schemas share one Zod 4 copy.
 
 ## Databases
 

@@ -28,23 +28,21 @@ import { log } from '../lib/logger.js';
 const PUBLICLY_VIEWABLE_STATUSES: readonly ListingStatus[] = ['active', 'sold'];
 
 /** Coerce + validate the browse query string into a typed `ListingQuery`. */
-const listingQuerySchema = z
-  .object({
-    q: z.string().trim().min(1).optional(),
-    category: z.string().trim().min(1).optional(),
-    condition: z.enum(['new', 'used']).optional(),
-    minPrice: z.coerce.number().int().nonnegative().optional(),
-    maxPrice: z.coerce.number().int().nonnegative().optional(),
-    storeId: z.string().trim().min(1).optional(),
-    ownerType: z.enum(['user', 'store']).optional(),
-    inStock: z.coerce.boolean().optional(),
-    cursor: z.string().trim().min(1).optional(),
-    sort: z.enum(['newest', 'price_asc', 'price_desc']).optional(),
-    lng: z.coerce.number().optional(),
-    lat: z.coerce.number().optional(),
-    radiusM: z.coerce.number().positive().optional(),
-  })
-  .passthrough();
+const listingQuerySchema = z.looseObject({
+  q: z.string().trim().min(1).optional(),
+  category: z.string().trim().min(1).optional(),
+  condition: z.enum(['new', 'used']).optional(),
+  minPrice: z.coerce.number().int().nonnegative().optional(),
+  maxPrice: z.coerce.number().int().nonnegative().optional(),
+  storeId: z.string().trim().min(1).optional(),
+  ownerType: z.enum(['user', 'store']).optional(),
+  inStock: z.coerce.boolean().optional(),
+  cursor: z.string().trim().min(1).optional(),
+  sort: z.enum(['newest', 'price_asc', 'price_desc']).optional(),
+  lng: z.coerce.number().optional(),
+  lat: z.coerce.number().optional(),
+  radiusM: z.coerce.number().positive().optional(),
+});
 
 /** Assemble a `ListingQuery` from the parsed query object. */
 function toListingQuery(parsed: z.infer<typeof listingQuerySchema>): ListingQuery {
