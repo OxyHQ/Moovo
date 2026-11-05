@@ -5,7 +5,8 @@ import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import { OxyProvider, useAccountColor, useOxy } from '@oxy.so/services/ui/client';
-import { BloomThemeProvider } from '@oxy.so/bloom/theme';
+import { BloomProvider } from '@oxy.so/bloom/provider';
+import { expoRouterScrollAdapter } from '@oxy.so/bloom/scroll/expo-router';
 import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 
 import { AppErrorBoundary } from '@/components/error-boundary';
@@ -82,7 +83,8 @@ export default function RootLayout() {
   return (
     <AppErrorBoundary>
       <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
-        <BloomThemeProvider
+        <BloomProvider
+          scrollAdapter={expoRouterScrollAdapter}
           defaultMode="system"
           defaultColorPreset="blue"
           persistKey={BLOOM_THEME_PERSIST_KEY}
@@ -103,7 +105,7 @@ export default function RootLayout() {
               <AppContent />
             </QueryProvider>
           </OxyProvider>
-        </BloomThemeProvider>
+        </BloomProvider>
       </View>
     </AppErrorBoundary>
   );
