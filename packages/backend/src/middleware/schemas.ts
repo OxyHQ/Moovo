@@ -62,7 +62,7 @@ export const updateListingSchema = z
     quantity: z.number().int().nonnegative().optional(),
     status: z.enum(['draft', 'active', 'sold', 'archived']).optional(),
   })
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 // ---------------------------------------------------------------------------
 // Store product + variants
@@ -109,7 +109,7 @@ export const updateVariantSchema = z
       })
       .optional(),
   })
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 /** Body for store `PATCH /products/:id/variants/:variantId/inventory`. */
 export const setInventorySchema = z.object({
@@ -160,7 +160,7 @@ export const updateStoreSchema = z
       })
       .optional(),
   })
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 /** Body for `POST /admin/stores/:storeId/members` (InviteMemberInput). */
 export const inviteMemberSchema = z.object({
@@ -175,7 +175,7 @@ export const updateMemberSchema = z
     role: storeRoleSchema.optional(),
     permissions: z.array(storePermissionSchema).optional(),
   })
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 // ---------------------------------------------------------------------------
 // Seller profile prefs
@@ -197,7 +197,7 @@ export const sellerPrefsSchema = z
       })
       .optional(),
   })
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 // ---------------------------------------------------------------------------
 // Cart
@@ -246,7 +246,7 @@ export const updateAddressSchema = z
     phone: z.string().trim().min(1).max(40).optional(),
     isDefault: z.boolean().optional(),
   })
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 // ---------------------------------------------------------------------------
 // Orders / checkout
@@ -291,25 +291,21 @@ export const fulfillOrderSchema = z.object({
 });
 
 /** Query for order list endpoints (`page`/`limit` + optional `status` filter). */
-export const orderListQuerySchema = z
-  .object({
-    page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().optional(),
-    status: orderStatusSchema.optional(),
-  })
-  .passthrough();
+export const orderListQuerySchema = z.looseObject({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().optional(),
+  status: orderStatusSchema.optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Pagination query
 // ---------------------------------------------------------------------------
 
 /** Reusable offset-pagination query (`page`/`limit`). */
-export const paginationQuerySchema = z
-  .object({
-    page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().optional(),
-  })
-  .passthrough();
+export const paginationQuerySchema = z.looseObject({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().optional(),
+});
 
 // ---------------------------------------------------------------------------
 // Reviews
@@ -332,7 +328,7 @@ export const createReviewSchema = z
       (o.targetType === 'listing' && !!o.listingId) ||
       (o.targetType === 'store' && !!o.storeId) ||
       (o.targetType === 'seller' && !!o.sellerOxyUserId),
-    { message: 'targetType requires the matching target id' },
+    { error: 'targetType requires the matching target id' },
   );
 
 // ---------------------------------------------------------------------------
@@ -344,7 +340,7 @@ export const feedbackSchema = z.object({
   type: z.enum(['bug', 'feature', 'improvement', 'other']),
   rating: z.number().int().min(1).max(5).optional(),
   message: z.string().trim().min(1).max(10_000),
-  email: z.string().trim().email().max(320).optional(),
+  email: z.string().trim().pipe(z.email().max(320)).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -353,14 +349,12 @@ export const feedbackSchema = z.object({
 // ---------------------------------------------------------------------------
 
 /** Query for `GET /notifications` (`page`/`limit` + optional `status`/`type` filter). */
-export const notificationListQuerySchema = z
-  .object({
-    page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().optional(),
-    status: z.enum(['pending', 'sent', 'read', 'dismissed']).optional(),
-    type: z.string().trim().min(1).optional(),
-  })
-  .passthrough();
+export const notificationListQuerySchema = z.looseObject({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().optional(),
+  status: z.enum(['pending', 'sent', 'read', 'dismissed']).optional(),
+  type: z.string().trim().min(1).optional(),
+});
 
 /** Body for `POST /notifications/push-token` (register/update an Expo push token). */
 export const pushTokenSchema = z.object({
@@ -425,7 +419,7 @@ export const updateVehicleSchema = z
     capacity: vehicleCapacityInputSchema.optional(),
     status: z.enum(['active', 'inactive']).optional(),
   })
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 /** Body for `PATCH /courier/me` (editable courier preferences). */
 export const courierPrefsSchema = z
@@ -436,7 +430,7 @@ export const courierPrefsSchema = z
       })
       .optional(),
   })
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 /** Body for `POST /courier/location` (a GeoJSON-friendly lng/lat ping). */
 export const locationPingSchema = z.object({
@@ -466,16 +460,14 @@ const serviceAreaSchema = z.object({
 });
 
 /** Body for `POST /admin/companies` (CreateCompanyInput). */
-export const createCompanySchema = z
-  .object({
-    oxyAccountId: z.string().trim().min(1),
-    description: z.string().max(5_000).optional(),
-    brandColor: z.string().trim().min(1).optional(),
-    coverFileId: z.string().trim().min(1).optional(),
-    defaultCurrency: currencySchema.optional(),
-    serviceAreas: z.array(serviceAreaSchema).optional(),
-  })
-  .strict();
+export const createCompanySchema = z.strictObject({
+  oxyAccountId: z.string().trim().min(1),
+  description: z.string().max(5_000).optional(),
+  brandColor: z.string().trim().min(1).optional(),
+  coverFileId: z.string().trim().min(1).optional(),
+  defaultCurrency: currencySchema.optional(),
+  serviceAreas: z.array(serviceAreaSchema).optional(),
+});
 
 const companyRoleSchema = z.enum(['owner', 'dispatcher', 'driver']);
 const companyPermissionSchema = z.enum([
@@ -489,7 +481,7 @@ const companyPermissionSchema = z.enum([
 
 /** Body for `PATCH /admin/companies/:companyId` (UpdateCompanyInput). */
 export const updateCompanySchema = z
-  .object({
+  .strictObject({
     description: z.string().max(5_000).optional(),
     brandColor: z.string().trim().min(1).optional(),
     coverFileId: z.string().trim().min(1).optional(),
@@ -498,8 +490,7 @@ export const updateCompanySchema = z
     textTone: z.enum(['light', 'dark']).optional(),
     status: z.enum(['active', 'suspended', 'closed']).optional(),
   })
-  .strict()
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 /** Body for `POST /admin/companies/:companyId/members` (InviteCompanyMemberInput). */
 export const inviteCompanyMemberSchema = z.object({
@@ -514,7 +505,7 @@ export const updateCompanyMemberSchema = z
     role: companyRoleSchema.optional(),
     permissions: z.array(companyPermissionSchema).optional(),
   })
-  .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required' });
+  .refine((obj) => Object.keys(obj).length > 0, { error: 'At least one field is required' });
 
 // ---------------------------------------------------------------------------
 // Shipments / quotes / jobs (transport domain)
@@ -554,7 +545,7 @@ const parcelDetailsSchema = z.object({
 /** When the shipment should be fulfilled. */
 const schedulingSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('now') }),
-  z.object({ kind: z.literal('scheduled'), scheduledFor: z.string().datetime() }),
+  z.object({ kind: z.literal('scheduled'), scheduledFor: z.iso.datetime() }),
 ]);
 
 /** A shipment reference photo (Oxy media file id). */
@@ -576,14 +567,12 @@ export const createShipmentSchema = z.object({
 });
 
 /** Query for shipment list endpoints (`page`/`limit` + optional `status`/`type`). */
-export const shipmentListQuerySchema = z
-  .object({
-    page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().optional(),
-    status: z.enum(['draft', 'quoting', 'quoted', 'booked', 'cancelled', 'expired']).optional(),
-    type: shipmentTypeSchema.optional(),
-  })
-  .passthrough();
+export const shipmentListQuerySchema = z.looseObject({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().optional(),
+  status: z.enum(['draft', 'quoting', 'quoted', 'booked', 'cancelled', 'expired']).optional(),
+  type: shipmentTypeSchema.optional(),
+});
 
 /** Body for `POST /shipments/:id/book` (BookShipmentInput). */
 export const bookShipmentSchema = z.object({
@@ -592,24 +581,14 @@ export const bookShipmentSchema = z.object({
 });
 
 /** Query for job list endpoints (`page`/`limit` + optional `status`/`role`). */
-export const jobListQuerySchema = z
-  .object({
-    page: z.coerce.number().int().positive().optional(),
-    limit: z.coerce.number().int().positive().optional(),
-    status: z
-      .enum([
-        'requested',
-        'offered',
-        'accepted',
-        'picked_up',
-        'in_transit',
-        'delivered',
-        'cancelled',
-      ])
-      .optional(),
-    role: z.enum(['sender', 'courier']).optional(),
-  })
-  .passthrough();
+export const jobListQuerySchema = z.looseObject({
+  page: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().positive().optional(),
+  status: z
+    .enum(['requested', 'offered', 'accepted', 'picked_up', 'in_transit', 'delivered', 'cancelled'])
+    .optional(),
+  role: z.enum(['sender', 'courier']).optional(),
+});
 
 /** Body for the job lifecycle transitions that accept an optional location. */
 export const jobLocationSchema = z
@@ -618,7 +597,7 @@ export const jobLocationSchema = z
     lat: z.number().min(-90).max(90).optional(),
   })
   .refine((o) => (o.lng === undefined) === (o.lat === undefined), {
-    message: 'lng and lat must be provided together',
+    error: 'lng and lat must be provided together',
   });
 
 /** Body for `POST /jobs/:id/location` (a required lng/lat ping). */
@@ -695,7 +674,7 @@ export const updateTrackedParcelSchema = z
     carrierKey: carrierKeyField.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
-    message: 'Provide at least one field to update',
+    error: 'Provide at least one field to update',
   });
 
 /** Query for `GET /tracking/parcels`. */

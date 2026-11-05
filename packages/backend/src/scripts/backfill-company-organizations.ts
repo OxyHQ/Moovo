@@ -26,13 +26,11 @@ async function main() {
   const mappings = values['reviewed-mappings']
     ? z
         .array(
-          z
-            .object({
-              companyId: z.string().min(1),
-              accountId: z.string().min(1),
-              evidenceReference: z.string().trim().min(1),
-            })
-            .strict(),
+          z.strictObject({
+            companyId: z.string().min(1),
+            accountId: z.string().min(1),
+            evidenceReference: z.string().trim().min(1),
+          }),
         )
         .parse(JSON.parse(await readFile(values['reviewed-mappings'], 'utf8')))
     : [];
