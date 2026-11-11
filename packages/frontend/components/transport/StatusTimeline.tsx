@@ -1,8 +1,8 @@
 import { View } from 'react-native';
 import type { JobStatus, JobStatusEvent } from '@moovo/shared-types';
-import { Check } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { RiCheckLine } from '@oxy.so/bloom/icons/RiCheckLine';
+import { Text } from '@oxy.so/bloom/typography';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { cn } from '@moovo/app-shell/lib/utils';
 
 /**
@@ -50,7 +50,7 @@ export function StatusTimeline({
   status: JobStatus;
   history: JobStatusEvent[];
 }) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
 
   if (status === 'cancelled') {
     const cancelledAt = history.find((h) => h.status === 'cancelled')?.at;
@@ -83,7 +83,9 @@ export function StatusTimeline({
                   done ? 'bg-primary' : 'bg-muted',
                 )}
               >
-                {done ? <Check size={14} color={colors.primaryForeground} /> : null}
+                {done ? (
+                  <RiCheckLine width={14} height={14} fill={colors.primaryForeground} />
+                ) : null}
               </View>
               {!isLast ? (
                 <View

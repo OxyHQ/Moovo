@@ -1,14 +1,11 @@
-import { Text, View } from 'react-native';
+import { Chip } from '@oxy.so/bloom/chip';
 import type { TrackingStatus } from '@moovo/shared-types';
-import { STATUS_LABELS, statusTone } from '@/lib/status';
-import { cn } from '@moovo/app-shell/lib/utils';
+import { STATUS_LABELS, statusColor } from '@/lib/status';
 
 export function StatusBadge({ status, className }: { status: TrackingStatus; className?: string }) {
-  const tone = statusTone(status);
-
   return (
-    <View className={cn('self-start rounded-full px-3 py-1', tone.chip, className)}>
-      <Text className={cn('text-xs font-semibold', tone.text)}>{STATUS_LABELS[status]}</Text>
-    </View>
+    <Chip variant="subtle" color={statusColor(status)} className={className}>
+      {STATUS_LABELS[status]}
+    </Chip>
   );
 }

@@ -5,7 +5,6 @@
     "error": "Error",
     "success": "Éxito",
     "cancel": "Cancelar",
-    "confirm": "Confirmar",
     "save": "Guardar",
     "saving": "Guardando...",
     "delete": "Eliminar",
@@ -20,7 +19,6 @@
     "user": "Usuario",
     "done": "Listo",
     "tryAgain": "Reintentar",
-    "processing": "Procesando...",
     "permissionDeniedTitle": "No tienes acceso",
     "permissionDeniedBody": "Tu rol en esta empresa no te da acceso a esta sección."
   },
@@ -53,12 +51,13 @@
       "active": "Activa",
       "suspended": "Suspendida",
       "closed": "Cerrada"
-    }
+    },
+    "selectorLabel": "Empresa"
   },
   "account": {
     "menuLabel": "Cuenta",
-    "settings": "Cuenta y ajustes",
-    "notifications": "Notificaciones"
+    "notifications": "Notificaciones",
+    "signIn": "Iniciar sesión"
   },
   "job": {
     "title": "Trabajo · Moovo Hub",
@@ -98,7 +97,17 @@
     "organization": "Organización",
     "directoryUnavailable": "El directorio no está disponible. Inténtalo de nuevo.",
     "noOrganizations": "Crea o reclama una organización en Oxy antes de registrar su flota.",
-    "identityInOxy": "Gestiona el nombre y el logotipo en Oxy."
+    "identityInOxy": "Gestiona el nombre y el logotipo en Oxy.",
+    "colors": {
+      "blue": "Azul",
+      "purple": "Morado",
+      "pink": "Rosa",
+      "amber": "Ámbar",
+      "green": "Verde",
+      "cyan": "Cian",
+      "orange": "Naranja",
+      "red": "Rojo"
+    }
   },
   "members": {
     "listTitle": "{{count}} miembros",
@@ -119,7 +128,8 @@
     "role": {
       "owner": "Administrador de flota",
       "dispatcher": "Despachador",
-      "driver": "Conductor"
+      "driver": "Conductor",
+      "label": "Rol"
     }
   },
   "fleet": {
@@ -226,7 +236,6 @@
     "privacyPolicy": "Política de privacidad"
   },
   "errors": {
-    "emailRequired": "Introduce tu correo electrónico",
     "passwordRequired": "Introduce tu contraseña",
     "passwordsDoNotMatch": "Las contraseñas no coinciden",
     "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
@@ -272,30 +281,6 @@
     "termsOfService": "Términos de servicio",
     "privacyPolicy": "Política de privacidad"
   },
-  "forgotPassword": {
-    "title": "Restablecer contraseña",
-    "subtitle": "Introduce tu correo para restablecer tu contraseña",
-    "emailPlaceholder": "Correo electrónico",
-    "sending": "Enviando...",
-    "checkEmail": "Revisa tu correo",
-    "sentInstructions": "Enviamos instrucciones para restablecer la contraseña a",
-    "returnToSignIn": "Volver a iniciar sesión",
-    "tryAnotherEmail": "Probar otro correo",
-    "checkEmailToast": "Revisa tu correo para ver las instrucciones para restablecer tu contraseña.",
-    "failedToSend": "No se pudo enviar el correo. Inténtalo de nuevo."
-  },
-  "resetPassword": {
-    "title": "Crear nueva contraseña",
-    "subtitle": "Introduce tu nueva contraseña",
-    "newPasswordPlaceholder": "Nueva contraseña (mín. 8 caracteres)",
-    "confirmPasswordPlaceholder": "Confirmar nueva contraseña",
-    "resetButton": "Restablecer contraseña",
-    "resetting": "Restableciendo contraseña...",
-    "invalidToken": "Token de restablecimiento inválido o ausente",
-    "enterNewPassword": "Introduce una nueva contraseña",
-    "successMessage": "Tu contraseña se restableció correctamente. Inicia sesión con tu nueva contraseña.",
-    "failedToReset": "No se pudo restablecer la contraseña. Inténtalo de nuevo."
-  },
   "feedback": {
     "title": "Enviar comentarios",
     "subtitle": "Ayúdanos a mejorar Moovo",
@@ -319,7 +304,6 @@
     "featurePlaceholder": "Describe la función que te gustaría ver. ¿Cómo te ayudaría?",
     "improvementPlaceholder": "¿Qué te gustaría que mejoráramos? ¿Cómo podríamos hacerlo mejor?",
     "otherPlaceholder": "Comparte tus ideas con nosotros...",
-    "characterCount": "{{count}}/1000 caracteres",
     "submitButton": "Enviar comentario",
     "submitting": "Enviando...",
     "footerText": "Tus comentarios nos ayudan a mejorar Moovo. Gracias por tomarte el tiempo de compartirlos.",
@@ -330,11 +314,7 @@
     "submitFailed": "No se pudo enviar el comentario"
   },
   "notifications": {
-    "title": "Notificaciones",
-    "subtitle": "Administra tus preferencias de notificación",
-    "pushNotifications": "Notificaciones push",
-    "pushDescription": "Recibe alertas sobre nuevos mensajes y actualizaciones",
-    "permissionDenied": "Las notificaciones están bloqueadas. Actívalas en los ajustes de tu dispositivo para recibir notificaciones push."
+    "title": "Notificaciones"
   },
   "welcome": {
     "appName": "Moovo"

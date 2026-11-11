@@ -1,12 +1,15 @@
 import { useMemo } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { Link } from 'expo-router';
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { Info, Wifi, WifiOff } from 'lucide-react-native';
+import { RiInformationLine } from '@oxy.so/bloom/icons/RiInformationLine';
+import { RiWifiLine } from '@oxy.so/bloom/icons/RiWifiLine';
+import { RiWifiOffLine } from '@oxy.so/bloom/icons/RiWifiOffLine';
 import type { JobSummary, JobView } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { Card } from '@moovo/app-shell/components/ui/card';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
+import { Card } from '@oxy.so/bloom/card';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
   CompanyHeader,
@@ -20,7 +23,7 @@ import { fetchJobs, fetchJob } from '@/lib/api/jobs';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { useCompanyContext } from '@/lib/hooks/use-company-context';
 import { useJobSocket } from '@/lib/hooks/use-job-socket';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { formatMoney, formatTime, isActiveJob, jobTypeKey } from '@/lib/format';
 import { useI18nStore } from '@moovo/app-shell/lib/stores/i18n-store';
@@ -59,13 +62,13 @@ function DispatchRow({ job, detail }: { job: JobSummary; detail?: JobView }) {
 /** The "connected" indicator for the live socket. */
 function LiveIndicator({ connected }: { connected: boolean }) {
   const { t } = useTranslation();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   return (
     <View className="flex-row items-center gap-1.5">
       {connected ? (
-        <Wifi size={14} color={colors.primary} />
+        <RiWifiLine width={14} height={14} fill={colors.primary} />
       ) : (
-        <WifiOff size={14} color={colors.mutedForeground} />
+        <RiWifiOffLine width={14} height={14} fill={colors.textSecondary} />
       )}
       <Text
         className={connected ? 'text-xs font-medium text-primary' : 'text-xs text-muted-foreground'}
@@ -79,7 +82,7 @@ function LiveIndicator({ connected }: { connected: boolean }) {
 function DispatchBody() {
   const { t } = useTranslation();
   const ctx = useCompanyContext();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
 
   const companyId = ctx.selectedCompanyId;
   const canRead = ctx.can('jobs:read');
@@ -155,7 +158,7 @@ function DispatchBody() {
   if (ctx.isLoadingCompanies) {
     return (
       <View className="items-center py-16">
-        <ActivityIndicator />
+        <Loading variant="spinner" />
       </View>
     );
   }
@@ -180,7 +183,7 @@ function DispatchBody() {
               The board therefore shows the operator's own jobs + live socket
               events for jobs they are party to. */}
           <Card className="flex-row items-start gap-3 border-primary/30 bg-primary/5 p-4">
-            <Info size={18} color={colors.primary} />
+            <RiInformationLine width={18} height={18} fill={colors.primary} />
             <View className="min-w-0 flex-1">
               <Text className="text-sm font-semibold text-surface-foreground">
                 {t('dispatch.scopeNoticeTitle')}
@@ -198,21 +201,19 @@ function DispatchBody() {
               <Text className="text-base font-semibold text-surface-foreground">
                 {t('dispatch.activeTitle', { count: activeJobs.length })}
               </Text>
-              {jobsQuery.isFetching ? <ActivityIndicator size="small" /> : null}
+              {jobsQuery.isFetching ? <Loading variant="spinner" size="sm" /> : null}
             </View>
             {jobsQuery.isPending ? (
               <View className="items-center py-10">
-                <ActivityIndicator />
+                <Loading variant="spinner" />
               </View>
             ) : jobsQuery.isError ? (
               <View className="items-center gap-3 py-10">
                 <Text className="text-center text-sm text-muted-foreground">
                   {t('dispatch.loadError')}
                 </Text>
-                <Button variant="outline" onPress={() => jobsQuery.refetch()}>
-                  <Text className="text-sm font-medium text-foreground">
-                    {t('common.tryAgain')}
-                  </Text>
+                <Button appearance="outline" tone="neutral" onPress={() => jobsQuery.refetch()}>
+                  {t('common.tryAgain')}
                 </Button>
               </View>
             ) : activeJobs.length === 0 ? (

@@ -1,15 +1,18 @@
-import { View, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
+import { Loading } from '@oxy.so/bloom/loading';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { Vehicle } from '@moovo/shared-types';
-import { Plus, Check, Trash2 } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { Card, CardContent } from '@moovo/app-shell/components/ui/card';
-import { ScreenHeader } from '@/components/courier/ScreenHeader';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { RiAddLine } from '@oxy.so/bloom/icons/RiAddLine';
+import { RiCheckLine } from '@oxy.so/bloom/icons/RiCheckLine';
+import { RiDeleteBinLine } from '@oxy.so/bloom/icons/RiDeleteBinLine';
+import { Text } from '@oxy.so/bloom/typography';
+import { Button } from '@oxy.so/bloom/button';
+import { Card } from '@oxy.so/bloom/card';
+import { PageHeader } from '@oxy.so/bloom/page-header';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import {
   fetchCourierVehicles,
@@ -34,68 +37,67 @@ function VehicleRow({
   onSetActive: () => void;
   onDelete: () => void;
 }) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const Icon = VEHICLE_ICONS[vehicle.type];
 
   return (
-    <Card className={active ? 'border-primary' : undefined}>
-      <CardContent className="gap-3 pt-5">
-        <View className="flex-row items-center gap-3">
-          <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
-            <Icon size={22} color={colors.primary} />
-          </View>
-          <View className="flex-1">
-            <Text className="text-base font-semibold text-surface-foreground">
-              {vehicle.label ?? VEHICLE_LABELS[vehicle.type]}
-            </Text>
-            <Text className="text-sm capitalize text-muted-foreground">
-              {VEHICLE_LABELS[vehicle.type]}
-              {vehicle.plate ? ` · ${vehicle.plate}` : ''}
-            </Text>
-          </View>
-          {active ? (
-            <View className="flex-row items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1">
-              <Check size={14} color={colors.primary} />
-              <Text className="text-xs font-semibold text-primary">Active</Text>
-            </View>
-          ) : null}
+    <Card className={active ? 'gap-3 border-primary p-4' : 'gap-3 p-4'}>
+      <View className="flex-row items-center gap-3">
+        <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+          <Icon width={22} fill={colors.primary} />
         </View>
-
-        <View className="flex-row flex-wrap items-center gap-2">
-          <Text className="text-xs text-muted-foreground">
-            Up to {vehicle.capacity.maxWeightKg} kg
+        <View className="flex-1">
+          <Text className="text-base font-semibold text-surface-foreground">
+            {vehicle.label ?? VEHICLE_LABELS[vehicle.type]}
           </Text>
-          <Text className="text-xs text-muted-foreground">·</Text>
-          <Text className="text-xs capitalize text-muted-foreground">
-            {vehicle.eligibleJobTypes.join(', ') || 'no job types'}
+          <Text className="text-sm capitalize text-muted-foreground">
+            {VEHICLE_LABELS[vehicle.type]}
+            {vehicle.plate ? ` · ${vehicle.plate}` : ''}
           </Text>
         </View>
+        {active ? (
+          <View className="flex-row items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1">
+            <RiCheckLine width={14} height={14} fill={colors.primary} />
+            <Text className="text-xs font-semibold text-primary">Active</Text>
+          </View>
+        ) : null}
+      </View>
 
-        <View className="flex-row items-center justify-between gap-3 pt-1">
-          {active ? (
-            <View className="flex-1" />
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onPress={onSetActive}
-              disabled={busy}
-              className="flex-1"
-            >
-              <Text className="text-sm font-medium text-foreground">Set active</Text>
-            </Button>
-          )}
-          <Pressable
-            onPress={onDelete}
+      <View className="flex-row flex-wrap items-center gap-2">
+        <Text className="text-xs text-muted-foreground">
+          Up to {vehicle.capacity.maxWeightKg} kg
+        </Text>
+        <Text className="text-xs text-muted-foreground">·</Text>
+        <Text className="text-xs capitalize text-muted-foreground">
+          {vehicle.eligibleJobTypes.join(', ') || 'no job types'}
+        </Text>
+      </View>
+
+      <View className="flex-row items-center justify-between gap-3 pt-1">
+        {active ? (
+          <View className="flex-1" />
+        ) : (
+          <Button
+            appearance="outline"
+            tone="neutral"
+            size="sm"
+            className="flex-1"
+            onPress={onSetActive}
             disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel={`Delete ${vehicle.label ?? VEHICLE_LABELS[vehicle.type]}`}
-            className="h-9 w-9 items-center justify-center rounded-lg active:bg-accent web:hover:bg-accent"
           >
-            <Trash2 size={18} color={colors.mutedForeground} />
-          </Pressable>
-        </View>
-      </CardContent>
+            Set active
+          </Button>
+        )}
+        <Pressable
+          onPress={onDelete}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel={`Delete ${vehicle.label ?? VEHICLE_LABELS[vehicle.type]}`}
+          className="h-9 w-9 items-center justify-center rounded-lg active:bg-accent web:hover:bg-accent"
+        >
+          <RiDeleteBinLine width={18} height={18} fill={colors.textSecondary} />
+        </Pressable>
+      </View>
     </Card>
   );
 }
@@ -104,7 +106,6 @@ function VehiclesBody() {
   const { isAuthenticated, isAuthResolved, canUsePrivateApi, openAccountDialog } = useOxy();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { colors } = useColorScheme();
 
   const vehiclesQuery = useQuery({
     queryKey: queryKeys.courier.vehicles,
@@ -135,7 +136,7 @@ function VehiclesBody() {
   if (!isAuthResolved) {
     return (
       <View className="items-center py-24">
-        <ActivityIndicator color={colors.mutedForeground} />
+        <Loading variant="spinner" size="sm" />
       </View>
     );
   }
@@ -145,9 +146,7 @@ function VehiclesBody() {
         <Text className="text-center text-base text-muted-foreground">
           Sign in to manage your vehicles.
         </Text>
-        <Button onPress={() => openAccountDialog()}>
-          <Text className="font-semibold text-primary-foreground">Sign in</Text>
-        </Button>
+        <Button onPress={() => openAccountDialog()}>Sign in</Button>
       </View>
     );
   }
@@ -158,16 +157,13 @@ function VehiclesBody() {
 
   return (
     <View className="gap-4 p-4">
-      <Button onPress={() => router.push('/vehicles/new')} size="lg">
-        <View className="flex-row items-center gap-2">
-          <Plus size={18} color={colors.primaryForeground} />
-          <Text className="text-base font-semibold text-primary-foreground">Add vehicle</Text>
-        </View>
+      <Button size="lg" onPress={() => router.push('/vehicles/new')} leadingIcon={RiAddLine}>
+        Add vehicle
       </Button>
 
       {vehiclesQuery.isLoading || courierQuery.isLoading ? (
         <View className="items-center py-10">
-          <ActivityIndicator color={colors.mutedForeground} />
+          <Loading variant="spinner" size="sm" />
         </View>
       ) : vehiclesQuery.isError ? (
         <Text className="py-10 text-center text-sm text-muted-foreground">
@@ -196,12 +192,18 @@ function VehiclesBody() {
 }
 
 export default function VehiclesScreen() {
+  const router = useRouter();
   return (
     <View className="flex-1 bg-background">
       <Head>
         <title>Vehicles · Moovo Go</title>
       </Head>
-      <ScreenHeader title="Vehicles" subtitle="Manage what you drive" />
+      <PageHeader
+        presentation="bar"
+        title="Vehicles"
+        subtitle="Manage what you drive"
+        onBack={() => router.back()}
+      />
       <ScrollView className="flex-1" contentContainerClassName="pb-24 mx-auto w-full max-w-2xl">
         <VehiclesBody />
       </ScrollView>

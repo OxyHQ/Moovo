@@ -1,8 +1,10 @@
-import { Link, Stack } from 'expo-router';
-import { View, Text } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { View } from 'react-native';
 import Head from 'expo-router/head';
+import { EmptyState } from '@oxy.so/bloom/empty-state';
 
 export default function NotFoundScreen() {
+  const router = useRouter();
   return (
     <>
       <Head>
@@ -14,12 +16,11 @@ export default function NotFoundScreen() {
         <meta name="robots" content="noindex, nofollow" />
       </Head>
       <Stack.Screen options={{ title: 'Oops!' }} />
-      <View className="flex-1 items-center justify-center p-5 bg-background">
-        <Text className="text-xl font-bold text-foreground">This screen doesn't exist.</Text>
-
-        <Link href="/" className="mt-4 py-4">
-          <Text className="text-sm text-primary">Go to home screen!</Text>
-        </Link>
+      <View className="flex-1 items-center justify-center bg-background p-5">
+        <EmptyState
+          title="This screen doesn't exist."
+          action={{ label: 'Go to home screen', onPress: () => router.replace('/') }}
+        />
       </View>
     </>
   );

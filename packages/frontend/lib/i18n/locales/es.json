@@ -5,7 +5,6 @@
     "error": "Error",
     "success": "Éxito",
     "cancel": "Cancelar",
-    "confirm": "Confirmar",
     "save": "Guardar",
     "saving": "Guardando...",
     "delete": "Eliminar",
@@ -19,8 +18,7 @@
     "noResults": "No se encontraron resultados",
     "user": "Usuario",
     "done": "Listo",
-    "tryAgain": "Reintentar",
-    "processing": "Procesando..."
+    "tryAgain": "Reintentar"
   },
   "home": {
     "title": "Moovo",
@@ -64,7 +62,6 @@
     "privacyPolicy": "Política de privacidad"
   },
   "errors": {
-    "emailRequired": "Introduce tu correo electrónico",
     "passwordRequired": "Introduce tu contraseña",
     "passwordsDoNotMatch": "Las contraseñas no coinciden",
     "passwordTooShort": "La contraseña debe tener al menos 8 caracteres",
@@ -110,30 +107,6 @@
     "termsOfService": "Términos de servicio",
     "privacyPolicy": "Política de privacidad"
   },
-  "forgotPassword": {
-    "title": "Restablecer contraseña",
-    "subtitle": "Introduce tu correo para restablecer tu contraseña",
-    "emailPlaceholder": "Correo electrónico",
-    "sending": "Enviando...",
-    "checkEmail": "Revisa tu correo",
-    "sentInstructions": "Enviamos instrucciones para restablecer la contraseña a",
-    "returnToSignIn": "Volver a iniciar sesión",
-    "tryAnotherEmail": "Probar otro correo",
-    "checkEmailToast": "Revisa tu correo para ver las instrucciones para restablecer tu contraseña.",
-    "failedToSend": "No se pudo enviar el correo. Inténtalo de nuevo."
-  },
-  "resetPassword": {
-    "title": "Crear nueva contraseña",
-    "subtitle": "Introduce tu nueva contraseña",
-    "newPasswordPlaceholder": "Nueva contraseña (mín. 8 caracteres)",
-    "confirmPasswordPlaceholder": "Confirmar nueva contraseña",
-    "resetButton": "Restablecer contraseña",
-    "resetting": "Restableciendo contraseña...",
-    "invalidToken": "Token de restablecimiento inválido o ausente",
-    "enterNewPassword": "Introduce una nueva contraseña",
-    "successMessage": "Tu contraseña se restableció correctamente. Inicia sesión con tu nueva contraseña.",
-    "failedToReset": "No se pudo restablecer la contraseña. Inténtalo de nuevo."
-  },
   "feedback": {
     "title": "Enviar comentarios",
     "subtitle": "Ayúdanos a mejorar Moovo",
@@ -157,7 +130,6 @@
     "featurePlaceholder": "Describe la función que te gustaría ver. ¿Cómo te ayudaría?",
     "improvementPlaceholder": "¿Qué te gustaría que mejoráramos? ¿Cómo podríamos hacerlo mejor?",
     "otherPlaceholder": "Comparte tus ideas con nosotros...",
-    "characterCount": "{{count}}/1000 caracteres",
     "submitButton": "Enviar comentario",
     "submitting": "Enviando...",
     "footerText": "Tus comentarios nos ayudan a mejorar Moovo. Gracias por tomarte el tiempo de compartirlos.",
@@ -168,11 +140,7 @@
     "submitFailed": "No se pudo enviar el comentario"
   },
   "notifications": {
-    "title": "Notificaciones",
-    "subtitle": "Administra tus preferencias de notificación",
-    "pushNotifications": "Notificaciones push",
-    "pushDescription": "Recibe alertas sobre nuevos mensajes y actualizaciones",
-    "permissionDenied": "Las notificaciones están bloqueadas. Actívalas en los ajustes de tu dispositivo para recibir notificaciones push."
+    "title": "Notificaciones"
   },
   "welcome": {
     "appName": "Moovo"
@@ -184,6 +152,16 @@
       "send": "¿Cómo envío un paquete?",
       "track": "¿Dónde está mi entrega?",
       "price": "¿Cuánto costará hacer mi mudanza?"
+    }
+  },
+  "account": {
+    "menuLabel": "Cuenta",
+    "signIn": "Iniciar sesión",
+    "notifications": "Notificaciones"
+  },
+  "members": {
+    "role": {
+      "label": "Rol"
     }
   }
 }

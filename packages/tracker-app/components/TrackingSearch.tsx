@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { cn } from '@moovo/app-shell/lib/utils';
+import { Button } from '@oxy.so/bloom/button';
+import { TextFieldInput } from '@oxy.so/bloom/text-field';
+import { Text } from '@oxy.so/bloom/typography';
 
 /**
  * The paste box — the top of the funnel.
@@ -25,43 +27,32 @@ export function TrackingSearch({ autoFocus = false }: { autoFocus?: boolean }) {
   };
 
   return (
-    <View className="w-full">
-      <View className="flex-row items-center gap-2 rounded-2xl border border-border bg-card p-2">
-        <TextInput
-          value={value}
-          onChangeText={setValue}
-          onSubmitEditing={submit}
-          autoFocus={autoFocus}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          returnKeyType="search"
-          placeholder="Pega aquí tu número de seguimiento"
-          accessibilityLabel="Número de seguimiento"
-          className="h-12 flex-1 px-3 text-base text-foreground"
-          placeholderTextColor="rgb(148 163 184)"
-        />
-        <Pressable
-          onPress={submit}
+    <View className="w-full gap-2">
+      <View className="flex-row items-end gap-2">
+        <View className="flex-1">
+          <TextFieldInput
+            label="Número de seguimiento"
+            placeholder="Pega aquí tu número de seguimiento"
+            value={value}
+            onValueChange={setValue}
+            onSubmitEditing={submit}
+            autoFocus={autoFocus}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+        </View>
+        <Button
+          size="lg"
           disabled={!canSubmit}
-          accessibilityRole="button"
+          onPress={submit}
           accessibilityLabel="Rastrear paquete"
-          className={cn(
-            'h-12 items-center justify-center rounded-xl px-5',
-            canSubmit ? 'bg-primary' : 'bg-muted',
-          )}
         >
-          <Text
-            className={cn(
-              'text-sm font-semibold',
-              canSubmit ? 'text-primary-foreground' : 'text-muted-foreground',
-            )}
-          >
-            Rastrear
-          </Text>
-        </Pressable>
+          Rastrear
+        </Button>
       </View>
 
-      <Text className="mt-2 px-1 text-xs text-muted-foreground">
+      <Text variant="caption-1-regular" className="px-1 text-muted-foreground">
         Correos, SEUR, DHL, GLS, UPS, FedEx, Amazon y más. No hace falta cuenta.
       </Text>
     </View>

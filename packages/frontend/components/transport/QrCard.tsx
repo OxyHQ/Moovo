@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { Text } from '@oxy.so/bloom/typography';
+import { useTheme } from '@oxy.so/bloom/theme';
 
 /**
  * A labelled QR card the SENDER shows the courier to prove a leg.
@@ -20,7 +20,7 @@ export function QrCard({
   code: string;
   size?: number;
 }) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   return (
     <View className="items-center gap-3 rounded-2xl border border-border bg-card p-5">
       <Text className="text-sm font-semibold text-foreground">{title}</Text>

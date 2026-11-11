@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '@oxy.so/bloom/typography';
 import type { TrackingCheckpoint } from '@moovo/shared-types';
 import { STATUS_LABELS, formatCheckpointTime } from '@/lib/status';
 

@@ -1,11 +1,13 @@
-import { View, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Pressable, ScrollView } from 'react-native';
+import { Loading } from '@oxy.so/bloom/loading';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Check } from 'lucide-react-native';
+import { RiAddLine } from '@oxy.so/bloom/icons/RiAddLine';
+import { RiCheckLine } from '@oxy.so/bloom/icons/RiCheckLine';
 import type { Vehicle } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Card, CardContent } from '@moovo/app-shell/components/ui/card';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { Text } from '@oxy.so/bloom/typography';
+import { Card } from '@oxy.so/bloom/card';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { fetchCourierVehicles, fetchCourierMe, setActiveVehicle } from '@/lib/api/courier';
 import { VEHICLE_LABELS, VEHICLE_ICONS } from '@/components/courier/vehicle-meta';
@@ -33,7 +35,7 @@ interface VehicleChipProps {
 }
 
 function VehicleChip({ vehicle, active, disabled, onPress }: VehicleChipProps) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const Icon = VEHICLE_ICONS[vehicle.type];
   return (
     <Pressable
@@ -46,11 +48,11 @@ function VehicleChip({ vehicle, active, disabled, onPress }: VehicleChipProps) {
         active ? 'border-primary bg-primary/10' : 'border-border bg-background'
       } ${disabled ? 'opacity-50' : ''}`}
     >
-      <Icon size={18} color={active ? colors.primary : colors.mutedForeground} />
+      <Icon width={18} fill={active ? colors.primary : colors.textSecondary} />
       <Text className={`text-sm font-medium ${active ? 'text-primary' : 'text-foreground'}`}>
         {vehicle.label ?? VEHICLE_LABELS[vehicle.type]}
       </Text>
-      {active ? <Check size={16} color={colors.primary} /> : null}
+      {active ? <RiCheckLine width={16} fill={colors.primary} /> : null}
     </Pressable>
   );
 }
@@ -58,7 +60,7 @@ function VehicleChip({ vehicle, active, disabled, onPress }: VehicleChipProps) {
 export function VehicleSelector({ canUsePrivateApi }: VehicleSelectorProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
 
   const vehiclesQuery = useQuery({
     queryKey: queryKeys.courier.vehicles,
@@ -83,62 +85,60 @@ export function VehicleSelector({ canUsePrivateApi }: VehicleSelectorProps) {
   });
 
   return (
-    <Card>
-      <CardContent className="gap-3 pt-5">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-base font-semibold text-surface-foreground">Active vehicle</Text>
-          <Pressable
-            onPress={() => router.push('/vehicles')}
-            accessibilityRole="button"
-            accessibilityLabel="Manage vehicles"
-            className="flex-row items-center gap-1 rounded-full px-2 py-1 active:bg-accent web:hover:bg-accent"
-          >
-            <Text className="text-sm font-medium text-primary">Manage</Text>
-          </Pressable>
-        </View>
+    <Card className="gap-3 p-4">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-base font-semibold text-surface-foreground">Active vehicle</Text>
+        <Pressable
+          onPress={() => router.push('/vehicles')}
+          accessibilityRole="button"
+          accessibilityLabel="Manage vehicles"
+          className="flex-row items-center gap-1 rounded-full px-2 py-1 active:bg-accent web:hover:bg-accent"
+        >
+          <Text className="text-sm font-medium text-primary">Manage</Text>
+        </Pressable>
+      </View>
 
-        {!canUsePrivateApi || vehiclesQuery.isLoading || courierQuery.isLoading ? (
-          <View className="py-4">
-            <ActivityIndicator color={colors.mutedForeground} />
-          </View>
-        ) : vehicles.length === 0 ? (
+      {!canUsePrivateApi || vehiclesQuery.isLoading || courierQuery.isLoading ? (
+        <View className="py-4">
+          <Loading variant="spinner" size="sm" />
+        </View>
+      ) : vehicles.length === 0 ? (
+        <Pressable
+          onPress={() => router.push('/vehicles/new')}
+          accessibilityRole="button"
+          className="flex-row items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 active:bg-accent web:hover:bg-accent"
+        >
+          <RiAddLine width={18} height={18} fill={colors.primary} />
+          <Text className="text-sm font-medium text-foreground">
+            Add your first vehicle to start
+          </Text>
+        </Pressable>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerClassName="gap-2 pr-2"
+        >
+          {vehicles.map((vehicle) => (
+            <VehicleChip
+              key={vehicle.id}
+              vehicle={vehicle}
+              active={vehicle.id === activeVehicleId}
+              disabled={setActiveMutation.isPending}
+              onPress={() => setActiveMutation.mutate(vehicle.id)}
+            />
+          ))}
           <Pressable
             onPress={() => router.push('/vehicles/new')}
             accessibilityRole="button"
-            className="flex-row items-center gap-2 rounded-xl border border-dashed border-border px-4 py-3 active:bg-accent web:hover:bg-accent"
+            accessibilityLabel="Add vehicle"
+            className="flex-row items-center gap-2 rounded-full border border-dashed border-border px-4 py-2.5 active:bg-accent web:hover:bg-accent"
           >
-            <Plus size={18} color={colors.primary} />
-            <Text className="text-sm font-medium text-foreground">
-              Add your first vehicle to start
-            </Text>
+            <RiAddLine width={18} height={18} fill={colors.textSecondary} />
+            <Text className="text-sm font-medium text-foreground">Add</Text>
           </Pressable>
-        ) : (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerClassName="gap-2 pr-2"
-          >
-            {vehicles.map((vehicle) => (
-              <VehicleChip
-                key={vehicle.id}
-                vehicle={vehicle}
-                active={vehicle.id === activeVehicleId}
-                disabled={setActiveMutation.isPending}
-                onPress={() => setActiveMutation.mutate(vehicle.id)}
-              />
-            ))}
-            <Pressable
-              onPress={() => router.push('/vehicles/new')}
-              accessibilityRole="button"
-              accessibilityLabel="Add vehicle"
-              className="flex-row items-center gap-2 rounded-full border border-dashed border-border px-4 py-2.5 active:bg-accent web:hover:bg-accent"
-            >
-              <Plus size={18} color={colors.mutedForeground} />
-              <Text className="text-sm font-medium text-foreground">Add</Text>
-            </Pressable>
-          </ScrollView>
-        )}
-      </CardContent>
+        </ScrollView>
+      )}
     </Card>
   );
 }

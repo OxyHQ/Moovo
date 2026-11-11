@@ -1,4 +1,7 @@
-import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -123,9 +126,9 @@ export default function TrackScreen() {
       >
         <View className="mx-auto w-full max-w-2xl">
           <Link href="/" asChild>
-            <Pressable accessibilityRole="button" className="self-start py-2">
-              <Text className="text-sm font-semibold text-primary">← Rastrear otro paquete</Text>
-            </Pressable>
+            <Button appearance="plain" className="self-start">
+              ← Rastrear otro paquete
+            </Button>
           </Link>
 
           <Text className="mt-4 text-xs font-semibold uppercase text-muted-foreground">
@@ -147,7 +150,7 @@ export default function TrackScreen() {
             />
           ) : isPending ? (
             <View className="mt-16 items-center">
-              <ActivityIndicator />
+              <Loading variant="spinner" />
               <Text className="mt-3 text-sm text-muted-foreground">Identificando el envío…</Text>
             </View>
           ) : error ? (
@@ -158,15 +161,7 @@ export default function TrackScreen() {
               <Text className="mt-1 text-sm text-muted-foreground">
                 {apiErrorMessage(error, 'Revisa el número e inténtalo de nuevo en unos minutos.')}
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.replace({ pathname: '/track/[number]', params: { number } })}
-                className="mt-4 h-11 items-center justify-center rounded-xl bg-primary px-5"
-              >
-                <Text className="text-sm font-semibold text-primary-foreground">
-                  Elegir transportista
-                </Text>
-              </Pressable>
+              <Button className="mt-4">Elegir transportista</Button>
             </View>
           ) : parcel ? (
             <>
@@ -207,36 +202,19 @@ export default function TrackScreen() {
                 </View>
               )}
 
-              <Pressable
-                accessibilityRole="link"
+              <Button
+                className="mt-4"
+                appearance={parcel.carrier.pollSupported ? 'outline' : 'solid'}
+                tone={parcel.carrier.pollSupported ? 'neutral' : 'accent'}
                 accessibilityLabel={`Abrir el seguimiento en la web de ${parcel.carrier.name}`}
                 onPress={() => Linking.openURL(parcel.trackingUrl)}
-                className={
-                  parcel.carrier.pollSupported
-                    ? 'mt-4 h-11 items-center justify-center rounded-xl border border-border px-5'
-                    : 'mt-4 h-12 items-center justify-center rounded-xl bg-primary px-5'
-                }
               >
-                <Text
-                  className={
-                    parcel.carrier.pollSupported
-                      ? 'text-sm font-semibold text-foreground'
-                      : 'text-sm font-semibold text-primary-foreground'
-                  }
-                >
-                  Ver el seguimiento en {parcel.carrier.name}
-                </Text>
-              </Pressable>
+                Ver el seguimiento en {parcel.carrier.name}
+              </Button>
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.replace({ pathname: '/track/[number]', params: { number } })}
-                className="mt-2 h-11 items-center justify-center rounded-xl px-5"
-              >
-                <Text className="text-sm text-muted-foreground">
-                  ¿No es {parcel.carrier.name}? Elegir otro transportista
-                </Text>
-              </Pressable>
+              <Button appearance="plain" className="mt-2">
+                ¿No es {parcel.carrier.name}? Elegir otro transportista
+              </Button>
 
               <View className="mt-8 rounded-2xl border border-border bg-card p-5">
                 <Text className="text-base font-semibold text-foreground">
@@ -249,20 +227,17 @@ export default function TrackScreen() {
                       ? 'Lo guardamos en tu lista y te avisamos en cada cambio de estado.'
                       : 'Lo guardamos en tu lista, a un toque de la web del transportista. Los avisos llegarán cuando Moovo reciba el estado de este transportista.'}
                 </Text>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={save.isPending}
+                <Button
+                  className="mt-4"
                   onPress={() => (isAuthenticated ? save.mutate() : openAccountDialog())}
-                  className="mt-4 h-11 items-center justify-center rounded-xl bg-primary px-5"
+                  disabled={save.isPending}
                 >
-                  <Text className="text-sm font-semibold text-primary-foreground">
-                    {save.isPending
-                      ? 'Guardando…'
-                      : isAuthenticated
-                        ? 'Guardar en mis paquetes'
-                        : 'Iniciar sesión para guardarlo'}
-                  </Text>
-                </Pressable>
+                  {save.isPending
+                    ? 'Guardando…'
+                    : isAuthenticated
+                      ? 'Guardar en mis paquetes'
+                      : 'Iniciar sesión para guardarlo'}
+                </Button>
               </View>
             </>
           ) : null}

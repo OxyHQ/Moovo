@@ -1,15 +1,18 @@
 import { useMemo } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator, Platform } from 'react-native';
+import { View, ScrollView, Pressable, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
 import { useOxy } from '@oxy.so/services/ui/client';
-import { ChevronRight, PackagePlus } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
+import { RiArrowRightSLine } from '@oxy.so/bloom/icons/RiArrowRightSLine';
+import { RiBox3Line } from '@oxy.so/bloom/icons/RiBox3Line';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
 import { Footer } from '@/components/shell/Footer';
 import { StatusBadge } from '@/components/transport/StatusBadge';
 import { MoneyText } from '@/components/transport/MoneyText';
 import { RouteSummary } from '@/components/transport/RouteSummary';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { useMyShipments } from '@/lib/hooks/use-shipments';
 import { useMyJobs } from '@/lib/hooks/use-jobs';
 import { SHIPMENT_TYPES } from '@/lib/shipment-type';
@@ -42,7 +45,7 @@ function toEpoch(iso: string | undefined): number {
 /** A still-open shipment row (pre-booking: quoting / quoted / cancelled …). */
 function ShipmentRow({ shipment }: { shipment: Shipment }) {
   const router = useRouter();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const meta = SHIPMENT_TYPES[shipment.type];
   const Icon = meta.icon;
   return (
@@ -53,7 +56,7 @@ function ShipmentRow({ shipment }: { shipment: Shipment }) {
       className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4 active:opacity-80"
     >
       <View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-        <Icon size={18} color={colors.mutedForeground} />
+        <Icon width={18} fill={colors.textSecondary} />
       </View>
       <View className="flex-1 gap-1">
         <View className="flex-row items-center justify-between">
@@ -62,7 +65,7 @@ function ShipmentRow({ shipment }: { shipment: Shipment }) {
         </View>
         <RouteSummary from={shipment.pickup.address.city} to={shipment.dropoff.address.city} />
       </View>
-      <ChevronRight size={18} color={colors.mutedForeground} />
+      <RiArrowRightSLine width={18} height={18} fill={colors.textSecondary} />
     </Pressable>
   );
 }
@@ -70,7 +73,7 @@ function ShipmentRow({ shipment }: { shipment: Shipment }) {
 /** A booked job row (requested → delivered). */
 function JobRow({ job }: { job: JobSummary }) {
   const router = useRouter();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const meta = SHIPMENT_TYPES[job.type];
   const Icon = meta.icon;
   return (
@@ -81,7 +84,7 @@ function JobRow({ job }: { job: JobSummary }) {
       className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4 active:opacity-80"
     >
       <View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-        <Icon size={18} color={colors.mutedForeground} />
+        <Icon width={18} fill={colors.textSecondary} />
       </View>
       <View className="flex-1 gap-1">
         <View className="flex-row items-center justify-between">
@@ -93,7 +96,7 @@ function JobRow({ job }: { job: JobSummary }) {
           <MoneyText money={job.totals.total} size="sm" />
         </View>
       </View>
-      <ChevronRight size={18} color={colors.mutedForeground} />
+      <RiArrowRightSLine width={18} height={18} fill={colors.textSecondary} />
     </Pressable>
   );
 }
@@ -101,23 +104,19 @@ function JobRow({ job }: { job: JobSummary }) {
 /** Empty state — no orders yet, with a CTA into the create flow. */
 function EmptyOrders() {
   const router = useRouter();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   return (
     <View className="items-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-12">
       <View className="mb-3 h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-        <PackagePlus size={24} color={colors.primary} />
+        <RiBox3Line width={24} fill={colors.primary} />
       </View>
       <Text className="text-sm font-medium text-foreground">No orders yet</Text>
       <Text className="mt-1 text-center text-xs text-muted-foreground">
         Shipments you create and deliveries you book will show up here.
       </Text>
-      <Pressable
-        onPress={() => router.push('/send')}
-        accessibilityRole="button"
-        className="mt-4 rounded-full bg-primary px-5 py-2.5 active:opacity-90"
-      >
-        <Text className="text-sm font-semibold text-primary-foreground">Send something</Text>
-      </Pressable>
+      <Button className="mt-4" onPress={() => router.push('/send')}>
+        Send something
+      </Button>
     </View>
   );
 }
@@ -131,13 +130,9 @@ function SignedOutPrompt() {
       <Text className="mt-1 text-center text-xs text-muted-foreground">
         Your shipments and booked deliveries live in your account.
       </Text>
-      <Pressable
-        onPress={() => openAccountDialog()}
-        accessibilityRole="button"
-        className="mt-4 rounded-full bg-primary px-5 py-2.5 active:opacity-90"
-      >
-        <Text className="text-sm font-semibold text-primary-foreground">Sign in</Text>
-      </Pressable>
+      <Button className="mt-4" onPress={() => openAccountDialog()}>
+        Sign in
+      </Button>
     </View>
   );
 }
@@ -170,7 +165,7 @@ function OrdersList() {
   if (loading) {
     return (
       <View className="items-center py-12">
-        <ActivityIndicator size="small" />
+        <Loading variant="spinner" size="sm" />
       </View>
     );
   }
@@ -211,7 +206,7 @@ function OrdersBody() {
 }
 
 export default function OrdersScreen() {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const isWeb = Platform.OS === 'web';
 
   const head = (

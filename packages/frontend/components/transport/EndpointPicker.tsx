@@ -1,10 +1,10 @@
-import { View, Pressable, ActivityIndicator } from 'react-native';
-import { Crosshair } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Input } from '@moovo/app-shell/components/ui/input';
+import { View } from 'react-native';
+import { RiFocus3Line } from '@oxy.so/bloom/icons/RiFocus3Line';
+import { Text } from '@oxy.so/bloom/typography';
+import { Button } from '@oxy.so/bloom/button';
+import { TextFieldInput } from '@oxy.so/bloom/text-field';
 import MoovoMap from '@/components/Map';
 import type { MapMarker, MapMarkerKind } from '@/components/map-types';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 import { useCurrentLocation, reverseGeocode, type Coordinates } from '@/lib/hooks/use-location';
 import type { DraftEndpoint } from '@/lib/stores/shipment-draft-store';
 
@@ -27,7 +27,6 @@ export function EndpointPicker({
   value: DraftEndpoint;
   onChange: (patch: Partial<DraftEndpoint>) => void;
 }) {
-  const { colors } = useColorScheme();
   const { loading, error, getCurrentPosition } = useCurrentLocation();
 
   // Resolve a coordinate → patch coordinate + reverse-geocoded address snapshot.
@@ -64,20 +63,16 @@ export function EndpointPicker({
         />
       </View>
 
-      <Pressable
+      <Button
+        appearance="outline"
+        tone="neutral"
+        leadingIcon={RiFocus3Line}
+        loading={loading}
         onPress={handleUseMyLocation}
-        accessibilityRole="button"
-        disabled={loading}
-        className="flex-row items-center justify-center gap-2 rounded-xl border border-border bg-card py-2.5 active:opacity-80"
       >
-        {loading ? (
-          <ActivityIndicator size="small" color={colors.primary} />
-        ) : (
-          <Crosshair size={16} color={colors.primary} />
-        )}
-        <Text className="text-sm font-medium text-primary">Use my current location</Text>
-      </Pressable>
-      {error ? <Text className="text-xs text-red-600">{error}</Text> : null}
+        Use my current location
+      </Button>
+      {error ? <Text className="text-xs text-destructive">{error}</Text> : null}
       {!value.coordinate ? (
         <Text className="text-xs text-muted-foreground">
           Tap the map to set the {kind} point, or use your current location.
@@ -89,49 +84,55 @@ export function EndpointPicker({
         <Text className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Address
         </Text>
-        <Input
+        <TextFieldInput
+          label="Street address"
           value={value.address.line1 ?? ''}
-          onChangeText={(line1) => onChange({ address: { ...value.address, line1 } })}
-          placeholder="Street address"
+          onValueChange={(line1) => onChange({ address: { ...value.address, line1 } })}
         />
-        <Input
+        <TextFieldInput
+          label="Apt, suite (optional)"
           value={value.address.line2 ?? ''}
-          onChangeText={(line2) => onChange({ address: { ...value.address, line2 } })}
-          placeholder="Apt, suite (optional)"
+          onValueChange={(line2) => onChange({ address: { ...value.address, line2 } })}
         />
         <View className="flex-row gap-2">
-          <Input
-            value={value.address.city ?? ''}
-            onChangeText={(city) => onChange({ address: { ...value.address, city } })}
-            placeholder="City"
-            className="flex-1"
-          />
-          <Input
-            value={value.address.postalCode ?? ''}
-            onChangeText={(postalCode) => onChange({ address: { ...value.address, postalCode } })}
-            placeholder="Postal code"
-            className="flex-1"
-          />
+          <View className="flex-1">
+            <TextFieldInput
+              label="City"
+              value={value.address.city ?? ''}
+              onValueChange={(city) => onChange({ address: { ...value.address, city } })}
+            />
+          </View>
+          <View className="flex-1">
+            <TextFieldInput
+              label="Postal code"
+              value={value.address.postalCode ?? ''}
+              onValueChange={(postalCode) =>
+                onChange({ address: { ...value.address, postalCode } })
+              }
+            />
+          </View>
         </View>
         <View className="flex-row gap-2">
-          <Input
-            value={value.address.region ?? ''}
-            onChangeText={(region) => onChange({ address: { ...value.address, region } })}
-            placeholder="Region (optional)"
-            className="flex-1"
-          />
-          <Input
-            value={value.address.country ?? ''}
-            onChangeText={(country) =>
-              onChange({
-                address: { ...value.address, country: country.toUpperCase().slice(0, 2) },
-              })
-            }
-            placeholder="Country (ISO, e.g. ES)"
-            autoCapitalize="characters"
-            maxLength={2}
-            className="flex-1"
-          />
+          <View className="flex-1">
+            <TextFieldInput
+              label="Region (optional)"
+              value={value.address.region ?? ''}
+              onValueChange={(region) => onChange({ address: { ...value.address, region } })}
+            />
+          </View>
+          <View className="flex-1">
+            <TextFieldInput
+              label="Country (ISO, e.g. ES)"
+              value={value.address.country ?? ''}
+              onValueChange={(country) =>
+                onChange({
+                  address: { ...value.address, country: country.toUpperCase().slice(0, 2) },
+                })
+              }
+              autoCapitalize="characters"
+              maxLength={2}
+            />
+          </View>
         </View>
       </View>
 
@@ -140,21 +141,21 @@ export function EndpointPicker({
         <Text className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Contact at this point
         </Text>
-        <Input
+        <TextFieldInput
+          label="Contact name"
           value={value.contactName}
-          onChangeText={(contactName) => onChange({ contactName })}
-          placeholder="Contact name"
+          onValueChange={(contactName) => onChange({ contactName })}
         />
-        <Input
+        <TextFieldInput
+          label="Contact phone"
           value={value.contactPhone}
-          onChangeText={(contactPhone) => onChange({ contactPhone })}
-          placeholder="Contact phone"
+          onValueChange={(contactPhone) => onChange({ contactPhone })}
           keyboardType="phone-pad"
         />
-        <Input
+        <TextFieldInput
+          label="Notes for the courier (optional)"
           value={value.notes}
-          onChangeText={(notes) => onChange({ notes })}
-          placeholder="Notes for the courier (optional)"
+          onValueChange={(notes) => onChange({ notes })}
           multiline
         />
       </View>

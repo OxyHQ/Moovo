@@ -1,11 +1,17 @@
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { Link } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Truck, CheckCircle2, Star, Package, Users } from 'lucide-react-native';
+import { RiBox3Line } from '@oxy.so/bloom/icons/RiBox3Line';
+import { RiCheckboxCircleLine } from '@oxy.so/bloom/icons/RiCheckboxCircleLine';
+import { RiGroupLine } from '@oxy.so/bloom/icons/RiGroupLine';
+import { RiStarLine } from '@oxy.so/bloom/icons/RiStarLine';
+import { RiTruckLine } from '@oxy.so/bloom/icons/RiTruckLine';
 import type { JobSummary } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { Card } from '@moovo/app-shell/components/ui/card';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
+import { Card } from '@oxy.so/bloom/card';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -57,6 +63,7 @@ function RecentJobRow({ job }: { job: JobSummary }) {
 
 function HomeBody() {
   const { t } = useTranslation();
+  const { colors } = useTheme();
   const ctx = useCompanyContext();
 
   // Live job stream once a company is selected (drives KPIs/recent refresh).
@@ -80,7 +87,7 @@ function HomeBody() {
   if (ctx.isLoadingCompanies) {
     return (
       <View className="items-center py-16">
-        <ActivityIndicator />
+        <Loading variant="spinner" />
       </View>
     );
   }
@@ -91,8 +98,8 @@ function HomeBody() {
         <Text className="text-center text-base text-muted-foreground">
           {t('companies.loadError')}
         </Text>
-        <Button variant="outline" onPress={ctx.refetchCompanies}>
-          <Text className="text-sm font-medium text-foreground">{t('common.tryAgain')}</Text>
+        <Button appearance="outline" tone="neutral" onPress={ctx.refetchCompanies}>
+          {t('common.tryAgain')}
         </Button>
       </View>
     );
@@ -117,10 +124,8 @@ function HomeBody() {
           {company?.name ?? t('home.title')}
         </Text>
         <Link href="/companies/new" asChild>
-          <Button variant="outline" size="sm">
-            <Text className="text-sm font-medium text-foreground">
-              {t('companies.createCompany')}
-            </Text>
+          <Button appearance="outline" tone="neutral" size="sm">
+            {t('companies.createCompany')}
           </Button>
         </Link>
       </View>
@@ -137,13 +142,13 @@ function HomeBody() {
           <StatCard
             label={t('home.kpi.activeJobs')}
             value={String(activeJobs)}
-            icon={Package}
+            icon={RiBox3Line}
             loading={jobsQuery.isPending}
           />
           <StatCard
             label={t('home.kpi.activeVehicles')}
             value={String(activeVehicles)}
-            icon={Truck}
+            icon={RiTruckLine}
             loading={vehiclesQuery.isPending}
           />
         </View>
@@ -151,7 +156,7 @@ function HomeBody() {
           <StatCard
             label={t('home.kpi.completedToday')}
             value={String(completedToday)}
-            icon={CheckCircle2}
+            icon={RiCheckboxCircleLine}
             loading={jobsQuery.isPending}
           />
           <StatCard
@@ -160,7 +165,7 @@ function HomeBody() {
             caption={
               company ? t('home.kpi.reviewsCount', { count: company.reviewCount }) : undefined
             }
-            icon={Star}
+            icon={RiStarLine}
             loading={ctx.isLoadingCompany}
           />
         </View>
@@ -169,22 +174,18 @@ function HomeBody() {
       {/* Quick links */}
       <View className="flex-row flex-wrap gap-2">
         <Link href="/dispatch" asChild>
-          <Button variant="secondary" size="sm">
-            <Text className="text-sm font-medium text-secondary-foreground">
-              {t('nav.dispatch')}
-            </Text>
+          <Button appearance="subtle" tone="neutral" size="sm">
+            {t('nav.dispatch')}
           </Button>
         </Link>
         <Link href="/fleet" asChild>
-          <Button variant="secondary" size="sm">
-            <Text className="text-sm font-medium text-secondary-foreground">{t('nav.fleet')}</Text>
+          <Button appearance="subtle" tone="neutral" size="sm">
+            {t('nav.fleet')}
           </Button>
         </Link>
         <Link href="/members" asChild>
-          <Button variant="secondary" size="sm">
-            <Text className="text-sm font-medium text-secondary-foreground">
-              {t('nav.members')}
-            </Text>
+          <Button appearance="subtle" tone="neutral" size="sm">
+            {t('nav.members')}
           </Button>
         </Link>
       </View>
@@ -196,7 +197,7 @@ function HomeBody() {
             {t('home.recentJobs')}
           </Text>
           <View className="flex-row items-center gap-1.5">
-            <Users size={14} className="text-muted-foreground" />
+            <RiGroupLine width={14} height={14} fill={colors.textSecondary} />
             <Text className="text-xs text-muted-foreground">
               {t('companies.membersCount', {
                 count: company?.members.length ?? 0,
@@ -206,7 +207,7 @@ function HomeBody() {
         </View>
         {jobsQuery.isPending ? (
           <View className="items-center py-10">
-            <ActivityIndicator />
+            <Loading variant="spinner" />
           </View>
         ) : jobs.length === 0 ? (
           <Text className="py-8 text-center text-sm text-muted-foreground">

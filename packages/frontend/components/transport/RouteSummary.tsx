@@ -1,7 +1,8 @@
 import { View } from 'react-native';
-import { ArrowRight, MapPin } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { RiArrowRightLine } from '@oxy.so/bloom/icons/RiArrowRightLine';
+import { RiMapPinLine } from '@oxy.so/bloom/icons/RiMapPinLine';
+import { Text } from '@oxy.so/bloom/typography';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { cn } from '@moovo/app-shell/lib/utils';
 
 /**
@@ -19,14 +20,14 @@ export function RouteSummary({
   to: string;
   className?: string;
 }) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   return (
     <View className={cn('flex-row items-center gap-1.5', className)}>
-      <MapPin size={14} color={colors.mutedForeground} />
+      <RiMapPinLine width={14} height={14} fill={colors.textSecondary} />
       <Text className="flex-1 text-sm text-foreground" numberOfLines={1}>
         {from}
       </Text>
-      <ArrowRight size={14} color={colors.mutedForeground} />
+      <RiArrowRightLine width={14} height={14} fill={colors.textSecondary} />
       <Text className="flex-1 text-sm text-foreground" numberOfLines={1}>
         {to}
       </Text>

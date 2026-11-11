@@ -1,5 +1,8 @@
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { Item } from '@oxy.so/bloom/item';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
 import type { CarrierGuess } from '@moovo/shared-types';
 
 import { fetchCarriers } from '@/lib/api/tracking';
@@ -51,41 +54,35 @@ export function CarrierPicker({
       {candidates.length > 0 ? (
         <View className="mt-4 gap-2">
           {candidates.map((candidate) => (
-            <Pressable
+            <Item
               key={candidate.carrierKey}
-              accessibilityRole="button"
+              title={candidate.name}
+              trailing={
+                candidate.checksumPassed ? (
+                  <Text variant="caption-1-semibold" className="text-primary">
+                    Coincide
+                  </Text>
+                ) : null
+              }
               onPress={() => onSelect(candidate.carrierKey)}
-              className="flex-row items-center justify-between rounded-2xl border border-border bg-card p-4 active:opacity-70"
-            >
-              <Text className="text-sm font-semibold text-foreground">{candidate.name}</Text>
-              {candidate.checksumPassed ? (
-                <Text className="text-xs font-semibold text-primary">Coincide</Text>
-              ) : null}
-            </Pressable>
+            />
           ))}
         </View>
       ) : null}
 
       {carriers.isPending ? (
         <View className="mt-6 items-center">
-          <ActivityIndicator />
+          <Loading variant="spinner" />
         </View>
       ) : (
         <View className="mt-6 gap-2">
           {candidates.length > 0 ? (
-            <Text className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
+            <Text variant="caption-1-semibold" className="mb-1 uppercase text-muted-foreground">
               Todos los transportistas
             </Text>
           ) : null}
           {rest.map((carrier) => (
-            <Pressable
-              key={carrier.key}
-              accessibilityRole="button"
-              onPress={() => onSelect(carrier.key)}
-              className="rounded-2xl border border-border bg-card p-4 active:opacity-70"
-            >
-              <Text className="text-sm font-semibold text-foreground">{carrier.name}</Text>
-            </Pressable>
+            <Item key={carrier.key} title={carrier.name} onPress={() => onSelect(carrier.key)} />
           ))}
         </View>
       )}

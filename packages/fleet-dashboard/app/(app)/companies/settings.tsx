@@ -1,13 +1,20 @@
 import { type ReactNode, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Company, UpdateCompanyInput, CurrencyCode } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Textarea } from '@moovo/app-shell/components/ui/textarea';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { ColorPicker } from '@/components/ui/color-picker';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { FormScreen, Field } from '@/components/dashboard/FormScreen';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
+import { ColorSwatchPicker } from '@oxy.so/bloom/color-swatch-picker';
+import { Field } from '@oxy.so/bloom/field';
+import { Textarea } from '@oxy.so/bloom/textarea';
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItemText,
+} from '@oxy.so/bloom/segmented-control';
+import { FormScreen } from '@/components/dashboard/FormScreen';
+import { BRAND_COLORS } from '@/lib/brand-colors';
 import { PermissionDenied } from '@/components/dashboard/CompanyHeader';
 import { toast } from '@oxy.so/bloom/toast';
 import { updateCompany } from '@/lib/api/companies';
@@ -74,64 +81,68 @@ function SettingsForm({ company }: { company: Company }) {
         <Text>{t('companyForm.identityInOxy')}</Text>
       </Field>
 
-      <Field label={t('companyForm.description')}>
-        <Textarea
-          value={description}
-          onChangeText={setDescription}
-          placeholder={t('companyForm.descriptionPlaceholder')}
-          maxLength={5000}
+      <Textarea
+        label={t('companyForm.description')}
+        hint={t('companyForm.descriptionHelper')}
+        value={description}
+        onValueChange={setDescription}
+        placeholder={t('companyForm.descriptionPlaceholder')}
+        maxLength={5000}
+      />
+
+      <Field label={t('companyForm.brandColor')} multiple>
+        <ColorSwatchPicker
+          label={t('companyForm.brandColor')}
+          value={brandColor}
+          onValueChange={setBrandColor}
+          colors={BRAND_COLORS.map(({ hex }) => hex)}
+          names={Object.fromEntries(
+            BRAND_COLORS.map(({ hex, name }) => [hex, t(`companyForm.colors.${name}`)]),
+          )}
         />
       </Field>
 
-      <ColorPicker
-        label={t('companyForm.brandColor')}
-        selected={brandColor}
-        onSelect={setBrandColor}
-      />
-
       <Field label={t('companyForm.currency')}>
-        <ToggleGroup
-          type="single"
+        <SegmentedControl
+          label={t('companyForm.currency')}
+          type="radio"
           value={currency}
           onValueChange={(v) => {
             if (typeof v === 'string' && v) setCurrency(v as CurrencyCode);
           }}
         >
-          <View className="flex-row gap-2">
-            {CURRENCIES.map((c) => (
-              <ToggleGroupItem key={c} value={c} className="flex-1 items-center">
-                {c}
-              </ToggleGroupItem>
-            ))}
-          </View>
-        </ToggleGroup>
+          {CURRENCIES.map((c) => (
+            <SegmentedControlItem key={c} value={c}>
+              <SegmentedControlItemText>{c}</SegmentedControlItemText>
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControl>
       </Field>
 
       <Field label={t('companyForm.status')}>
-        <ToggleGroup
-          type="single"
+        <SegmentedControl
+          label={t('companyForm.status')}
+          type="radio"
           value={status}
           onValueChange={(v) => {
             if (typeof v === 'string' && v) setStatus(v as Company['status']);
           }}
         >
-          <View className="flex-row gap-2">
-            {STATUSES.map((s) => (
-              <ToggleGroupItem key={s} value={s} className="flex-1 items-center">
-                {t(`companies.status.${s}`)}
-              </ToggleGroupItem>
-            ))}
-          </View>
-        </ToggleGroup>
+          {STATUSES.map((s) => (
+            <SegmentedControlItem key={s} value={s}>
+              <SegmentedControlItemText>{t(`companies.status.${s}`)}</SegmentedControlItemText>
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControl>
       </Field>
 
       <Button
+        className="mt-2"
         onPress={() => mutation.mutate(patch)}
         disabled={!canSubmit}
-        isLoading={mutation.isPending}
-        className="mt-2"
+        loading={mutation.isPending}
       >
-        <Text className="text-sm font-medium text-primary-foreground">{t('common.save')}</Text>
+        {t('common.save')}
       </Button>
     </>
   );
@@ -145,7 +156,7 @@ export default function CompanySettingsScreen() {
   if (ctx.isLoadingCompanies || ctx.isLoadingCompany) {
     body = (
       <View className="items-center py-16">
-        <ActivityIndicator />
+        <Loading variant="spinner" />
       </View>
     );
   } else if (!ctx.company) {

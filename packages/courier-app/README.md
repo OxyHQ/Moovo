@@ -18,7 +18,6 @@ app. Couriers go online, accept jobs, and get paid. Mobile-first.
 - `app/(app)/index.tsx` — home (online/offline toggle + courier job list)
 - `app/(app)/notifications.tsx` — notification feed
 - `app/(app)/settings/*` — settings area
-- `app/(app)/forgot-password.tsx`, `reset-password.tsx` — auth helpers
 
 ## Development
 

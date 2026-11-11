@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import type { DisplayMoney } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
+import { Text } from '@oxy.so/bloom/typography';
 import { formatFair, formatFiat } from '@/lib/money';
 import { cn } from '@moovo/app-shell/lib/utils';
 

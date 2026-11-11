@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
+import { Text } from '@oxy.so/bloom/typography';
 import type { FleetMapProps } from './map-types';
 
 /**

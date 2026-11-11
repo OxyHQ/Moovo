@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Truck } from 'lucide-react-native';
+import { RiAddLine } from '@oxy.so/bloom/icons/RiAddLine';
+import { RiDeleteBinLine } from '@oxy.so/bloom/icons/RiDeleteBinLine';
+import { RiPencilLine } from '@oxy.so/bloom/icons/RiPencilLine';
+import { RiTruckLine } from '@oxy.so/bloom/icons/RiTruckLine';
 import type { Vehicle, CreateVehicleInput, CompanyMember } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { Card } from '@moovo/app-shell/components/ui/card';
-import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
+import { Card } from '@oxy.so/bloom/card';
+import { AlertDialog } from '@oxy.so/bloom/alert-dialog';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
   CompanyHeader,
@@ -25,7 +29,7 @@ import {
 } from '@/lib/api/vehicles';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { useCompanyContext } from '@/lib/hooks/use-company-context';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { cn } from '@moovo/app-shell/lib/utils';
 
@@ -54,14 +58,14 @@ function VehicleCard({
   onDelete: (v: Vehicle) => void;
 }) {
   const { t } = useTranslation();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const isActive = vehicle.status === 'active';
 
   return (
     <Card className="min-w-0 flex-1 gap-3 p-4">
       <View className="flex-row items-center gap-3">
         <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-          <Truck size={18} color={colors.primary} />
+          <RiTruckLine width={18} height={18} fill={colors.primary} />
         </View>
         <View className="min-w-0 flex-1">
           <Text className="text-sm font-semibold text-surface-foreground" numberOfLines={1}>
@@ -104,20 +108,25 @@ function VehicleCard({
 
       {canWrite ? (
         <View className="flex-row gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onPress={() => onEdit(vehicle)}>
-            <View className="flex-row items-center gap-1.5">
-              <Pencil size={14} color={colors.foreground} />
-              <Text className="text-xs font-medium text-foreground">{t('common.edit')}</Text>
-            </View>
+          <Button
+            appearance="outline"
+            tone="neutral"
+            size="sm"
+            className="flex-1"
+            onPress={() => onEdit(vehicle)}
+            leadingIcon={RiPencilLine}
+          >
+            {t('common.edit')}
           </Button>
           <Button
-            variant="outline"
+            appearance="outline"
+            tone="neutral"
             size="sm"
+            iconOnly
+            icon={RiDeleteBinLine}
             onPress={() => onDelete(vehicle)}
             accessibilityLabel={t('common.delete')}
-          >
-            <Trash2 size={14} color={colors.mutedForeground} />
-          </Button>
+          />
         </View>
       ) : null}
     </Card>
@@ -214,7 +223,7 @@ function FleetBody() {
   if (ctx.isLoadingCompanies) {
     return (
       <View className="items-center py-16">
-        <ActivityIndicator />
+        <Loading variant="spinner" />
       </View>
     );
   }
@@ -238,13 +247,9 @@ function FleetBody() {
                 setEditing(null);
                 setDialogOpen(true);
               }}
+              leadingIcon={RiAddLine}
             >
-              <View className="flex-row items-center gap-1.5">
-                <Plus size={16} className="text-primary-foreground" />
-                <Text className="text-sm font-medium text-primary-foreground">
-                  {t('fleet.addVehicle')}
-                </Text>
-              </View>
+              {t('fleet.addVehicle')}
             </Button>
           ) : undefined
         }
@@ -256,15 +261,15 @@ function FleetBody() {
         <>
           {vehiclesQuery.isPending ? (
             <View className="items-center py-16">
-              <ActivityIndicator />
+              <Loading variant="spinner" />
             </View>
           ) : vehiclesQuery.isError ? (
             <View className="items-center gap-3 py-16">
               <Text className="text-center text-sm text-muted-foreground">
                 {t('fleet.loadError')}
               </Text>
-              <Button variant="outline" onPress={() => vehiclesQuery.refetch()}>
-                <Text className="text-sm font-medium text-foreground">{t('common.tryAgain')}</Text>
+              <Button appearance="outline" tone="neutral" onPress={() => vehiclesQuery.refetch()}>
+                {t('common.tryAgain')}
               </Button>
             </View>
           ) : vehicles.length === 0 ? (
@@ -309,16 +314,15 @@ function FleetBody() {
         }}
       />
 
-      <ConfirmationDialog
+      <AlertDialog
         open={toDelete !== null}
         onOpenChange={(open) => {
           if (!open) setToDelete(null);
         }}
         title={t('fleet.deleteTitle')}
         description={t('fleet.deleteConfirm')}
-        confirmText={t('common.delete')}
-        confirmVariant="destructive"
-        loading={deleteMutation.isPending}
+        confirmLabel={t('common.delete')}
+        destructive
         onConfirm={() => {
           if (toDelete) deleteMutation.mutate(toDelete.id);
         }}

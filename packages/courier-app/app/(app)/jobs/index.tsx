@@ -1,16 +1,17 @@
 import type { ReactNode } from 'react';
-import { View, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
+import { Loading } from '@oxy.so/bloom/loading';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { JobSummary } from '@moovo/shared-types';
-import { ChevronRight } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { Card, CardContent } from '@moovo/app-shell/components/ui/card';
-import { ScreenHeader } from '@/components/courier/ScreenHeader';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { RiArrowRightSLine } from '@oxy.so/bloom/icons/RiArrowRightSLine';
+import { Text } from '@oxy.so/bloom/typography';
+import { Button } from '@oxy.so/bloom/button';
+import { Card } from '@oxy.so/bloom/card';
+import { PageHeader } from '@oxy.so/bloom/page-header';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { fetchCourierJobs } from '@/lib/api/jobs';
 import { formatDisplayMoney } from '@/lib/money';
@@ -37,7 +38,7 @@ function formatJobDate(iso: string): string {
  */
 function JobCard({ job }: { job: JobSummary }) {
   const router = useRouter();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const fareLabel = formatDisplayMoney(job.totals.total);
   const dateLabel = formatJobDate(job.createdAt);
 
@@ -47,36 +48,30 @@ function JobCard({ job }: { job: JobSummary }) {
       accessibilityRole="button"
       accessibilityLabel={`Open job ${job.jobNumber}`}
     >
-      <Card className="active:opacity-90 web:hover:opacity-90">
-        <CardContent className="flex-row items-center gap-3 pt-5">
-          <View className="flex-1 gap-2">
-            <View className="flex-row items-center justify-between gap-3">
-              <Text className="text-base font-semibold text-surface-foreground">
-                {job.jobNumber}
-              </Text>
-              <Text className="text-base font-semibold text-surface-foreground">{fareLabel}</Text>
-            </View>
-            <View className="flex-row items-center gap-2">
-              <Text className="text-sm capitalize text-muted-foreground">{job.type}</Text>
-              <Text className="text-sm text-muted-foreground">·</Text>
-              <Text className="text-sm capitalize text-muted-foreground">{job.sizeClass}</Text>
-              {dateLabel ? (
-                <>
-                  <Text className="text-sm text-muted-foreground">·</Text>
-                  <Text className="text-sm text-muted-foreground">{dateLabel}</Text>
-                </>
-              ) : null}
-            </View>
-            <View className="flex-row">
-              <View className="rounded-full bg-primary/10 px-3 py-1">
-                <Text className="text-xs font-semibold text-primary">
-                  {statusLabel(job.status)}
-                </Text>
-              </View>
+      <Card className="active:opacity-90 web:hover:opacity-90 flex-row items-center gap-3 p-4">
+        <View className="flex-1 gap-2">
+          <View className="flex-row items-center justify-between gap-3">
+            <Text className="text-base font-semibold text-surface-foreground">{job.jobNumber}</Text>
+            <Text className="text-base font-semibold text-surface-foreground">{fareLabel}</Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-sm capitalize text-muted-foreground">{job.type}</Text>
+            <Text className="text-sm text-muted-foreground">·</Text>
+            <Text className="text-sm capitalize text-muted-foreground">{job.sizeClass}</Text>
+            {dateLabel ? (
+              <>
+                <Text className="text-sm text-muted-foreground">·</Text>
+                <Text className="text-sm text-muted-foreground">{dateLabel}</Text>
+              </>
+            ) : null}
+          </View>
+          <View className="flex-row">
+            <View className="rounded-full bg-primary/10 px-3 py-1">
+              <Text className="text-xs font-semibold text-primary">{statusLabel(job.status)}</Text>
             </View>
           </View>
-          <ChevronRight size={20} color={colors.mutedForeground} />
-        </CardContent>
+        </View>
+        <RiArrowRightSLine width={20} fill={colors.textSecondary} />
       </Card>
     </Pressable>
   );
@@ -104,7 +99,6 @@ function JobSection({ title, jobs }: { title: string; jobs: JobSummary[] }) {
  */
 function JobsBody() {
   const { isAuthenticated, isAuthResolved, canUsePrivateApi, openAccountDialog } = useOxy();
-  const { colors } = useColorScheme();
 
   const jobsQuery = useQuery({
     queryKey: queryKeys.jobs.courier,
@@ -115,7 +109,7 @@ function JobsBody() {
   if (!isAuthResolved) {
     return (
       <View className="items-center py-24">
-        <ActivityIndicator color={colors.mutedForeground} />
+        <Loading variant="spinner" size="sm" />
       </View>
     );
   }
@@ -125,9 +119,7 @@ function JobsBody() {
         <Text className="text-center text-base text-muted-foreground">
           Sign in to see your jobs.
         </Text>
-        <Button onPress={() => openAccountDialog()}>
-          <Text className="font-semibold text-primary-foreground">Sign in</Text>
-        </Button>
+        <Button onPress={() => openAccountDialog()}>Sign in</Button>
       </View>
     );
   }
@@ -135,7 +127,7 @@ function JobsBody() {
   if (jobsQuery.isLoading || !canUsePrivateApi) {
     return (
       <View className="items-center py-24">
-        <ActivityIndicator color={colors.mutedForeground} />
+        <Loading variant="spinner" size="sm" />
       </View>
     );
   }
@@ -179,12 +171,18 @@ function JobsBody() {
 }
 
 export default function JobsScreen() {
+  const router = useRouter();
   return (
     <View className="flex-1 bg-background">
       <Head>
         <title>Jobs · Moovo Go</title>
       </Head>
-      <ScreenHeader title="Jobs" subtitle="Your active jobs and history" />
+      <PageHeader
+        presentation="bar"
+        title="Jobs"
+        subtitle="Your active jobs and history"
+        onBack={() => router.back()}
+      />
       <ScrollView className="flex-1" contentContainerClassName="pb-24 mx-auto w-full max-w-2xl">
         <JobsBody />
       </ScrollView>

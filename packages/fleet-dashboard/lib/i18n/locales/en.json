@@ -5,7 +5,6 @@
     "error": "Error",
     "success": "Success",
     "cancel": "Cancel",
-    "confirm": "Confirm",
     "save": "Save",
     "saving": "Saving...",
     "delete": "Delete",
@@ -20,7 +19,6 @@
     "user": "User",
     "done": "Done",
     "tryAgain": "Try Again",
-    "processing": "Processing...",
     "permissionDeniedTitle": "You don't have access",
     "permissionDeniedBody": "Your role in this company doesn't grant access to this section."
   },
@@ -53,12 +51,13 @@
       "active": "Active",
       "suspended": "Suspended",
       "closed": "Closed"
-    }
+    },
+    "selectorLabel": "Company"
   },
   "account": {
     "menuLabel": "Account",
-    "settings": "Account & settings",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "signIn": "Sign in"
   },
   "job": {
     "title": "Job · Moovo Hub",
@@ -98,7 +97,17 @@
     "organization": "Organization",
     "directoryUnavailable": "The organization directory is unavailable. Try again.",
     "noOrganizations": "Create or claim an organization in Oxy before registering its fleet.",
-    "identityInOxy": "Manage the company name and logo in Oxy."
+    "identityInOxy": "Manage the company name and logo in Oxy.",
+    "colors": {
+      "blue": "Blue",
+      "purple": "Purple",
+      "pink": "Pink",
+      "amber": "Amber",
+      "green": "Green",
+      "cyan": "Cyan",
+      "orange": "Orange",
+      "red": "Red"
+    }
   },
   "members": {
     "listTitle": "{{count}} members",
@@ -119,7 +128,8 @@
     "role": {
       "owner": "Fleet administrator",
       "dispatcher": "Dispatcher",
-      "driver": "Driver"
+      "driver": "Driver",
+      "label": "Role"
     }
   },
   "fleet": {
@@ -226,7 +236,6 @@
     "privacyPolicy": "Privacy Policy"
   },
   "errors": {
-    "emailRequired": "Please enter your email address",
     "passwordRequired": "Please enter your password",
     "passwordsDoNotMatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 8 characters",
@@ -272,30 +281,6 @@
     "termsOfService": "Terms of Service",
     "privacyPolicy": "Privacy Policy"
   },
-  "forgotPassword": {
-    "title": "Reset password",
-    "subtitle": "Enter your email to reset your password",
-    "emailPlaceholder": "Email",
-    "sending": "Sending...",
-    "checkEmail": "Check your email",
-    "sentInstructions": "We've sent password reset instructions to",
-    "returnToSignIn": "Return to Sign in",
-    "tryAnotherEmail": "Try another email",
-    "checkEmailToast": "Check your email for instructions to reset your password.",
-    "failedToSend": "Failed to send reset email. Please try again."
-  },
-  "resetPassword": {
-    "title": "Create new password",
-    "subtitle": "Enter your new password",
-    "newPasswordPlaceholder": "New Password (min 8 characters)",
-    "confirmPasswordPlaceholder": "Confirm New Password",
-    "resetButton": "Reset Password",
-    "resetting": "Resetting password...",
-    "invalidToken": "Invalid or missing reset token",
-    "enterNewPassword": "Please enter a new password",
-    "successMessage": "Your password has been reset successfully. Please sign in with your new password.",
-    "failedToReset": "Failed to reset password. Please try again."
-  },
   "feedback": {
     "title": "Send Feedback",
     "subtitle": "Help us improve Moovo",
@@ -319,7 +304,6 @@
     "featurePlaceholder": "Describe the feature you'd like to see. How would it help you?",
     "improvementPlaceholder": "What would you like us to improve? How could we make it better?",
     "otherPlaceholder": "Share your thoughts with us...",
-    "characterCount": "{{count}}/1000 characters",
     "submitButton": "Submit Feedback",
     "submitting": "Submitting...",
     "footerText": "Your feedback helps us improve Moovo. Thank you for taking the time to share your thoughts.",
@@ -330,11 +314,7 @@
     "submitFailed": "Failed to submit feedback"
   },
   "notifications": {
-    "title": "Notifications",
-    "subtitle": "Manage your notification preferences",
-    "pushNotifications": "Push Notifications",
-    "pushDescription": "Receive alerts about new messages and updates",
-    "permissionDenied": "Notifications are blocked. Please enable them in your device settings to receive push notifications."
+    "title": "Notifications"
   },
   "welcome": {
     "appName": "Moovo"

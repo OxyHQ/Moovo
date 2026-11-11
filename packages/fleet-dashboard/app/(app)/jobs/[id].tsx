@@ -1,19 +1,23 @@
 import type { ReactNode } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
+import { Loading } from '@oxy.so/bloom/loading';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, MapPin, Flag, Phone } from 'lucide-react-native';
+import { RiArrowLeftLine } from '@oxy.so/bloom/icons/RiArrowLeftLine';
+import { RiFlagLine } from '@oxy.so/bloom/icons/RiFlagLine';
+import { RiMapPinLine } from '@oxy.so/bloom/icons/RiMapPinLine';
+import { RiPhoneLine } from '@oxy.so/bloom/icons/RiPhoneLine';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { JobView, JobStatusEvent, ShipmentEndpoint } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { Card } from '@moovo/app-shell/components/ui/card';
+import { Text } from '@oxy.so/bloom/typography';
+import { Button } from '@oxy.so/bloom/button';
+import { Card } from '@oxy.so/bloom/card';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import { StatusChip } from '@/components/dashboard/StatusChip';
 import { FleetMap } from '@/components/dashboard/Map';
 import type { MapMarker } from '@/components/dashboard/map-types';
 import { fetchJob } from '@/lib/api/jobs';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { formatMoney, formatTime, formatDate, jobStatusKey, jobTypeKey } from '@/lib/format';
 import { useI18nStore } from '@moovo/app-shell/lib/stores/i18n-store';
@@ -31,7 +35,7 @@ function EndpointBlock({
   icon: ReactNode;
   title: string;
 }) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const { address } = endpoint;
   return (
     <View className="flex-row gap-3">
@@ -49,7 +53,7 @@ function EndpointBlock({
           {address.postalCode ? ` ${address.postalCode}` : ''}
         </Text>
         <View className="mt-1 flex-row items-center gap-2">
-          <Phone size={13} color={colors.mutedForeground} />
+          <RiPhoneLine width={13} height={13} fill={colors.textSecondary} />
           <Text className="text-sm text-muted-foreground">
             {endpoint.contactName} · {endpoint.contactPhone}
           </Text>
@@ -92,7 +96,7 @@ function TimelineRow({ event, isLast }: { event: JobStatusEvent; isLast: boolean
 /** The read-only dispatcher job view, mounted once the job is loaded. */
 function JobDetailBody({ job }: { job: JobView }) {
   const { t } = useTranslation();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
 
   const [pLng, pLat] = job.pickupSnapshot.location.coordinates;
   const [dLng, dLat] = job.dropoffSnapshot.location.coordinates;
@@ -142,13 +146,13 @@ function JobDetailBody({ job }: { job: JobView }) {
         <EndpointBlock
           endpoint={job.pickupSnapshot}
           title={t('job.pickup')}
-          icon={<MapPin size={18} color={colors.primary} />}
+          icon={<RiMapPinLine width={18} height={18} fill={colors.primary} />}
         />
         <View className="h-px bg-border" />
         <EndpointBlock
           endpoint={job.dropoffSnapshot}
           title={t('job.dropoff')}
-          icon={<Flag size={18} color={colors.primary} />}
+          icon={<RiFlagLine width={18} height={18} fill={colors.primary} />}
         />
       </Card>
 
@@ -171,7 +175,6 @@ export default function JobScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { t } = useTranslation();
-  const { colors } = useColorScheme();
   const { canUsePrivateApi } = useOxy();
 
   // Share the dispatch board's per-job detail cache key shape exactly so the
@@ -186,7 +189,7 @@ export default function JobScreen() {
   if (jobQuery.isPending || !canUsePrivateApi) {
     body = (
       <View className="items-center py-24">
-        <ActivityIndicator color={colors.mutedForeground} />
+        <Loading variant="spinner" size="sm" />
       </View>
     );
   } else if (jobQuery.isError || !jobQuery.data) {
@@ -204,14 +207,14 @@ export default function JobScreen() {
       <View className="gap-6 px-5 py-8 md:px-8">
         <View className="flex-row items-center gap-3">
           <Button
-            variant="ghost"
-            size="icon"
+            appearance="plain"
+            tone="neutral"
+            iconOnly
+            className="w-9"
             onPress={() => router.back()}
-            className="h-9 w-9 rounded-full"
             accessibilityLabel={t('common.back')}
-          >
-            <ArrowLeft size={20} color={colors.foreground} />
-          </Button>
+            icon={RiArrowLeftLine}
+          />
           <Text className="text-2xl font-bold text-foreground">{t('job.header')}</Text>
         </View>
         {body}

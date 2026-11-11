@@ -1,13 +1,18 @@
 import { useState } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
 import Head from 'expo-router/head';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Clock, Truck, Building2, Check } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
+import { RiBuilding2Line } from '@oxy.so/bloom/icons/RiBuilding2Line';
+import { RiCheckLine } from '@oxy.so/bloom/icons/RiCheckLine';
+import { RiTimeLine } from '@oxy.so/bloom/icons/RiTimeLine';
+import { RiTruckLine } from '@oxy.so/bloom/icons/RiTruckLine';
+import { Loading } from '@oxy.so/bloom/loading';
+import { PageHeader } from '@oxy.so/bloom/page-header';
+import { Text } from '@oxy.so/bloom/typography';
 import { StatusBadge } from '@/components/transport/StatusBadge';
 import { MoneyText } from '@/components/transport/MoneyText';
 import { RouteSummary } from '@/components/transport/RouteSummary';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { useShipment, useShipmentQuotes, useBookShipment } from '@/lib/hooks/use-shipments';
 import { SHIPMENT_TYPES } from '@/lib/shipment-type';
 import type { QuoteView } from '@moovo/shared-types';
@@ -40,9 +45,9 @@ function QuoteCard({
   booking: boolean;
   onSelect: () => void;
 }) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const isMoovo = quote.source === 'moovo_courier';
-  const SourceIcon = isMoovo ? Truck : Building2;
+  const SourceIcon = isMoovo ? RiTruckLine : RiBuilding2Line;
   const sourceLabel = isMoovo ? 'Moovo courier' : (quote.providerName ?? 'External provider');
   const pickupEta = formatEta(quote.etaPickupMin);
   const deliveryEta = formatEta(quote.etaDeliveryMin);
@@ -57,7 +62,7 @@ function QuoteCard({
       <View className="flex-row items-center justify-between">
         <View className="flex-row items-center gap-2">
           <View className="h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-            <SourceIcon size={18} color={colors.primary} />
+            <SourceIcon width={18} fill={colors.primary} />
           </View>
           <View>
             <Text className="text-sm font-semibold text-foreground">{sourceLabel}</Text>
@@ -67,10 +72,10 @@ function QuoteCard({
           </View>
         </View>
         {selected && booking ? (
-          <ActivityIndicator size="small" color={colors.primary} />
+          <Loading variant="spinner" size="sm" />
         ) : selected ? (
           <View className="h-6 w-6 items-center justify-center rounded-full bg-primary">
-            <Check size={14} color={colors.primaryForeground} />
+            <RiCheckLine width={14} height={14} fill={colors.primaryForeground} />
           </View>
         ) : null}
       </View>
@@ -81,7 +86,7 @@ function QuoteCard({
           <View className="items-end gap-0.5">
             {pickupEta ? (
               <View className="flex-row items-center gap-1">
-                <Clock size={12} color={colors.mutedForeground} />
+                <RiTimeLine width={12} fill={colors.textSecondary} />
                 <Text className="text-xs text-muted-foreground">Pickup ~{pickupEta}</Text>
               </View>
             ) : null}
@@ -97,7 +102,6 @@ function QuoteCard({
 
 export default function QuotesScreen() {
   const router = useRouter();
-  const { colors } = useColorScheme();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: shipment } = useShipment(id);
@@ -135,30 +139,18 @@ export default function QuotesScreen() {
         <title>Quotes · Moovo</title>
       </Head>
 
-      <View className="border-b border-border px-4 pb-3 pt-4">
-        <View className="flex-row items-center gap-3">
-          <Pressable
-            onPress={() => router.replace('/(app)')}
-            accessibilityRole="button"
-            hitSlop={8}
-            className="p-1"
-          >
-            <ArrowLeft size={20} color={colors.foreground} />
-          </Pressable>
-          <Text className="flex-1 text-lg font-bold text-foreground">Choose a quote</Text>
-          {shipment ? <StatusBadge status={shipment.status} /> : null}
+      <PageHeader
+        presentation="bar"
+        title="Choose a quote"
+        subtitle={typeMeta?.label}
+        onBack={() => router.replace('/(app)')}
+        actions={shipment ? <StatusBadge status={shipment.status} /> : undefined}
+      />
+      {shipment ? (
+        <View className="px-4 pb-2">
+          <RouteSummary from={shipment.pickup.address.city} to={shipment.dropoff.address.city} />
         </View>
-        {shipment ? (
-          <View className="mt-3 gap-1">
-            {typeMeta ? (
-              <Text className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {typeMeta.label}
-              </Text>
-            ) : null}
-            <RouteSummary from={shipment.pickup.address.city} to={shipment.dropoff.address.city} />
-          </View>
-        ) : null}
-      </View>
+      ) : null}
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 pb-24">
         <View className="web:mx-auto web:w-full web:max-w-[640px] gap-3">
@@ -180,7 +172,7 @@ export default function QuotesScreen() {
             </View>
           ) : !hasQuotes ? (
             <View className="items-center rounded-2xl border border-dashed border-border bg-card/50 px-6 py-12">
-              <ActivityIndicator size="small" color={colors.primary} />
+              <Loading variant="spinner" size="sm" />
               <Text className="mt-3 text-sm font-medium text-foreground">
                 {isLoading ? 'Loading quotes…' : 'Finding you the best options…'}
               </Text>

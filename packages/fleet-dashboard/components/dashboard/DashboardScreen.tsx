@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
-import { View, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useOxy } from '@oxy.so/services/ui/client';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { MoovoWordmark } from '@moovo/app-shell/components/ui/moovo-wordmark';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
+import { Logo } from '@moovo/app-shell/components/Logo';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 /** Spread (px) of the gutter-color mask around the rounded desktop frame. */
@@ -32,7 +33,7 @@ interface DashboardScreenProps {
  * when signed out) so every company-scoped screen shares one consistent shell.
  */
 export function DashboardScreen({ title, children, gate = true }: DashboardScreenProps) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const { t } = useTranslation();
   const { isAuthenticated, isAuthResolved, openAccountDialog } = useOxy();
   const isWeb = Platform.OS === 'web';
@@ -42,23 +43,21 @@ export function DashboardScreen({ title, children, gate = true }: DashboardScree
   if (gate && !isAuthResolved) {
     body = (
       <View className="min-h-[60vh] items-center justify-center px-8 py-24">
-        <ActivityIndicator />
+        <Loading variant="spinner" />
       </View>
     );
   } else if (gate && !isAuthenticated) {
     body = (
       <View className="min-h-[60vh] items-center justify-center gap-4 px-8 py-24">
-        <MoovoWordmark width={180} />
+        <Logo size={56} />
         <Text className="text-center text-xl font-semibold text-foreground">
           {t('companies.signInTitle')}
         </Text>
         <Text className="max-w-md text-center text-base text-muted-foreground">
           {t('companies.signInSubtitle')}
         </Text>
-        <Button onPress={() => openAccountDialog()} className="mt-2">
-          <Text className="text-sm font-medium text-primary-foreground">
-            {t('companies.signInButton')}
-          </Text>
+        <Button className="mt-2" onPress={() => openAccountDialog()}>
+          {t('companies.signInButton')}
         </Button>
       </View>
     );

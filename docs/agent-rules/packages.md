@@ -19,14 +19,18 @@ from a laptop — `~/Oxy/docs/npm-releases.md`.
 | `@moovo/shared-types` | `packages/shared-types/` | Domain DTOs, still largely inherited marketplace shapes awaiting courier replacements |
 
 **`@moovo/app-shell` holds every file the Expo apps would otherwise copy**: the
-shadcn-style `components/ui/*` primitives, auth and settings components, the
-notifications, password and feedback screens (`screens/*`), the Oxy-linked API
-client, socket opener, notification hooks, i18n instance and theme storage. Apps import
-`@moovo/app-shell/<path>` (tsconfig `paths` and Metro `extraNodeModules` resolve it to source;
-each `global.css` has an `@source` for it, or its classes are never generated). A route file
-in an app is a re-export of a shell screen, and per-app differences are props or slots
-(`showBack`, `languageSelector`, `persistKey`), never copies. Add a new shared file here, not
-to one app; do not paste a file into a second app. Inside the package use relative imports, not `@/`.
+notifications and settings screens (`screens/*`), the nav shell (`NavRail`,
+`BottomTabBar`), the Oxy-linked API client, socket opener, notification hooks, i18n instance
+and theme storage. It holds NO UI primitives: every button, field, card, switch, menu, dialog,
+header, chip and picker is Bloom, composed in place (`@oxy.so/bloom/<family>`), and the one
+brand file is the Moovo `Logo`. A missing primitive is added to Bloom first, then used here, never
+written into an app. The UI language is Oxy's (`OxyProvider language`, Oxy's `LanguageSelector`
+sheet), not a per-app picker. Apps import `@moovo/app-shell/<path>` (tsconfig `paths` and Metro
+`extraNodeModules` resolve it to source; each `global.css` has an `@source` for it, or its
+classes are never generated). A route file in an app is a re-export of a shell screen, and
+per-app differences are props (`showBack`, `items`), never copies. Add a new shared file here,
+not to one app; do not paste a file into a second app. Inside the package use relative imports,
+not `@/`.
 
 **The root script names do not match the package names**, which is not guessable
 from the tree: `bun run dev:courier` / `build:courier` drive `@moovo/courier-app`

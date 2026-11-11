@@ -6,9 +6,9 @@ import {
   type BarcodeScanningResult,
   type BarcodeSettings,
 } from 'expo-camera';
-import { X } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
+import { RiCloseLine } from '@oxy.so/bloom/icons/RiCloseLine';
+import { Text } from '@oxy.so/bloom/typography';
+import { Button } from '@oxy.so/bloom/button';
 import { decodeQrPayload, type ScanLeg } from '@/lib/job-codes';
 
 /**
@@ -88,9 +88,7 @@ export function QrScanner({ visible, jobId, leg, onScanned, onClose }: QrScanner
                 : 'Moovo Go needs camera access to scan the QR code.'}
             </Text>
             {permission?.canAskAgain !== false ? (
-              <Button onPress={requestPermission}>
-                <Text className="font-semibold text-primary-foreground">Allow camera</Text>
-              </Button>
+              <Button onPress={requestPermission}>Allow camera</Button>
             ) : null}
           </View>
         )}
@@ -115,7 +113,7 @@ export function QrScanner({ visible, jobId, leg, onScanned, onClose }: QrScanner
         >
           {/* The scanner surface is always a dark camera feed, so the close
               glyph is always white regardless of the app theme. */}
-          <X size={24} color="#ffffff" />
+          <RiCloseLine width={24} fill="#ffffff" />
         </Pressable>
       </View>
     </Modal>

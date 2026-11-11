@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { View, Pressable, ActivityIndicator } from 'react-native';
-import { MapPin, Flag, Clock, Package } from 'lucide-react-native';
+import { View, Pressable } from 'react-native';
+import { RiBox3Line } from '@oxy.so/bloom/icons/RiBox3Line';
+import { RiFlagLine } from '@oxy.so/bloom/icons/RiFlagLine';
+import { RiMapPinLine } from '@oxy.so/bloom/icons/RiMapPinLine';
+import { RiTimeLine } from '@oxy.so/bloom/icons/RiTimeLine';
 import type { JobOfferView } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { Text } from '@oxy.so/bloom/typography';
+import { Button } from '@oxy.so/bloom/button';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { formatDisplayMoney } from '@/lib/money';
 import { formatDistance } from '@/lib/geo';
 
@@ -40,7 +43,7 @@ function secondsUntil(expiresAt: string): number {
 }
 
 export function OfferSheet({ offer, accepting, onAccept, onDecline }: OfferSheetProps) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const [remaining, setRemaining] = useState(() => secondsUntil(offer.expiresAt));
 
   // Tick the countdown each second; auto-decline once it elapses. A timer is an
@@ -65,26 +68,26 @@ export function OfferSheet({ offer, accepting, onAccept, onDecline }: OfferSheet
       <View className="overflow-hidden rounded-3xl border border-border bg-card p-5 shadow-lg shadow-foreground/20">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
-            <Package size={18} color={colors.primary} />
+            <RiBox3Line width={18} height={18} fill={colors.primary} />
             <Text className="text-base font-bold capitalize text-foreground">
               New {offer.type} job
             </Text>
           </View>
           <View className="flex-row items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1">
-            <Clock size={14} color={colors.primary} />
+            <RiTimeLine width={14} height={14} fill={colors.primary} />
             <Text className="text-sm font-semibold text-primary">{remaining}s</Text>
           </View>
         </View>
 
         <View className="mt-4 gap-3">
           <View className="flex-row items-center gap-2">
-            <MapPin size={16} color={colors.mutedForeground} />
+            <RiMapPinLine width={16} fill={colors.textSecondary} />
             <Text className="flex-1 text-sm text-foreground" numberOfLines={1}>
               {offer.pickupCity}
             </Text>
           </View>
           <View className="flex-row items-center gap-2">
-            <Flag size={16} color={colors.mutedForeground} />
+            <RiFlagLine width={16} fill={colors.textSecondary} />
             <Text className="flex-1 text-sm text-foreground" numberOfLines={1}>
               {offer.dropoffCity}
             </Text>
@@ -108,12 +111,8 @@ export function OfferSheet({ offer, accepting, onAccept, onDecline }: OfferSheet
           >
             <Text className="text-base font-semibold text-foreground">Decline</Text>
           </Pressable>
-          <Button onPress={onAccept} disabled={accepting} size="lg" className="h-12 flex-1">
-            {accepting ? (
-              <ActivityIndicator color={colors.primaryForeground} />
-            ) : (
-              <Text className="text-base font-semibold text-primary-foreground">Accept</Text>
-            )}
+          <Button size="lg" className="flex-1" onPress={onAccept} loading={accepting}>
+            Accept
           </Button>
         </View>
       </View>

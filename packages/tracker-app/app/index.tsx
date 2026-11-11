@@ -1,9 +1,12 @@
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { ScrollView, View } from 'react-native';
+import { Text } from '@oxy.so/bloom/typography';
+import { useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
+import { Button } from '@oxy.so/bloom/button';
+import { Item } from '@oxy.so/bloom/item';
 
 import { TrackingSearch } from '@/components/TrackingSearch';
 import { readRecents } from '@/lib/recents';
@@ -48,19 +51,13 @@ export default function HomeScreen() {
           <View className="flex-row items-center justify-between">
             <Text className="text-sm font-semibold text-muted-foreground">Moovo Tracker</Text>
             {isAuthenticated ? (
-              <Link href="/parcels" asChild>
-                <Pressable accessibilityRole="button" className="rounded-full px-3 py-2">
-                  <Text className="text-sm font-semibold text-primary">Mis paquetes</Text>
-                </Pressable>
-              </Link>
+              <Button appearance="plain" onPress={() => router.push('/parcels')}>
+                Mis paquetes
+              </Button>
             ) : (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => openAccountDialog()}
-                className="rounded-full px-3 py-2"
-              >
-                <Text className="text-sm font-semibold text-primary">Iniciar sesión</Text>
-              </Pressable>
+              <Button appearance="plain" onPress={() => openAccountDialog()}>
+                Iniciar sesión
+              </Button>
             )}
           </View>
 
@@ -79,22 +76,15 @@ export default function HomeScreen() {
               <Text className="text-sm font-semibold text-foreground">Consultas recientes</Text>
               <View className="mt-3 gap-2">
                 {recents.map((recent) => (
-                  <Pressable
+                  <Item
                     key={recent.trackingNumber}
-                    accessibilityRole="button"
+                    title={recent.trackingNumber}
+                    subtitle={recent.carrierName}
                     accessibilityLabel={`Ver ${recent.trackingNumber} de ${recent.carrierName}`}
                     onPress={() =>
                       router.push(`/track/${encodeURIComponent(recent.trackingNumber)}`)
                     }
-                    className="rounded-2xl border border-border bg-card p-4 active:opacity-70"
-                  >
-                    <Text className="text-sm font-semibold text-foreground">
-                      {recent.trackingNumber}
-                    </Text>
-                    <Text className="mt-0.5 text-xs text-muted-foreground">
-                      {recent.carrierName}
-                    </Text>
-                  </Pressable>
+                  />
                 ))}
               </View>
               <Text className="mt-3 text-xs text-muted-foreground">
@@ -112,15 +102,9 @@ export default function HomeScreen() {
                 Con una cuenta de Oxy los tienes todos en una sola lista. Rastrear sigue siendo
                 gratis y sin cuenta.
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => openAccountDialog()}
-                className="mt-4 h-11 items-center justify-center rounded-xl bg-primary px-5"
-              >
-                <Text className="text-sm font-semibold text-primary-foreground">
-                  Crear cuenta o iniciar sesión
-                </Text>
-              </Pressable>
+              <Button className="mt-4" onPress={() => openAccountDialog()}>
+                Crear cuenta o iniciar sesión
+              </Button>
             </View>
           ) : null}
         </View>

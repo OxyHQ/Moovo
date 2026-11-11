@@ -1,7 +1,7 @@
-import { View, Pressable, ScrollView } from 'react-native';
+import { View } from 'react-native';
 import type { Company } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { cn } from '@moovo/app-shell/lib/utils';
+import { Chip, ChipRow } from '@oxy.so/bloom/chip';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 interface CompanySelectorProps {
   companies: Company[];
@@ -9,52 +9,31 @@ interface CompanySelectorProps {
   onSelect: (companyId: string) => void;
 }
 
-/**
- * Horizontal company chip selector. Renders one chip per company the operator
- * administers, highlighting the active one. Works identically on web and native
- * (a horizontally-scrolling row of pressables — no platform-specific menu). Only
- * shown when the operator belongs to more than one company.
- */
+/** One chip per company the operator administers, the active one selected. Only shown when the operator belongs to more than one. */
 export function CompanySelector({ companies, selectedCompanyId, onSelect }: CompanySelectorProps) {
+  const { t } = useTranslation();
   if (companies.length <= 1) return null;
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerClassName="gap-2 py-1"
-    >
-      {companies.map((company) => {
-        const active = company.id === selectedCompanyId;
-        return (
-          <Pressable
-            key={company.id}
-            onPress={() => onSelect(company.id)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            className={cn(
-              'flex-row items-center gap-2 rounded-full border px-3.5 py-2',
-              active
-                ? 'border-primary bg-primary/10'
-                : 'border-border bg-background web:hover:bg-accent',
-            )}
-          >
-            {/* Brand accent dot — `brandColor` is a per-company runtime CSS color
-                from the API; no NativeWind class can express an arbitrary color,
-                so an inline backgroundColor is correct here. */}
+    <ChipRow role="radiogroup" accessibilityLabel={t('companies.selectorLabel')}>
+      {companies.map((company) => (
+        <Chip
+          key={company.id}
+          size="xl"
+          role="radio"
+          selected={company.id === selectedCompanyId}
+          // `brandColor` is a per-company runtime CSS colour from the API, so the dot is inline.
+          startIcon={
             <View
               className="h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: company.brandColor }}
             />
-            <Text
-              className={cn('text-sm font-medium', active ? 'text-primary' : 'text-foreground')}
-              numberOfLines={1}
-            >
-              {company.name}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
+          }
+          onPress={() => onSelect(company.id)}
+        >
+          {company.name}
+        </Chip>
+      ))}
+    </ChipRow>
   );
 }
