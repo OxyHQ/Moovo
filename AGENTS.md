@@ -31,7 +31,18 @@ from a laptop — `~/Oxy/docs/npm-releases.md`.
 | `@moovo/backend` | `packages/backend/` | Express API (TypeScript, PostgreSQL, Socket.IO) |
 | `@oxy.so/moovo-contracts` | `packages/contracts/` | Canonical material transport schemas and OpenAPI |
 | `@oxy.so/moovo-sdk` | `packages/sdk/` | Headless Oxy-linked transport client |
+| `@moovo/app-shell` | `packages/app-shell/` | Source shared by the four Expo apps (never built or published) |
 | `@moovo/shared-types` | `packages/shared-types/` | Domain DTOs, still largely inherited marketplace shapes awaiting courier replacements |
+
+**`@moovo/app-shell` holds every file the Expo apps would otherwise copy**: the
+shadcn-style `components/ui/*` primitives, auth and settings components, the
+notifications, password and feedback screens (`screens/*`), the Oxy-linked API
+client, socket opener, notification hooks, i18n instance and theme storage. Apps import
+`@moovo/app-shell/<path>` (tsconfig `paths` and Metro `extraNodeModules` resolve it to source;
+each `global.css` has an `@source` for it, or its classes are never generated). A route file
+in an app is a re-export of a shell screen, and per-app differences are props or slots
+(`showBack`, `languageSelector`, `persistKey`), never copies. Add a new shared file here, not
+to one app; do not paste a file into a second app. Inside the package use relative imports, not `@/`.
 
 **The root script names do not match the package names**, which is not guessable
 from the tree: `bun run dev:courier` / `build:courier` drive `@moovo/courier-app`

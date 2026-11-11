@@ -76,6 +76,7 @@ COPY packages/shared-types/package.json ./packages/shared-types/package.json
 COPY packages/contracts/package.json ./packages/contracts/package.json
 COPY packages/sdk/package.json ./packages/sdk/package.json
 COPY packages/tracker-app/package.json ./packages/tracker-app/package.json
+COPY packages/app-shell/package.json ./packages/app-shell/package.json
 
 # Copy shared-types source before install so its `postinstall` (tsc) can build
 # the package's dist during `bun install`.

@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/deploy-cloudflare-go.yml'
+      - 'packages/app-shell/**'
       - 'packages/courier-app/**'
       - 'shared/**'
       - 'package.json'

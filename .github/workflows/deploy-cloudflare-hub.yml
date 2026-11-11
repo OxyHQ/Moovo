@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/deploy-cloudflare-hub.yml'
+      - 'packages/app-shell/**'
       - 'packages/fleet-dashboard/**'
       - 'shared/**'
       - 'package.json'

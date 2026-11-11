@@ -12,6 +12,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/deploy-cloudflare-tracker.yml'
+      - 'packages/app-shell/**'
       - 'packages/tracker-app/**'
       - 'package.json'
       - 'bun.lock'
