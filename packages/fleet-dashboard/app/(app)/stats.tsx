@@ -1,10 +1,14 @@
 import { useMemo } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Star, MessageSquare, Truck } from 'lucide-react-native';
+import { RiChat1Line } from '@oxy.so/bloom/icons/RiChat1Line';
+import { RiCheckboxCircleLine } from '@oxy.so/bloom/icons/RiCheckboxCircleLine';
+import { RiStarLine } from '@oxy.so/bloom/icons/RiStarLine';
+import { RiTruckLine } from '@oxy.so/bloom/icons/RiTruckLine';
 import type { JobStatus, CompanyRole } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Card } from '@moovo/app-shell/components/ui/card';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
+import { Card } from '@oxy.so/bloom/card';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
   CompanyHeader,
@@ -81,7 +85,7 @@ function StatsBody() {
   if (ctx.isLoadingCompanies) {
     return (
       <View className="items-center py-16">
-        <ActivityIndicator />
+        <Loading variant="spinner" />
       </View>
     );
   }
@@ -111,13 +115,13 @@ function StatsBody() {
               <StatCard
                 label={t('stats.completedJobs')}
                 value={company ? String(company.completedJobs) : '—'}
-                icon={CheckCircle2}
+                icon={RiCheckboxCircleLine}
                 loading={ctx.isLoadingCompany}
               />
               <StatCard
                 label={t('home.kpi.rating')}
                 value={company ? company.rating.toFixed(1) : '—'}
-                icon={Star}
+                icon={RiStarLine}
                 loading={ctx.isLoadingCompany}
               />
             </View>
@@ -125,13 +129,13 @@ function StatsBody() {
               <StatCard
                 label={t('stats.reviews')}
                 value={company ? String(company.reviewCount) : '—'}
-                icon={MessageSquare}
+                icon={RiChat1Line}
                 loading={ctx.isLoadingCompany}
               />
               <StatCard
                 label={t('home.kpi.activeVehicles')}
                 value={String(activeVehicles)}
-                icon={Truck}
+                icon={RiTruckLine}
                 loading={vehiclesQuery.isPending}
               />
             </View>
@@ -144,7 +148,7 @@ function StatsBody() {
             </Text>
             {jobsQuery.isPending ? (
               <View className="items-center py-8">
-                <ActivityIndicator />
+                <Loading variant="spinner" />
               </View>
             ) : jobs.length === 0 ? (
               <Text className="py-6 text-center text-sm text-muted-foreground">

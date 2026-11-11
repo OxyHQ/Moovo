@@ -1,17 +1,18 @@
-import { View, ScrollView, Platform, ActivityIndicator, Pressable } from 'react-native';
+import { View, ScrollView, Platform, Pressable } from 'react-native';
 import Head from 'expo-router/head';
 import type { ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { JobSummary } from '@moovo/shared-types';
-import { ChevronRight } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { Card, CardContent } from '@moovo/app-shell/components/ui/card';
-import { Switch } from '@moovo/app-shell/components/ui/switch';
-import { MoovoWordmark } from '@moovo/app-shell/components/ui/moovo-wordmark';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { RiArrowRightSLine } from '@oxy.so/bloom/icons/RiArrowRightSLine';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
+import { Card } from '@oxy.so/bloom/card';
+import { Switch } from '@oxy.so/bloom/switch';
+import { Logo } from '@moovo/app-shell/components/Logo';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { fetchCourierMe, goOnline, goOffline } from '@/lib/api/courier';
 import { acceptJob } from '@/lib/api/jobs';
@@ -28,11 +29,10 @@ const GUTTER_MASK_SPREAD = 40;
 
 /** Neutral, centered loading state shown while cold-boot auth is undetermined. */
 function HomeLoading() {
-  const { colors } = useColorScheme();
   return (
     <View className="min-h-[480px] items-center justify-center gap-4 px-8 py-24">
-      <MoovoWordmark width={140} />
-      <ActivityIndicator color={colors.mutedForeground} />
+      <Logo size={56} />
+      <Loading variant="spinner" size="sm" />
     </View>
   );
 }
@@ -42,12 +42,12 @@ function SignedOutPrompt() {
   const { openAccountDialog } = useOxy();
   return (
     <View className="min-h-[480px] items-center justify-center gap-6 px-8 py-24">
-      <MoovoWordmark width={160} />
+      <Logo size={56} />
       <Text className="max-w-sm text-center text-base text-muted-foreground">
         Go online, accept jobs, get paid. Sign in to start driving.
       </Text>
-      <Button onPress={() => openAccountDialog()} size="lg">
-        <Text className="text-base font-semibold text-primary-foreground">Sign in</Text>
+      <Button size="lg" onPress={() => openAccountDialog()}>
+        Sign in
       </Button>
     </View>
   );
@@ -74,22 +74,24 @@ function AvailabilityToggle({ canUsePrivateApi }: { canUsePrivateApi: boolean })
   const isPending = !canUsePrivateApi || courierQuery.isLoading || toggleMutation.isPending;
 
   return (
-    <Card>
-      <CardContent className="flex-row items-center justify-between gap-4 pt-5">
-        <View className="flex-1 gap-1">
-          <Text className="text-lg font-semibold text-surface-foreground">
-            {isOnline ? "You're online" : "You're offline"}
-          </Text>
-          <Text className="text-sm text-muted-foreground">
-            {isOnline ? 'Accepting jobs near you.' : 'Go online to start receiving jobs.'}
-          </Text>
-        </View>
-        {isPending ? (
-          <ActivityIndicator />
-        ) : (
-          <Switch value={isOnline} onValueChange={() => toggleMutation.mutate()} />
-        )}
-      </CardContent>
+    <Card className="flex-row items-center justify-between gap-4 p-4">
+      <View className="flex-1 gap-1">
+        <Text className="text-lg font-semibold text-surface-foreground">
+          {isOnline ? "You're online" : "You're offline"}
+        </Text>
+        <Text className="text-sm text-muted-foreground">
+          {isOnline ? 'Accepting jobs near you.' : 'Go online to start receiving jobs.'}
+        </Text>
+      </View>
+      {isPending ? (
+        <Loading variant="spinner" />
+      ) : (
+        <Switch
+          checked={isOnline}
+          onCheckedChange={() => toggleMutation.mutate()}
+          accessibilityLabel={isOnline ? "You're online" : "You're offline"}
+        />
+      )}
     </Card>
   );
 }
@@ -97,7 +99,7 @@ function AvailabilityToggle({ canUsePrivateApi }: { canUsePrivateApi: boolean })
 /** A single job row — tapping it opens the active-job screen. */
 function JobCard({ job }: { job: JobSummary }) {
   const router = useRouter();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const totalLabel = formatDisplayMoney(job.totals.total);
 
   return (
@@ -106,27 +108,23 @@ function JobCard({ job }: { job: JobSummary }) {
       accessibilityRole="button"
       accessibilityLabel={`Open job ${job.jobNumber}`}
     >
-      <Card className="active:opacity-90 web:hover:opacity-90">
-        <CardContent className="flex-row items-center gap-3 pt-5">
-          <View className="flex-1 gap-2">
-            <View className="flex-row items-center justify-between gap-3">
-              <Text className="text-base font-semibold text-surface-foreground">
-                {job.jobNumber}
-              </Text>
-              <Text className="text-base font-semibold text-surface-foreground">{totalLabel}</Text>
-            </View>
-            <View className="flex-row items-center gap-2">
-              <Text className="text-sm capitalize text-muted-foreground">{job.type}</Text>
-              <Text className="text-sm text-muted-foreground">·</Text>
-              <Text className="text-sm capitalize text-muted-foreground">{job.sizeClass}</Text>
-              <Text className="text-sm text-muted-foreground">·</Text>
-              <Text className="text-sm capitalize text-muted-foreground">
-                {job.status.replace('_', ' ')}
-              </Text>
-            </View>
+      <Card className="active:opacity-90 web:hover:opacity-90 flex-row items-center gap-3 p-4">
+        <View className="flex-1 gap-2">
+          <View className="flex-row items-center justify-between gap-3">
+            <Text className="text-base font-semibold text-surface-foreground">{job.jobNumber}</Text>
+            <Text className="text-base font-semibold text-surface-foreground">{totalLabel}</Text>
           </View>
-          <ChevronRight size={20} color={colors.mutedForeground} />
-        </CardContent>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-sm capitalize text-muted-foreground">{job.type}</Text>
+            <Text className="text-sm text-muted-foreground">·</Text>
+            <Text className="text-sm capitalize text-muted-foreground">{job.sizeClass}</Text>
+            <Text className="text-sm text-muted-foreground">·</Text>
+            <Text className="text-sm capitalize text-muted-foreground">
+              {job.status.replace('_', ' ')}
+            </Text>
+          </View>
+        </View>
+        <RiArrowRightSLine width={20} fill={colors.textSecondary} />
       </Card>
     </Pressable>
   );
@@ -146,7 +144,7 @@ function JobsList({ canUsePrivateApi }: { canUsePrivateApi: boolean }) {
   if (!canUsePrivateApi || jobsQuery.isLoading) {
     body = (
       <View className="items-center py-10">
-        <ActivityIndicator />
+        <Loading variant="spinner" />
       </View>
     );
   } else if (jobsQuery.isError) {
@@ -232,7 +230,7 @@ function HomeBody() {
 }
 
 export default function HomeScreen() {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const isWeb = Platform.OS === 'web';
 
   const head = (

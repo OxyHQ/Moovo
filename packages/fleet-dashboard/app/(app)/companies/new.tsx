@@ -1,15 +1,30 @@
 import { useState } from 'react';
-import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useOxy } from '@oxy.so/services/ui/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateCompanyInput, CurrencyCode } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Textarea } from '@moovo/app-shell/components/ui/textarea';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { ColorPicker, COLOR_OPTIONS } from '@/components/ui/color-picker';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { FormScreen, Field } from '@/components/dashboard/FormScreen';
+import { Text } from '@oxy.so/bloom/typography';
+import { ColorSwatchPicker } from '@oxy.so/bloom/color-swatch-picker';
+import { Field } from '@oxy.so/bloom/field';
+import {
+  Select,
+  SelectContent,
+  SelectIcon,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@oxy.so/bloom/select';
+import { Textarea } from '@oxy.so/bloom/textarea';
+import { Button } from '@oxy.so/bloom/button';
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItemText,
+} from '@oxy.so/bloom/segmented-control';
+import { FormScreen } from '@/components/dashboard/FormScreen';
+import { BRAND_COLORS } from '@/lib/brand-colors';
 import { toast } from '@oxy.so/bloom/toast';
 import { createCompany } from '@/lib/api/companies';
 import { queryKeys } from '@/lib/hooks/query-keys';
@@ -66,8 +81,12 @@ export default function NewCompanyScreen() {
       );
     },
   });
+  const organizations = (accounts.data ?? []).map(({ accountId, name }) => ({
+    value: accountId,
+    label: name,
+  }));
   const [description, setDescription] = useState('');
-  const [brandColor, setBrandColor] = useState<string>(COLOR_OPTIONS[0] ?? '#3b82f6');
+  const [brandColor, setBrandColor] = useState<string>(BRAND_COLORS[0].hex);
   const [currency, setCurrency] = useState<CurrencyCode>('USD');
 
   const mutation = useMutation({
@@ -106,59 +125,69 @@ export default function NewCompanyScreen() {
         {accounts.isSuccess && accounts.data.length === 0 ? (
           <Text>{t('companyForm.noOrganizations')}</Text>
         ) : null}
-        {accounts.data?.map((organization) => (
-          <Button
-            key={organization.accountId}
-            onPress={() => setAccountId(organization.accountId)}
-            variant={accountId === organization.accountId ? 'default' : 'outline'}
-          >
-            <Text>{organization.name}</Text>
-          </Button>
-        ))}
+        <Select value={accountId} onValueChange={setAccountId}>
+          <SelectTrigger label={t('companyForm.organization')}>
+            <SelectValue placeholder={t('companyForm.organization')} />
+            <SelectIcon />
+          </SelectTrigger>
+          <SelectContent
+            label={t('companyForm.organization')}
+            items={organizations}
+            renderItem={(item) => (
+              <SelectItem value={item.value} label={item.label}>
+                <SelectItemIndicator />
+                <SelectItemText>{item.label}</SelectItemText>
+              </SelectItem>
+            )}
+          />
+        </Select>
       </Field>
 
-      <Field label={t('companyForm.description')} helper={t('companyForm.descriptionHelper')}>
-        <Textarea
-          value={description}
-          onChangeText={setDescription}
-          placeholder={t('companyForm.descriptionPlaceholder')}
-          maxLength={5000}
+      <Textarea
+        label={t('companyForm.description')}
+        hint={t('companyForm.descriptionHelper')}
+        value={description}
+        onValueChange={setDescription}
+        placeholder={t('companyForm.descriptionPlaceholder')}
+        maxLength={5000}
+      />
+
+      <Field label={t('companyForm.brandColor')} multiple>
+        <ColorSwatchPicker
+          label={t('companyForm.brandColor')}
+          value={brandColor}
+          onValueChange={setBrandColor}
+          colors={BRAND_COLORS.map(({ hex }) => hex)}
+          names={Object.fromEntries(
+            BRAND_COLORS.map(({ hex, name }) => [hex, t(`companyForm.colors.${name}`)]),
+          )}
         />
       </Field>
 
-      <ColorPicker
-        label={t('companyForm.brandColor')}
-        selected={brandColor}
-        onSelect={setBrandColor}
-      />
-
       <Field label={t('companyForm.currency')}>
-        <ToggleGroup
-          type="single"
+        <SegmentedControl
+          label={t('companyForm.currency')}
+          type="radio"
           value={currency}
           onValueChange={(v) => {
             if (typeof v === 'string' && v) setCurrency(v as CurrencyCode);
           }}
         >
-          <View className="flex-row gap-2">
-            {CURRENCIES.map((c) => (
-              <ToggleGroupItem key={c} value={c} className="flex-1 items-center">
-                {c}
-              </ToggleGroupItem>
-            ))}
-          </View>
-        </ToggleGroup>
+          {CURRENCIES.map((c) => (
+            <SegmentedControlItem key={c} value={c}>
+              <SegmentedControlItemText>{c}</SegmentedControlItemText>
+            </SegmentedControlItem>
+          ))}
+        </SegmentedControl>
       </Field>
 
       <Button
+        className="mt-2"
         onPress={onSubmit}
         disabled={!canSubmit}
-        isLoading={mutation.isPending}
-        className="mt-2"
+        loading={mutation.isPending}
       >
-        <Text className="text-sm font-medium text-primary-foreground">
-          {t('companyForm.createButton')}
-        </Text>
+        {t('companyForm.createButton')}
       </Button>
     </FormScreen>
   );

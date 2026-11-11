@@ -39,32 +39,27 @@ export const STATUS_HINTS: Record<TrackingStatus, string> = {
 };
 
 /**
- * Tailwind classes per status, grouped by what a reader must DO about it.
+ * The Bloom chip tone per status, grouped by what a reader must DO about it.
  *
  * Four buckets rather than eleven colours: delivered is settled, `exception`,
  * `failed_attempt`, `returned` and `cancelled` need attention,
  * `out_for_delivery` and `available_for_pickup` are the states people open the
  * app for, and the rest are simply in progress.
- *
- * Returned as a pair because React Native does not inherit text colour from a
- * parent view: the chip's background and its label have to be styled on their
- * own elements, and keeping both spellings in one place is what stops them
- * drifting apart.
  */
-export function statusTone(status: TrackingStatus): { chip: string; text: string } {
+export function statusColor(status: TrackingStatus): 'primary' | 'success' | 'warning' | 'error' {
   switch (status) {
     case 'delivered':
-      return { chip: 'bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-300' };
+      return 'success';
     case 'exception':
     case 'failed_attempt':
     case 'returned':
     case 'cancelled':
-      return { chip: 'bg-red-500/15', text: 'text-red-700 dark:text-red-300' };
+      return 'error';
     case 'out_for_delivery':
     case 'available_for_pickup':
-      return { chip: 'bg-amber-500/15', text: 'text-amber-700 dark:text-amber-300' };
+      return 'warning';
     default:
-      return { chip: 'bg-primary/10', text: 'text-primary' };
+      return 'primary';
   }
 }
 

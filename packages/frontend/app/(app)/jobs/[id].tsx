@@ -1,9 +1,14 @@
 import { useMemo, useState } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
 import Head from 'expo-router/head';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Package, MapPin, Phone, X } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
+import { RiBox3Line } from '@oxy.so/bloom/icons/RiBox3Line';
+import { RiCloseLine } from '@oxy.so/bloom/icons/RiCloseLine';
+import { RiMapPinLine } from '@oxy.so/bloom/icons/RiMapPinLine';
+import { RiPhoneLine } from '@oxy.so/bloom/icons/RiPhoneLine';
+import { Loading } from '@oxy.so/bloom/loading';
+import { PageHeader } from '@oxy.so/bloom/page-header';
+import { Text } from '@oxy.so/bloom/typography';
 import { StatusBadge } from '@/components/transport/StatusBadge';
 import { MoneyText } from '@/components/transport/MoneyText';
 import { StatusTimeline } from '@/components/transport/StatusTimeline';
@@ -11,7 +16,7 @@ import { CourierInfo } from '@/components/transport/CourierInfo';
 import { QrCard } from '@/components/transport/QrCard';
 import MoovoMap from '@/components/Map';
 import type { MapMarker } from '@/components/map-types';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { useJob, useCancelJob } from '@/lib/hooks/use-jobs';
 import { useJobSocket } from '@/lib/hooks/use-job-socket';
 import { SHIPMENT_TYPES } from '@/lib/shipment-type';
@@ -29,12 +34,12 @@ function showsCodes(status: JobView['status']): boolean {
 
 /** An address summary block for an endpoint snapshot. */
 function EndpointBlock({ label, endpoint }: { label: string; endpoint: JobEndpointSnapshot }) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const { address } = endpoint;
   const line2 = [address.postalCode, address.city, address.region].filter(Boolean).join(', ');
   return (
     <View className="flex-row gap-3">
-      <MapPin size={16} color={colors.mutedForeground} style={{ marginTop: 2 }} />
+      <RiMapPinLine width={16} fill={colors.textSecondary} style={{ marginTop: 2 }} />
       <View className="flex-1">
         <Text className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
@@ -43,7 +48,7 @@ function EndpointBlock({ label, endpoint }: { label: string; endpoint: JobEndpoi
         {address.line2 ? <Text className="text-sm text-foreground">{address.line2}</Text> : null}
         <Text className="text-sm text-muted-foreground">{line2}</Text>
         <View className="mt-1 flex-row items-center gap-1.5">
-          <Phone size={12} color={colors.mutedForeground} />
+          <RiPhoneLine width={12} fill={colors.textSecondary} />
           <Text className="text-xs text-muted-foreground">
             {endpoint.contactName} · {endpoint.contactPhone}
           </Text>
@@ -58,7 +63,7 @@ function EndpointBlock({ label, endpoint }: { label: string; endpoint: JobEndpoi
 
 export default function JobTrackingScreen() {
   const router = useRouter();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const { data: job, isLoading } = useJob(id);
@@ -107,7 +112,7 @@ export default function JobTrackingScreen() {
   if (isLoading || !job) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="small" color={colors.primary} />
+        <Loading variant="spinner" size="sm" />
       </View>
     );
   }
@@ -120,24 +125,13 @@ export default function JobTrackingScreen() {
         <title>{job.jobNumber} · Moovo</title>
       </Head>
 
-      {/* Header. */}
-      <View className="border-b border-border px-4 pb-3 pt-4">
-        <View className="flex-row items-center gap-3">
-          <Pressable
-            onPress={() => router.replace('/(app)')}
-            accessibilityRole="button"
-            hitSlop={8}
-            className="p-1"
-          >
-            <ArrowLeft size={20} color={colors.foreground} />
-          </Pressable>
-          <View className="flex-1">
-            <Text className="text-lg font-bold text-foreground">{job.jobNumber}</Text>
-            <Text className="text-xs text-muted-foreground">{typeMeta.label}</Text>
-          </View>
-          <StatusBadge status={job.status} />
-        </View>
-      </View>
+      <PageHeader
+        presentation="bar"
+        title={job.jobNumber}
+        subtitle={typeMeta.label}
+        onBack={() => router.replace('/(app)')}
+        actions={<StatusBadge status={job.status} />}
+      />
 
       <ScrollView className="flex-1" contentContainerClassName="px-4 py-4 pb-24">
         <View className="web:mx-auto web:w-full web:max-w-[640px] gap-4">
@@ -167,7 +161,7 @@ export default function JobTrackingScreen() {
             <EndpointBlock label="Dropoff" endpoint={job.dropoffSnapshot} />
             <View className="h-px w-full" style={{ backgroundColor: colors.border }} />
             <View className="flex-row items-center gap-3">
-              <Package size={16} color={colors.mutedForeground} />
+              <RiBox3Line width={16} fill={colors.textSecondary} />
               <Text className="flex-1 text-sm text-foreground">
                 {job.parcelSnapshot.pieces} piece
                 {job.parcelSnapshot.pieces === 1 ? '' : 's'} · {job.parcelSnapshot.weightKg} kg ·{' '}
@@ -190,9 +184,9 @@ export default function JobTrackingScreen() {
               className="flex-row items-center justify-center gap-2 rounded-xl border border-red-500/40 py-3 active:opacity-80"
             >
               {cancel.isPending ? (
-                <ActivityIndicator size="small" color="#dc2626" />
+                <Loading variant="spinner" size="sm" />
               ) : (
-                <X size={16} color="#dc2626" />
+                <RiCloseLine width={16} fill="#dc2626" />
               )}
               <Text className="text-sm font-semibold text-red-600">Cancel delivery</Text>
             </Pressable>

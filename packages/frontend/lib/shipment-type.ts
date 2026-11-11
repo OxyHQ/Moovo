@@ -1,4 +1,7 @@
-import { Package, UtensilsCrossed, Truck, type LucideIcon } from 'lucide-react-native';
+import { RiBox3Line } from '@oxy.so/bloom/icons/RiBox3Line';
+import { RiRestaurantLine } from '@oxy.so/bloom/icons/RiRestaurantLine';
+import { RiTruckLine } from '@oxy.so/bloom/icons/RiTruckLine';
+import type { BloomIconComponent } from '@oxy.so/bloom/icons';
 import type { ShipmentType } from '@moovo/shared-types';
 
 /**
@@ -15,7 +18,7 @@ export interface ShipmentTypeMeta {
   /** One-line description of what this type is for. */
   description: string;
   /** Lucide icon for the type. */
-  icon: LucideIcon;
+  icon: BloomIconComponent;
   /** Prompt for the free-text contents field. */
   itemPrompt: string;
   /** Label for the "what are you sending" contents field. */
@@ -27,7 +30,7 @@ export const SHIPMENT_TYPES: Record<ShipmentType, ShipmentTypeMeta> = {
     type: 'package',
     label: 'Package',
     description: 'Send a parcel or documents',
-    icon: Package,
+    icon: RiBox3Line,
     itemLabel: 'What are you sending?',
     itemPrompt: 'e.g. A small box of books',
   },
@@ -35,7 +38,7 @@ export const SHIPMENT_TYPES: Record<ShipmentType, ShipmentTypeMeta> = {
     type: 'food',
     label: 'Food',
     description: 'Order or send a food delivery',
-    icon: UtensilsCrossed,
+    icon: RiRestaurantLine,
     itemLabel: 'What food is it?',
     itemPrompt: 'e.g. Two pizzas, kept upright',
   },
@@ -43,7 +46,7 @@ export const SHIPMENT_TYPES: Record<ShipmentType, ShipmentTypeMeta> = {
     type: 'move',
     label: 'Move',
     description: 'Move furniture or larger items',
-    icon: Truck,
+    icon: RiTruckLine,
     itemLabel: 'What are you moving?',
     itemPrompt: 'e.g. A two-seater sofa and a chair',
   },

@@ -1,18 +1,25 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import type { Vehicle, VehicleType, CreateVehicleInput } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Input } from '@moovo/app-shell/components/ui/input';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Button } from '@oxy.so/bloom/button';
+import { Dialog } from '@oxy.so/bloom/dialog';
+import { Field } from '@oxy.so/bloom/field';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Field } from '@/components/dashboard/FormScreen';
+  Select,
+  SelectContent,
+  SelectIcon,
+  SelectItem,
+  SelectItemIndicator,
+  SelectItemText,
+  SelectTrigger,
+  SelectValue,
+} from '@oxy.so/bloom/select';
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItemText,
+} from '@oxy.so/bloom/segmented-control';
+import { TextFieldInput } from '@oxy.so/bloom/text-field';
 import type { UpdateVehicleBody } from '@/lib/api/vehicles';
 import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
@@ -84,92 +91,98 @@ export function VehicleDialog({
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent closeButton className="max-w-md gap-4">
-        <DialogHeader>
-          <DialogTitle>{isEdit ? t('fleet.editVehicle') : t('fleet.addVehicle')}</DialogTitle>
-        </DialogHeader>
+  const types = VEHICLE_TYPES.map((vt) => ({ value: vt, label: t(`fleet.type.${vt}`) }));
 
-        <Field label={t('fleet.vehicleType')}>
-          <ToggleGroup
-            type="single"
-            value={type}
-            onValueChange={(v) => {
-              if (typeof v === 'string' && v) setType(v as VehicleType);
-            }}
+  return (
+    <Dialog
+      open={open}
+      onClose={() => onOpenChange(false)}
+      title={isEdit ? t('fleet.editVehicle') : t('fleet.addVehicle')}
+      footer={
+        <View className="flex-row gap-2 p-5 pt-2">
+          <Button
+            appearance="outline"
+            tone="neutral"
+            className="flex-1"
+            onPress={() => onOpenChange(false)}
+            disabled={loading}
           >
-            <View className="flex-row flex-wrap gap-2">
-              {VEHICLE_TYPES.map((vt) => (
-                <ToggleGroupItem key={vt} value={vt} className="items-center">
-                  {t(`fleet.type.${vt}`)}
-                </ToggleGroupItem>
-              ))}
-            </View>
-          </ToggleGroup>
+            {t('common.cancel')}
+          </Button>
+          <Button className="flex-1" onPress={submit} loading={loading}>
+            {isEdit ? t('common.save') : t('fleet.addVehicle')}
+          </Button>
+        </View>
+      }
+    >
+      <View className="gap-4">
+        <Field label={t('fleet.vehicleType')}>
+          <Select value={type} onValueChange={(v) => setType(v as VehicleType)}>
+            <SelectTrigger label={t('fleet.vehicleType')}>
+              <SelectValue />
+              <SelectIcon />
+            </SelectTrigger>
+            <SelectContent
+              label={t('fleet.vehicleType')}
+              items={types}
+              renderItem={(item) => (
+                <SelectItem value={item.value} label={item.label}>
+                  <SelectItemIndicator />
+                  <SelectItemText>{item.label}</SelectItemText>
+                </SelectItem>
+              )}
+            />
+          </Select>
         </Field>
 
-        <Field label={t('fleet.label')} helper={t('fleet.labelHelper')}>
-          <Input
-            value={label}
-            onChangeText={setLabel}
+        <Field label={t('fleet.label')} description={t('fleet.labelHelper')}>
+          <TextFieldInput
+            label={t('fleet.label')}
             placeholder={t('fleet.labelPlaceholder')}
+            value={label}
+            onValueChange={setLabel}
             maxLength={120}
           />
         </Field>
 
         <Field label={t('fleet.plate')}>
-          <Input
-            value={plate}
-            onChangeText={setPlate}
+          <TextFieldInput
+            label={t('fleet.plate')}
             placeholder={t('fleet.platePlaceholder')}
+            value={plate}
+            onValueChange={setPlate}
             autoCapitalize="characters"
             maxLength={40}
           />
         </Field>
 
-        <Field label={t('fleet.maxWeight')} helper={t('fleet.maxWeightHelper')}>
-          <Input value={weight} onChangeText={setWeight} placeholder="0" keyboardType="numeric" />
+        <Field label={t('fleet.maxWeight')} description={t('fleet.maxWeightHelper')}>
+          <TextFieldInput
+            label={t('fleet.maxWeight')}
+            placeholder="0"
+            value={weight}
+            onValueChange={setWeight}
+            keyboardType="numeric"
+          />
         </Field>
 
         {isEdit ? (
           <Field label={t('fleet.statusLabel')}>
-            <ToggleGroup
-              type="single"
+            <SegmentedControl
+              type="radio"
               value={active ? 'active' : 'inactive'}
-              onValueChange={(v) => {
-                if (typeof v === 'string' && v) setActive(v === 'active');
-              }}
+              onValueChange={(v) => setActive(v === 'active')}
             >
-              <View className="flex-row gap-2">
-                <ToggleGroupItem value="active" className="flex-1 items-center">
-                  {t('fleet.statusActive')}
-                </ToggleGroupItem>
-                <ToggleGroupItem value="inactive" className="flex-1 items-center">
-                  {t('fleet.statusInactive')}
-                </ToggleGroupItem>
-              </View>
-            </ToggleGroup>
+              <SegmentedControlItem value="active">
+                <SegmentedControlItemText>{t('fleet.statusActive')}</SegmentedControlItemText>
+              </SegmentedControlItem>
+              <SegmentedControlItem value="inactive">
+                <SegmentedControlItemText>{t('fleet.statusInactive')}</SegmentedControlItemText>
+              </SegmentedControlItem>
+            </SegmentedControl>
           </Field>
         ) : null}
-
-        <DialogFooter className="mt-2 gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 h-9"
-            onPress={() => onOpenChange(false)}
-            disabled={loading}
-          >
-            <Text className="text-sm">{t('common.cancel')}</Text>
-          </Button>
-          <Button size="sm" className="flex-1 h-9" onPress={submit} isLoading={loading}>
-            <Text className="text-sm text-primary-foreground">
-              {isEdit ? t('common.save') : t('fleet.addVehicle')}
-            </Text>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+      </View>
     </Dialog>
   );
 }

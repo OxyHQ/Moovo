@@ -24,7 +24,6 @@ repo root).
 - `app/(app)/companies/new.tsx` — create company (coming soon)
 - `app/(app)/notifications.tsx` — notification feed
 - `app/(app)/settings/*` — settings area
-- `app/(app)/forgot-password.tsx`, `reset-password.tsx` — auth helpers
 
 ## Development
 

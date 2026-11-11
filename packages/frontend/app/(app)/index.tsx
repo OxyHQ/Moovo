@@ -1,16 +1,16 @@
 import { View, ScrollView, Pressable, Platform } from 'react-native';
+import { Button } from '@oxy.so/bloom/button';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
 import { useOxy } from '@oxy.so/services/ui/client';
-import { ChevronRight } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
+import { RiArrowRightSLine } from '@oxy.so/bloom/icons/RiArrowRightSLine';
+import { Text } from '@oxy.so/bloom/typography';
 import { AskAlia } from '@/components/ask-alia';
 import { Footer } from '@/components/shell/Footer';
-import { MoovoWordmark } from '@moovo/app-shell/components/ui/moovo-wordmark';
 import { StatusBadge } from '@/components/transport/StatusBadge';
 import { MoneyText } from '@/components/transport/MoneyText';
 import { RouteSummary } from '@/components/transport/RouteSummary';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { useMyShipments } from '@/lib/hooks/use-shipments';
 import { useMyJobs } from '@/lib/hooks/use-jobs';
 import { SHIPMENT_TYPES, SHIPMENT_TYPE_ORDER } from '@/lib/shipment-type';
@@ -22,7 +22,7 @@ const GUTTER_MASK_SPREAD = 40;
 /** The big "Send something" CTA: pick a type → go to the create flow. */
 function SendCta() {
   const router = useRouter();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const { isAuthenticated, openAccountDialog } = useOxy();
 
   const handlePick = (type: ShipmentType) => {
@@ -52,7 +52,7 @@ function SendCta() {
               className="min-w-[150px] flex-1 rounded-2xl border border-border bg-card p-4 active:opacity-80 web:transition web:hover:border-primary"
             >
               <View className="mb-3 h-11 w-11 items-center justify-center rounded-full bg-primary/10">
-                <Icon size={22} color={colors.primary} />
+                <Icon width={22} fill={colors.primary} />
               </View>
               <Text className="text-base font-semibold text-foreground">{meta.label}</Text>
               <Text className="mt-0.5 text-xs text-muted-foreground" numberOfLines={2}>
@@ -69,7 +69,7 @@ function SendCta() {
 /** A recent shipment row (pre-booking: quoting/quoted/cancelled). */
 function ShipmentRow({ shipment }: { shipment: Shipment }) {
   const router = useRouter();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const meta = SHIPMENT_TYPES[shipment.type];
   const Icon = meta.icon;
   return (
@@ -78,7 +78,7 @@ function ShipmentRow({ shipment }: { shipment: Shipment }) {
       className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4 active:opacity-80"
     >
       <View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-        <Icon size={18} color={colors.mutedForeground} />
+        <Icon width={18} fill={colors.textSecondary} />
       </View>
       <View className="flex-1 gap-1">
         <View className="flex-row items-center justify-between">
@@ -87,7 +87,7 @@ function ShipmentRow({ shipment }: { shipment: Shipment }) {
         </View>
         <RouteSummary from={shipment.pickup.address.city} to={shipment.dropoff.address.city} />
       </View>
-      <ChevronRight size={18} color={colors.mutedForeground} />
+      <RiArrowRightSLine width={18} height={18} fill={colors.textSecondary} />
     </Pressable>
   );
 }
@@ -95,7 +95,7 @@ function ShipmentRow({ shipment }: { shipment: Shipment }) {
 /** A recent job row (booked: requested → delivered). */
 function JobRow({ job }: { job: JobSummary }) {
   const router = useRouter();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const meta = SHIPMENT_TYPES[job.type];
   const Icon = meta.icon;
   return (
@@ -104,7 +104,7 @@ function JobRow({ job }: { job: JobSummary }) {
       className="flex-row items-center gap-3 rounded-2xl border border-border bg-card p-4 active:opacity-80"
     >
       <View className="h-10 w-10 items-center justify-center rounded-full bg-muted">
-        <Icon size={18} color={colors.mutedForeground} />
+        <Icon width={18} fill={colors.textSecondary} />
       </View>
       <View className="flex-1 gap-1">
         <View className="flex-row items-center justify-between">
@@ -113,7 +113,7 @@ function JobRow({ job }: { job: JobSummary }) {
         </View>
         <MoneyText money={job.totals.total} size="sm" />
       </View>
-      <ChevronRight size={18} color={colors.mutedForeground} />
+      <RiArrowRightSLine width={18} height={18} fill={colors.textSecondary} />
     </Pressable>
   );
 }
@@ -170,20 +170,15 @@ function SignedOutPrompt() {
         <Text className="mt-1 text-center text-xs text-muted-foreground">
           Create a shipment above — we'll ask you to sign in to send it.
         </Text>
-        <Pressable
-          onPress={() => openAccountDialog()}
-          accessibilityRole="button"
-          className="mt-4 rounded-full bg-primary px-5 py-2.5 active:opacity-90"
-        >
-          <Text className="text-sm font-semibold text-primary-foreground">Sign in</Text>
-        </Pressable>
+        <Button className="mt-4" onPress={() => openAccountDialog()}>
+          Sign in
+        </Button>
       </View>
     </View>
   );
 }
 
 function HomeBody() {
-  const { colors } = useColorScheme();
   const { isAuthenticated } = useOxy();
   return (
     <>
@@ -191,7 +186,9 @@ function HomeBody() {
         <View className="absolute right-4 top-4 z-10">
           <AskAlia />
         </View>
-        <MoovoWordmark width={200} color={colors.foreground} />
+        <Text variant="title-1-bold" className="text-foreground">
+          Moovo
+        </Text>
         <Text className="mt-2 text-sm text-muted-foreground">
           Send packages, food and moves — your way.
         </Text>
@@ -206,7 +203,7 @@ function HomeBody() {
 }
 
 export default function HomeScreen() {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   const isWeb = Platform.OS === 'web';
 
   const head = (

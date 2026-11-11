@@ -1,16 +1,23 @@
 import { useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View } from 'react-native';
 import { Link } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
-import { UserPlus, Trash2, Settings } from 'lucide-react-native';
+import { RiDeleteBinLine } from '@oxy.so/bloom/icons/RiDeleteBinLine';
+import { RiSettings3Line } from '@oxy.so/bloom/icons/RiSettings3Line';
+import { RiUserAddLine } from '@oxy.so/bloom/icons/RiUserAddLine';
 import type { Company, CompanyMember, CompanyRole } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Input } from '@moovo/app-shell/components/ui/input';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { Card } from '@moovo/app-shell/components/ui/card';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
+import { TextFieldInput } from '@oxy.so/bloom/text-field';
+import { Card } from '@oxy.so/bloom/card';
+import {
+  SegmentedControl,
+  SegmentedControlItem,
+  SegmentedControlItemText,
+} from '@oxy.so/bloom/segmented-control';
+import { AlertDialog } from '@oxy.so/bloom/alert-dialog';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
   CompanyHeader,
@@ -22,7 +29,6 @@ import { toast } from '@oxy.so/bloom/toast';
 import { fetchMembers, inviteMember, updateMember, removeMember } from '@/lib/api/members';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { useCompanyContext } from '@/lib/hooks/use-company-context';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { ownerCount } from '@/lib/permissions';
 import { formatDate } from '@/lib/format';
@@ -57,7 +63,6 @@ function MemberRow({
   busy: boolean;
 }) {
   const { t } = useTranslation();
-  const { colors } = useColorScheme();
   const locale = useI18nStore((s) => s.locale);
 
   // The last owner cannot be demoted or removed (mirrors the server invariant).
@@ -70,19 +75,20 @@ function MemberRow({
           <UserCell oxyUserId={member.oxyUserId} />
         </View>
         <Button
-          variant="ghost"
-          size="icon"
+          appearance="plain"
+          tone="neutral"
+          iconOnly
+          className="w-9"
           onPress={() => onRemove(member)}
           disabled={busy || isLastOwner}
-          className="h-9 w-9 rounded-full"
           accessibilityLabel={t('members.remove')}
-        >
-          <Trash2 size={18} color={colors.mutedForeground} />
-        </Button>
+          icon={RiDeleteBinLine}
+        />
       </View>
 
-      <ToggleGroup
-        type="single"
+      <SegmentedControl
+        label={t('members.role.label')}
+        type="radio"
         value={member.role}
         onValueChange={(v) => {
           if (typeof v === 'string' && v && v !== member.role && !isLastOwner) {
@@ -90,14 +96,12 @@ function MemberRow({
           }
         }}
       >
-        <View className="flex-row flex-wrap gap-2">
-          {ROLES.map((role) => (
-            <ToggleGroupItem key={role} value={role} className="items-center">
-              {t(`members.role.${role}`)}
-            </ToggleGroupItem>
-          ))}
-        </View>
-      </ToggleGroup>
+        {ROLES.map((role) => (
+          <SegmentedControlItem key={role} value={role}>
+            <SegmentedControlItemText>{t(`members.role.${role}`)}</SegmentedControlItemText>
+          </SegmentedControlItem>
+        ))}
+      </SegmentedControl>
 
       <Text className="text-xs text-muted-foreground">
         {t('members.joinedOn', { date: formatDate(member.joinedAt, locale) })}
@@ -143,39 +147,34 @@ function InviteForm({ companyId }: { companyId: string }) {
       <Text className="text-base font-semibold text-surface-foreground">
         {t('members.inviteTitle')}
       </Text>
-      <Input
+      <TextFieldInput
+        label={t('members.usernamePlaceholder')}
         value={username}
-        onChangeText={setUsername}
-        placeholder={t('members.usernamePlaceholder')}
+        onValueChange={setUsername}
         autoCapitalize="none"
         autoCorrect={false}
       />
-      <ToggleGroup
-        type="single"
+      <SegmentedControl
+        label={t('members.role.label')}
+        type="radio"
         value={role}
         onValueChange={(v) => {
           if (typeof v === 'string' && v) setRole(v as CompanyRole);
         }}
       >
-        <View className="flex-row flex-wrap gap-2">
-          {ROLES.map((r) => (
-            <ToggleGroupItem key={r} value={r} className="items-center">
-              {t(`members.role.${r}`)}
-            </ToggleGroupItem>
-          ))}
-        </View>
-      </ToggleGroup>
+        {ROLES.map((r) => (
+          <SegmentedControlItem key={r} value={r}>
+            <SegmentedControlItemText>{t(`members.role.${r}`)}</SegmentedControlItemText>
+          </SegmentedControlItem>
+        ))}
+      </SegmentedControl>
       <Button
         onPress={() => mutation.mutate()}
         disabled={!canSubmit}
-        isLoading={mutation.isPending}
+        loading={mutation.isPending}
+        leadingIcon={RiUserAddLine}
       >
-        <View className="flex-row items-center gap-2">
-          <UserPlus size={16} className="text-primary-foreground" />
-          <Text className="text-sm font-medium text-primary-foreground">
-            {t('members.inviteButton')}
-          </Text>
-        </View>
+        {t('members.inviteButton')}
       </Button>
     </Card>
   );
@@ -231,7 +230,7 @@ function MembersBody() {
   if (ctx.isLoadingCompanies) {
     return (
       <View className="items-center py-16">
-        <ActivityIndicator />
+        <Loading variant="spinner" />
       </View>
     );
   }
@@ -250,13 +249,8 @@ function MembersBody() {
         action={
           canManageCompany ? (
             <Link href="/companies/settings" asChild>
-              <Button variant="outline" size="sm">
-                <View className="flex-row items-center gap-2">
-                  <Settings size={16} className="text-foreground" />
-                  <Text className="text-sm font-medium text-foreground">
-                    {t('companies.settingsLink')}
-                  </Text>
-                </View>
+              <Button appearance="outline" tone="neutral" size="sm" leadingIcon={RiSettings3Line}>
+                {t('companies.settingsLink')}
               </Button>
             </Link>
           ) : undefined
@@ -267,7 +261,7 @@ function MembersBody() {
         <PermissionDenied message={t('members.manageDenied')} />
       ) : !company ? (
         <View className="items-center py-16">
-          <ActivityIndicator />
+          <Loading variant="spinner" />
         </View>
       ) : (
         <>
@@ -291,16 +285,15 @@ function MembersBody() {
         </>
       )}
 
-      <ConfirmationDialog
+      <AlertDialog
         open={toRemove !== null}
         onOpenChange={(open) => {
           if (!open) setToRemove(null);
         }}
         title={t('members.removeTitle')}
         description={t('members.removeConfirm')}
-        confirmText={t('members.remove')}
-        confirmVariant="destructive"
-        loading={removeMutation.isPending}
+        confirmLabel={t('members.remove')}
+        destructive
         onConfirm={() => {
           if (toRemove) removeMutation.mutate(toRemove.oxyUserId);
         }}

@@ -1,13 +1,9 @@
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Linking,
-  Pressable,
-  ScrollView,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import { Linking, ScrollView, View } from 'react-native';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Switch } from '@oxy.so/bloom/switch';
+import { Text } from '@oxy.so/bloom/typography';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -108,14 +104,14 @@ export default function ParcelDetailScreen() {
       >
         <View className="mx-auto w-full max-w-2xl">
           <Link href="/parcels" asChild>
-            <Pressable accessibilityRole="button" className="self-start py-2">
-              <Text className="text-sm font-semibold text-primary">← Mis paquetes</Text>
-            </Pressable>
+            <Button appearance="plain" className="self-start">
+              ← Mis paquetes
+            </Button>
           </Link>
 
           {!isAuthResolved ? (
             <View className="mt-16 items-center">
-              <ActivityIndicator />
+              <Loading variant="spinner" />
             </View>
           ) : !isAuthenticated ? (
             <View className="mt-8 rounded-2xl border border-border bg-card p-5">
@@ -125,19 +121,13 @@ export default function ParcelDetailScreen() {
               <Text className="mt-1 text-sm text-muted-foreground">
                 Los paquetes guardados pertenecen a una cuenta.
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => openAccountDialog()}
-                className="mt-4 h-11 items-center justify-center rounded-xl bg-primary px-5"
-              >
-                <Text className="text-sm font-semibold text-primary-foreground">
-                  Iniciar sesión
-                </Text>
-              </Pressable>
+              <Button className="mt-4" onPress={() => openAccountDialog()}>
+                Iniciar sesión
+              </Button>
             </View>
           ) : detail.isPending ? (
             <View className="mt-16 items-center">
-              <ActivityIndicator />
+              <Loading variant="spinner" />
             </View>
           ) : detail.isError ? (
             <View className="mt-8 rounded-2xl border border-border bg-card p-5">
@@ -236,27 +226,23 @@ export default function ParcelDetailScreen() {
 
               <View className="mt-6 gap-3">
                 {detail.data.source === 'carrier' && parcel.carrier.pollSupported ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={refresh.isPending}
+                  <Button
+                    appearance="outline"
+                    tone="neutral"
                     onPress={() => refresh.mutate()}
-                    className="h-11 items-center justify-center rounded-xl border border-border px-5"
+                    disabled={refresh.isPending}
                   >
-                    <Text className="text-sm font-semibold text-foreground">
-                      {refresh.isPending ? 'Pidiendo…' : 'Actualizar ahora'}
-                    </Text>
-                  </Pressable>
+                    {refresh.isPending ? 'Pidiendo…' : 'Actualizar ahora'}
+                  </Button>
                 ) : null}
 
-                <Pressable
-                  accessibilityRole="link"
+                <Button
+                  appearance="outline"
+                  tone="neutral"
                   onPress={() => Linking.openURL(parcel.trackingUrl)}
-                  className="h-11 items-center justify-center rounded-xl border border-border px-5"
                 >
-                  <Text className="text-sm font-semibold text-foreground">
-                    Ver en la web de {parcel.carrier.name}
-                  </Text>
-                </Pressable>
+                  Ver en la web de {parcel.carrier.name}
+                </Button>
               </View>
 
               <View className="mt-6 flex-row items-center justify-between rounded-2xl border border-border bg-card p-5">
@@ -271,25 +257,24 @@ export default function ParcelDetailScreen() {
                   </Text>
                 </View>
                 <Switch
-                  value={parcel.notifyOnStateChange}
+                  checked={parcel.notifyOnStateChange}
                   // A carrier with no feed produces no state change, so leaving
                   // this switchable would store a preference nothing can honour.
                   disabled={setNotify.isPending || !parcel.carrier.pollSupported}
-                  onValueChange={(value) => setNotify.mutate(value)}
+                  onCheckedChange={(value) => setNotify.mutate(value)}
                   accessibilityLabel="Avisarme de los cambios de estado"
                 />
               </View>
 
-              <Pressable
-                accessibilityRole="button"
-                disabled={remove.isPending}
+              <Button
+                appearance="plain"
+                tone="danger"
+                className="mt-6"
                 onPress={() => remove.mutate()}
-                className="mt-6 h-11 items-center justify-center rounded-xl px-5"
+                disabled={remove.isPending}
               >
-                <Text className="text-sm font-semibold text-red-600 dark:text-red-400">
-                  {remove.isPending ? 'Eliminando…' : 'Dejar de seguir este paquete'}
-                </Text>
-              </Pressable>
+                {remove.isPending ? 'Eliminando…' : 'Dejar de seguir este paquete'}
+              </Button>
             </>
           ) : null}
         </View>

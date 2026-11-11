@@ -1,4 +1,8 @@
-import { Bike, type LucideIcon, Truck, Car, Package } from 'lucide-react-native';
+import { RiBikeLine } from '@oxy.so/bloom/icons/RiBikeLine';
+import { RiBox3Line } from '@oxy.so/bloom/icons/RiBox3Line';
+import { RiCarLine } from '@oxy.so/bloom/icons/RiCarLine';
+import { RiTruckLine } from '@oxy.so/bloom/icons/RiTruckLine';
+import type { BloomIconComponent } from '@oxy.so/bloom/icons';
 import type { VehicleType } from '@moovo/shared-types';
 
 /**
@@ -27,14 +31,14 @@ export const VEHICLE_LABELS: Record<VehicleType, string> = {
   truck: 'Truck',
 };
 
-/** Icon for each vehicle type (lucide). */
-export const VEHICLE_ICONS: Record<VehicleType, LucideIcon> = {
-  bike: Bike,
-  scooter: Bike,
-  car: Car,
-  van: Truck,
-  truck: Truck,
+/** Icon for each vehicle type. */
+export const VEHICLE_ICONS: Record<VehicleType, BloomIconComponent> = {
+  bike: RiBikeLine,
+  scooter: RiBikeLine,
+  car: RiCarLine,
+  van: RiTruckLine,
+  truck: RiTruckLine,
 };
 
 /** Fallback icon when a job type / vehicle is unknown. */
-export const FALLBACK_VEHICLE_ICON: LucideIcon = Package;
+export const FALLBACK_VEHICLE_ICON: BloomIconComponent = RiBox3Line;

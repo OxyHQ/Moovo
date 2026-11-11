@@ -1,8 +1,8 @@
 import { View } from 'react-native';
-import type { LucideIcon } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Card } from '@moovo/app-shell/components/ui/card';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import type { BloomIconComponent } from '@oxy.so/bloom/icons';
+import { Text } from '@oxy.so/bloom/typography';
+import { Card } from '@oxy.so/bloom/card';
+import { useTheme } from '@oxy.so/bloom/theme';
 
 interface StatCardProps {
   /** Short metric label. */
@@ -12,7 +12,7 @@ interface StatCardProps {
   /** Optional secondary caption under the value. */
   caption?: string;
   /** Leading icon. */
-  icon: LucideIcon;
+  icon: BloomIconComponent;
   /** Whether the value/icon is still loading (renders a placeholder dash). */
   loading?: boolean;
 }
@@ -22,7 +22,7 @@ interface StatCardProps {
  * overview and the stats screen. Pure presentation; the caller formats values.
  */
 export function StatCard({ label, value, caption, icon: Icon, loading = false }: StatCardProps) {
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   return (
     <Card className="min-w-0 flex-1 gap-3 p-4">
       <View className="flex-row items-center justify-between gap-2">
@@ -33,7 +33,7 @@ export function StatCard({ label, value, caption, icon: Icon, loading = false }:
           {label}
         </Text>
         <View className="h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-          <Icon size={16} color={colors.primary} />
+          <Icon width={16} fill={colors.primary} />
         </View>
       </View>
       <Text className="text-2xl font-bold text-surface-foreground" numberOfLines={1}>

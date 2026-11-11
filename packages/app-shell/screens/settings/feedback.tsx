@@ -1,18 +1,24 @@
-import { View, Platform, Pressable, ActivityIndicator } from 'react-native';
+import { View, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from '../../lib/keyboard';
-import { Text } from '../../components/ui/text';
-import { Button } from '../../components/ui/button';
-import { Textarea } from '../../components/ui/textarea';
+import { Text } from '@oxy.so/bloom/typography';
+import { Button } from '@oxy.so/bloom/button';
+import { Field } from '@oxy.so/bloom/field';
+import { PageHeader } from '@oxy.so/bloom/page-header';
+import { RatingInput } from '@oxy.so/bloom/rating';
+import { SelectionCard } from '@oxy.so/bloom/card';
+import { Textarea } from '@oxy.so/bloom/textarea';
 import { useState } from 'react';
 import { useOxy } from '@oxy.so/services/ui/client';
 import { useRouter } from 'expo-router';
 import apiClient from '../../lib/api/client';
 import { isAxiosError } from 'axios';
-import { MessageSquare, Bug, Lightbulb, Sparkles, Star } from 'lucide-react-native';
-import { SettingsHeader } from '../../components/settings/settings-header';
+import type { BloomIconComponent } from '@oxy.so/bloom/icons';
+import { RiBugLine } from '@oxy.so/bloom/icons/RiBugLine';
+import { RiChat1Line } from '@oxy.so/bloom/icons/RiChat1Line';
+import { RiLightbulbLine } from '@oxy.so/bloom/icons/RiLightbulbLine';
+import { RiSparkling2Line } from '@oxy.so/bloom/icons/RiSparkling2Line';
 import { toast } from '@oxy.so/bloom/toast';
 import { useTranslation } from '../../hooks/useTranslation';
-import { cn } from '../../lib/utils';
 
 type FeedbackType = 'bug' | 'feature' | 'improvement' | 'other';
 
@@ -20,7 +26,7 @@ interface FeedbackTypeOption {
   type: FeedbackType;
   labelKey: string;
   descriptionKey: string;
-  icon: React.ElementType;
+  icon: BloomIconComponent;
 }
 
 const feedbackTypes: FeedbackTypeOption[] = [
@@ -28,25 +34,25 @@ const feedbackTypes: FeedbackTypeOption[] = [
     type: 'bug',
     labelKey: 'feedback.bugReport',
     descriptionKey: 'feedback.bugDescription',
-    icon: Bug,
+    icon: RiBugLine,
   },
   {
     type: 'feature',
     labelKey: 'feedback.featureRequest',
     descriptionKey: 'feedback.featureDescription',
-    icon: Lightbulb,
+    icon: RiLightbulbLine,
   },
   {
     type: 'improvement',
     labelKey: 'feedback.improvement',
     descriptionKey: 'feedback.improvementDescription',
-    icon: Sparkles,
+    icon: RiSparkling2Line,
   },
   {
     type: 'other',
     labelKey: 'feedback.other',
     descriptionKey: 'feedback.otherDescription',
-    icon: MessageSquare,
+    icon: RiChat1Line,
   },
 ];
 
@@ -119,117 +125,61 @@ export default function FeedbackScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <SettingsHeader title={t('feedback.title')} subtitle={t('feedback.subtitle')} showBack />
+      <PageHeader
+        presentation="bar"
+        title={t('feedback.title')}
+        subtitle={t('feedback.subtitle')}
+        onBack={() => router.back()}
+      />
 
       <KeyboardAwareScrollView bottomOffset={20} className="flex-1 p-5">
-        <View className="max-w-2xl mx-auto w-full gap-6">
-          {/* Feedback Type Selection */}
-          <View className="gap-3">
-            <Text className="text-[11px] font-semibold text-muted-foreground tracking-wider uppercase">
-              {t('feedback.typeQuestion')}
-            </Text>
+        <View className="mx-auto w-full max-w-2xl gap-6">
+          <Field label={t('feedback.typeQuestion')} multiple>
             <View className="gap-2">
-              {feedbackTypes.map((option) => {
-                const Icon = option.icon;
-                const isSelected = selectedType === option.type;
-                return (
-                  <Pressable
-                    key={option.type}
-                    onPress={() => setSelectedType(option.type)}
-                    className={cn(
-                      'flex-row items-center gap-3 p-4 rounded-xl border',
-                      isSelected
-                        ? 'border-foreground bg-foreground/5'
-                        : 'border-border bg-muted/30',
-                    )}
-                  >
-                    <View
-                      className={cn(
-                        'p-2 rounded-full',
-                        isSelected ? 'bg-foreground/10' : 'bg-muted',
-                      )}
-                    >
-                      <Icon
-                        size={20}
-                        className={isSelected ? 'text-foreground' : 'text-muted-foreground'}
-                      />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="font-medium text-foreground">{t(option.labelKey)}</Text>
-                      <Text className="text-xs text-muted-foreground">
-                        {t(option.descriptionKey)}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          {/* Rating (Optional) */}
-          <View className="gap-3">
-            <Text className="text-[11px] font-semibold text-muted-foreground tracking-wider uppercase">
-              {t('feedback.rateExperience')}
-            </Text>
-            <View className="flex-row gap-2">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <Pressable
-                  key={star}
-                  onPress={() => setRating(rating === star ? null : star)}
-                  className="p-1.5 active:opacity-70"
-                >
-                  <Star
-                    size={24}
-                    className={
-                      rating && star <= rating ? 'text-yellow-500' : 'text-muted-foreground'
-                    }
-                    fill={rating && star <= rating ? '#eab308' : 'transparent'}
-                  />
-                </Pressable>
+              {feedbackTypes.map((option) => (
+                <SelectionCard
+                  key={option.type}
+                  selection="single"
+                  icon={option.icon}
+                  title={t(option.labelKey)}
+                  description={t(option.descriptionKey)}
+                  selected={selectedType === option.type}
+                  onPress={() => setSelectedType(option.type)}
+                />
               ))}
             </View>
-            {rating && (
-              <Text className="text-xs text-muted-foreground">{ratingLabels[rating]}</Text>
-            )}
-          </View>
+          </Field>
 
-          {/* Message */}
-          <View className="gap-3">
-            <Text className="text-[11px] font-semibold text-muted-foreground tracking-wider uppercase">
-              {t('feedback.yourFeedback')}
-            </Text>
-            <Textarea
-              placeholder={
-                selectedType ? placeholderMap[selectedType] : t('feedback.otherPlaceholder')
-              }
-              value={message}
-              onChangeText={setMessage}
-              className="min-h-[150px]"
+          <Field
+            label={t('feedback.rateExperience')}
+            description={rating ? ratingLabels[rating] : undefined}
+          >
+            <RatingInput
+              value={rating}
+              onChange={setRating}
+              accessibilityLabel={t('feedback.rateExperience')}
             />
-            <Text className="text-xs text-muted-foreground">
-              {t('feedback.characterCount', { count: message.length })}
-            </Text>
-          </View>
+          </Field>
 
-          {/* Submit Button */}
-          <View className="gap-4 pt-2">
-            <Button
-              onPress={handleSubmit}
-              disabled={submitting || !selectedType || !message.trim()}
-            >
-              {submitting ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Text className="text-sm font-medium text-primary-foreground">
-                  {t('feedback.submitButton')}
-                </Text>
-              )}
-            </Button>
+          <Textarea
+            label={t('feedback.yourFeedback')}
+            placeholder={
+              selectedType ? placeholderMap[selectedType] : t('feedback.otherPlaceholder')
+            }
+            value={message}
+            onValueChange={setMessage}
+            rows={6}
+            showCount
+          />
 
-            <Text className="text-xs text-center text-muted-foreground">
-              {t('feedback.footerText')}
-            </Text>
-          </View>
+          <Button
+            onPress={handleSubmit}
+            loading={submitting}
+            disabled={!selectedType || !message.trim()}
+          >
+            {t('feedback.submitButton')}
+          </Button>
+          <Text className="text-center text-muted-foreground">{t('feedback.footerText')}</Text>
         </View>
       </KeyboardAwareScrollView>
     </View>

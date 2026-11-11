@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { Avatar } from '@oxy.so/bloom/avatar';
-import { Text } from '@moovo/app-shell/components/ui/text';
+import { Text } from '@oxy.so/bloom/typography';
 import { useUserProfile } from '@/lib/hooks/use-user-profile';
 
 interface UserCellProps {

@@ -1,4 +1,5 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
+import { Text } from '@oxy.so/bloom/typography';
 import { Link } from 'expo-router';
 import type { TrackedParcel } from '@moovo/shared-types';
 import { StatusBadge } from '@/components/StatusBadge';

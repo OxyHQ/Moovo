@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import Head from 'expo-router/head';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { CreateVehicleInput, VehicleType } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
-import { Input } from '@moovo/app-shell/components/ui/input';
-import { Card, CardContent } from '@moovo/app-shell/components/ui/card';
-import { ScreenHeader } from '@/components/courier/ScreenHeader';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { Text } from '@oxy.so/bloom/typography';
+import { Button } from '@oxy.so/bloom/button';
+import { Chip, ChipRow } from '@oxy.so/bloom/chip';
+import { Field } from '@oxy.so/bloom/field';
+import { TextFieldInput } from '@oxy.so/bloom/text-field';
+import { Card } from '@oxy.so/bloom/card';
+import { PageHeader } from '@oxy.so/bloom/page-header';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { createCourierVehicle } from '@/lib/api/courier';
 import { VEHICLE_TYPES, VEHICLE_LABELS, VEHICLE_ICONS } from '@/components/courier/vehicle-meta';
@@ -27,7 +28,6 @@ function parsePositive(value: string): number | undefined {
 function NewVehicleForm() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { colors } = useColorScheme();
 
   const [type, setType] = useState<VehicleType>('bike');
   const [label, setLabel] = useState('');
@@ -56,92 +56,71 @@ function NewVehicleForm() {
 
   return (
     <View className="gap-5 p-4">
-      <View className="gap-2">
-        <Text className="text-sm font-medium text-foreground">Type</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {VEHICLE_TYPES.map((vehicleType) => {
-            const Icon = VEHICLE_ICONS[vehicleType];
-            const selected = vehicleType === type;
-            return (
-              <Pressable
-                key={vehicleType}
-                onPress={() => setType(vehicleType)}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                className={`flex-row items-center gap-2 rounded-full border px-4 py-2.5 ${
-                  selected ? 'border-primary bg-primary/10' : 'border-border bg-background'
-                }`}
-              >
-                <Icon size={18} color={selected ? colors.primary : colors.mutedForeground} />
-                <Text
-                  className={`text-sm font-medium ${selected ? 'text-primary' : 'text-foreground'}`}
-                >
-                  {VEHICLE_LABELS[vehicleType]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
+      <Field label="Type" multiple>
+        <ChipRow role="radiogroup" accessibilityLabel="Type">
+          {VEHICLE_TYPES.map((vehicleType) => (
+            <Chip
+              key={vehicleType}
+              size="xl"
+              role="radio"
+              leadingIcon={VEHICLE_ICONS[vehicleType]}
+              selected={vehicleType === type}
+              onPress={() => setType(vehicleType)}
+            >
+              {VEHICLE_LABELS[vehicleType]}
+            </Chip>
+          ))}
+        </ChipRow>
+      </Field>
 
-      <View className="gap-2">
-        <Text className="text-sm font-medium text-foreground">Label (optional)</Text>
-        <Input
-          value={label}
-          onChangeText={setLabel}
-          placeholder="e.g. Red Vespa"
-          maxLength={120}
-          autoCapitalize="words"
-        />
-      </View>
+      <TextFieldInput
+        label="Label (optional)"
+        placeholder="e.g. Red Vespa"
+        value={label}
+        onValueChange={setLabel}
+        maxLength={120}
+        autoCapitalize="words"
+      />
 
-      <View className="gap-2">
-        <Text className="text-sm font-medium text-foreground">Plate (optional)</Text>
-        <Input
-          value={plate}
-          onChangeText={setPlate}
-          placeholder="e.g. 1234 ABC"
-          maxLength={40}
-          autoCapitalize="characters"
-        />
-      </View>
+      <TextFieldInput
+        label="Plate (optional)"
+        placeholder="e.g. 1234 ABC"
+        value={plate}
+        onValueChange={setPlate}
+        maxLength={40}
+        autoCapitalize="characters"
+      />
 
-      <View className="gap-2">
-        <Text className="text-sm font-medium text-foreground">Max weight kg (optional)</Text>
-        <Input
-          value={maxWeight}
-          onChangeText={setMaxWeight}
+      <Field
+        label="Max weight kg (optional)"
+        description="Leave blank to use the default capacity for the selected type. Eligible job types are computed automatically."
+      >
+        <TextFieldInput
+          label="Max weight kg (optional)"
           placeholder="Defaults from vehicle type"
+          value={maxWeight}
+          onValueChange={setMaxWeight}
           keyboardType="numeric"
         />
-        <Text className="text-xs text-muted-foreground">
-          Leave blank to use the default capacity for the selected type. Eligible job types are
-          computed automatically.
-        </Text>
-      </View>
+      </Field>
 
       {createMutation.isError ? (
-        <Card className="border-destructive">
-          <CardContent className="pt-5">
-            <Text className="text-sm text-destructive">
-              {errorMessage(createMutation.error, 'Could not create vehicle')}
-            </Text>
-          </CardContent>
+        <Card className="border-destructive p-4">
+          <Text className="text-sm text-destructive">
+            {errorMessage(createMutation.error, 'Could not create vehicle')}
+          </Text>
         </Card>
       ) : null}
 
-      <Button onPress={handleSubmit} disabled={createMutation.isPending} size="lg">
-        {createMutation.isPending ? (
-          <ActivityIndicator color={colors.primaryForeground} />
-        ) : (
-          <Text className="text-base font-semibold text-primary-foreground">Add vehicle</Text>
-        )}
+      <Button size="lg" onPress={handleSubmit} loading={createMutation.isPending}>
+        Add vehicle
       </Button>
     </View>
   );
 }
 
 export default function NewVehicleScreen() {
+  const router = useRouter();
   const { isAuthenticated, isAuthResolved } = useOxy();
 
   return (
@@ -149,7 +128,7 @@ export default function NewVehicleScreen() {
       <Head>
         <title>Add vehicle · Moovo Go</title>
       </Head>
-      <ScreenHeader title="Add vehicle" />
+      <PageHeader presentation="bar" title="Add vehicle" onBack={() => router.back()} />
       <ScrollView
         className="flex-1"
         contentContainerClassName="pb-24 mx-auto w-full max-w-2xl"

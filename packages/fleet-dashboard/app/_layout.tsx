@@ -1,18 +1,16 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { preventNativeSplashAutoHide, useHideNativeSplashWhenReady } from '@oxy.so/expo-splash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import { OxyProvider, useAccountColor, useOxy } from '@oxy.so/services/ui/client';
 import { BloomProvider } from '@oxy.so/bloom/provider';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { expoRouterScrollAdapter } from '@oxy.so/bloom/scroll/expo-router';
 import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 
 import { ErrorBoundary as BloomErrorBoundary } from '@oxy.so/bloom/error-boundary';
-import AppSplashScreen from '@moovo/app-shell/components/AppSplashScreen';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { AppSplash } from '@moovo/app-shell/components/AppSplash';
 import { setOxyServices } from '@moovo/app-shell/lib/api/client';
 import { OXY_CLIENT_ID } from '@moovo/app-shell/lib/config';
 import { BLOOM_THEME_PERSIST_KEY, BLOOM_THEME_STORAGE } from '@/lib/themePersistence';
@@ -32,7 +30,7 @@ export const unstable_settings = {
 // dark brand background with the shared Oxy symbol pinned to the bottom
 // (configured by `@oxy.so/expo-splash` in app.config.js) — is the SINGLE splash
 // surface on native. On web this is a no-op (the shared helper guards
-// `Platform.OS === 'web'`); the custom <AppSplashScreen> covers the web boot.
+// `Platform.OS === 'web'`); Bloom's `onFontsLoading` <AppSplash> covers the web boot.
 preventNativeSplashAutoHide();
 
 const OXY_API_URL = process.env.EXPO_PUBLIC_OXY_API_URL || 'https://api.oxy.so';
@@ -60,7 +58,10 @@ function AuthSetup({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   useAccountColor();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
+
+  // Bloom holds `onFontsLoading` until its fonts are in, so by the time this mounts the app is ready.
+  useHideNativeSplashWhenReady(true);
 
   return (
     <AuthSetup>
@@ -99,35 +100,6 @@ function AppContent() {
 }
 
 function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    Inter: require('../assets/fonts/Inter-VariableFont_opsz,wght.ttf'),
-    'Inter-Italic': require('../assets/fonts/Inter-Italic-VariableFont_opsz,wght.ttf'),
-    ...FontAwesome.font,
-  });
-
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  // App readiness = fonts loaded. On NATIVE this flips from readiness ALONE (no
-  // custom-splash fade to wait on — the custom splash never renders on native),
-  // otherwise the held OS splash would hang forever.
-  const [appIsReady, setAppIsReady] = useState(false);
-  useEffect(() => {
-    if (loaded) setAppIsReady(true);
-  }, [loaded]);
-
-  // NATIVE ONLY: hide the held OS splash once ready. No-op on web (the OS splash
-  // was never held there; the custom <AppSplashScreen> handles the web boot).
-  useHideNativeSplashWhenReady(appIsReady);
-
-  if (!appIsReady) {
-    // WEB: paint the custom splash while fonts load, so the boot isn't a blank
-    // frame. NATIVE: the held OS splash is on top, so render nothing underneath.
-    return Platform.OS === 'web' ? <AppSplashScreen persistKey={BLOOM_THEME_PERSIST_KEY} /> : null;
-  }
-
   return (
     <BloomErrorBoundary>
       <BloomProvider
@@ -136,13 +108,10 @@ function RootLayout() {
         defaultColorPreset="blue"
         persistKey={BLOOM_THEME_PERSIST_KEY}
         storage={BLOOM_THEME_STORAGE}
-        fonts={false}
-        // The custom React splash is WEB-ONLY. On native the OS splash (Oxy
-        // family pattern) is the single splash surface, so Bloom's font-loading
+        // The React splash is WEB-ONLY. On native the OS splash (Oxy family
+        // pattern) is the single splash surface, so Bloom's font-loading
         // fallback stays null there.
-        onFontsLoading={
-          Platform.OS === 'web' ? <AppSplashScreen persistKey={BLOOM_THEME_PERSIST_KEY} /> : null
-        }
+        onFontsLoading={Platform.OS === 'web' ? <AppSplash /> : null}
       >
         <OxyProvider
           baseURL={OXY_API_URL}

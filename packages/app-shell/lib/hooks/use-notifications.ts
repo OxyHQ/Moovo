@@ -39,22 +39,6 @@ export function useNotifications(limit = 30) {
   });
 }
 
-export function useUnreadCount() {
-  const { isAuthenticated } = useOxy();
-
-  return useQuery<{ count: number }>({
-    queryKey: ['notifications', 'unread-count'],
-    queryFn: async () => {
-      const res = await apiClient.get('/notifications/unread-count');
-      return res.data;
-    },
-    staleTime: 1000 * 60 * 5, // 5 minutes — socket invalidates on real events
-    refetchInterval: false, // rely on socket-driven invalidation
-    retry: 1,
-    enabled: isAuthenticated,
-  });
-}
-
 export function useMarkAsRead() {
   const queryClient = useQueryClient();
 
@@ -75,20 +59,6 @@ export function useMarkAllAsRead() {
   return useMutation({
     mutationFn: async () => {
       const res = await apiClient.post('/notifications/read-all');
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    },
-  });
-}
-
-export function useDismissNotification() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (notificationId: string) => {
-      const res = await apiClient.patch(`/notifications/${notificationId}/dismiss`);
       return res.data;
     },
     onSuccess: () => {

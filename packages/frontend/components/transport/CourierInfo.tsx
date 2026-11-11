@@ -2,7 +2,7 @@ import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
-import { Text } from '@moovo/app-shell/components/ui/text';
+import { Text } from '@oxy.so/bloom/typography';
 
 /**
  * The assigned courier's identity card on the tracking screen.

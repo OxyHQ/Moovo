@@ -2,8 +2,9 @@ import { Slot, Stack } from 'expo-router';
 import { View, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ErrorBoundary as BloomErrorBoundary } from '@oxy.so/bloom/error-boundary';
-import { NavRail } from '@/components/shell/NavRail';
-import { BottomTabBar } from '@/components/shell/BottomTabBar';
+import { NavRail } from '@moovo/app-shell/components/shell/NavRail';
+import { BottomTabBar } from '@moovo/app-shell/components/shell/BottomTabBar';
+import { NAV_ITEMS } from '@/components/shell/nav-items';
 import { useNotificationSetup } from '@moovo/app-shell/lib/hooks/use-notification-setup';
 
 const SCREEN_OPTIONS = { headerShown: false } as const;
@@ -39,10 +40,8 @@ export default function AppLayout() {
               <Stack.Screen name="settings/general" />
               <Stack.Screen name="settings/feedback" />
               <Stack.Screen name="notifications" />
-              <Stack.Screen name="forgot-password" />
-              <Stack.Screen name="reset-password" />
             </Stack>
-            <BottomTabBar />
+            <BottomTabBar items={NAV_ITEMS} />
           </View>
         </GestureHandlerRootView>
       </BloomErrorBoundary>
@@ -62,7 +61,7 @@ export default function AppLayout() {
       <GestureHandlerRootView style={GESTURE_ROOT_STYLE}>
         <View className="min-h-screen bg-background md:grid md:grid-cols-[4.75rem_1fr]">
           <View className="sticky top-0 z-40 hidden h-screen md:flex md:row-start-1 md:col-start-1">
-            <NavRail />
+            <NavRail items={NAV_ITEMS} />
           </View>
           <View className="min-w-0 max-md:pb-[88px] md:col-start-2 md:row-start-1 md:p-2 md:pl-0">
             {/* `<Slot>` (no absolute scene wrapper) so the route flows in normal
@@ -77,7 +76,7 @@ export default function AppLayout() {
               16px in from each edge, 12px above the bottom. Hidden at md+ where
               the NavRail takes over. */}
           <View className="fixed inset-x-0 bottom-0 z-[60] md:hidden">
-            <BottomTabBar />
+            <BottomTabBar items={NAV_ITEMS} />
           </View>
         </View>
       </GestureHandlerRootView>

@@ -1,24 +1,23 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect } from 'react';
 import { OxyProvider, useAccountColor, useOxy } from '@oxy.so/services/ui/client';
 import { BloomProvider } from '@oxy.so/bloom/provider';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { expoRouterScrollAdapter } from '@oxy.so/bloom/scroll/expo-router';
 import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 
 import { ErrorBoundary as BloomErrorBoundary } from '@oxy.so/bloom/error-boundary';
-import AppSplashScreen from '@moovo/app-shell/components/AppSplashScreen';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { AppSplash } from '@moovo/app-shell/components/AppSplash';
 import { setOxyServices } from '@moovo/app-shell/lib/api/client';
 import { OXY_CLIENT_ID } from '@moovo/app-shell/lib/config';
 import { BLOOM_THEME_PERSIST_KEY, BLOOM_THEME_STORAGE } from '@/lib/themePersistence';
 import 'react-native-reanimated';
 import '../global.css';
-import '@/lib/i18n';
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '@/lib/i18n';
+import { useI18nStore } from '@moovo/app-shell/lib/stores/i18n-store';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -53,7 +52,12 @@ function AuthSetup({ children }: { children: React.ReactNode }) {
 
 function AppContent() {
   useAccountColor();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
+
+  // Bloom holds `onFontsLoading` until its fonts are in, so by the time this mounts the app can paint.
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <AuthSetup>
@@ -92,23 +96,6 @@ function AppContent() {
 }
 
 function RootLayout() {
-  const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-    Inter: require('../assets/fonts/Inter-VariableFont_opsz,wght.ttf'),
-    'Inter-Italic': require('../assets/fonts/Inter-Italic-VariableFont_opsz,wght.ttf'),
-    ...FontAwesome.font,
-  });
-
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
-
-  useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
-
-  if (!loaded) return null;
-
   return (
     <BloomErrorBoundary>
       <BloomProvider
@@ -117,8 +104,7 @@ function RootLayout() {
         defaultColorPreset="blue"
         persistKey={BLOOM_THEME_PERSIST_KEY}
         storage={BLOOM_THEME_STORAGE}
-        fonts={false}
-        onFontsLoading={<AppSplashScreen persistKey={BLOOM_THEME_PERSIST_KEY} />}
+        onFontsLoading={<AppSplash />}
       >
         <OxyProvider
           baseURL={OXY_API_URL}
@@ -129,6 +115,13 @@ function RootLayout() {
           // silently restores a returning signed-in user (callback consume,
           // FedCM/silent, silent-iframe, stored-session, cookie restore) without
           // force-redirecting anonymous visitors to auth.
+          language={{
+            supportedLocales: SUPPORTED_LOCALES,
+            fallbackLocale: DEFAULT_LOCALE,
+            onChange: useI18nStore.getState().setLocale,
+            onError: (error, locale) =>
+              console.error('Failed to follow the Oxy-resolved language', error, { locale }),
+          }}
         >
           <AppContent />
         </OxyProvider>

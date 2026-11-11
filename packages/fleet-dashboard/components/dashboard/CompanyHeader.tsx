@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Link } from 'expo-router';
-import { Lock } from 'lucide-react-native';
+import { RiLockLine } from '@oxy.so/bloom/icons/RiLockLine';
 import type { Company } from '@moovo/shared-types';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Button } from '@moovo/app-shell/components/ui/button';
+import { Text } from '@oxy.so/bloom/typography';
+import { Button } from '@oxy.so/bloom/button';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTheme } from '@oxy.so/bloom/theme';
 import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 interface CompanyHeaderProps {
@@ -61,11 +61,7 @@ export function NoCompaniesState() {
         {t('home.emptySubtitle')}
       </Text>
       <Link href="/companies/new" asChild>
-        <Button>
-          <Text className="text-sm font-medium text-primary-foreground">
-            {t('companies.createCompany')}
-          </Text>
-        </Button>
+        <Button>{t('companies.createCompany')}</Button>
       </Link>
     </View>
   );
@@ -77,11 +73,11 @@ export function NoCompaniesState() {
  */
 export function PermissionDenied({ message }: { message?: string }) {
   const { t } = useTranslation();
-  const { colors } = useColorScheme();
+  const { colors } = useTheme();
   return (
     <View className="items-center gap-3 py-16">
       <View className="h-12 w-12 items-center justify-center rounded-full bg-muted">
-        <Lock size={22} color={colors.mutedForeground} />
+        <RiLockLine width={22} height={22} fill={colors.textSecondary} />
       </View>
       <Text className="text-center text-base font-semibold text-foreground">
         {t('common.permissionDeniedTitle')}

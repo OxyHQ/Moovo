@@ -1,4 +1,7 @@
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { Button } from '@oxy.so/bloom/button';
+import { Loading } from '@oxy.so/bloom/loading';
+import { Text } from '@oxy.so/bloom/typography';
 import { Link } from 'expo-router';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,9 +42,9 @@ export default function ParcelsScreen() {
       >
         <View className="mx-auto w-full max-w-2xl">
           <Link href="/" asChild>
-            <Pressable accessibilityRole="button" className="self-start py-2">
-              <Text className="text-sm font-semibold text-primary">← Inicio</Text>
-            </Pressable>
+            <Button appearance="plain" className="self-start">
+              ← Inicio
+            </Button>
           </Link>
 
           <Text className="mt-4 text-2xl font-bold text-foreground">Mis paquetes</Text>
@@ -52,7 +55,7 @@ export default function ParcelsScreen() {
 
           {!isAuthResolved ? (
             <View className="mt-16 items-center">
-              <ActivityIndicator />
+              <Loading variant="spinner" />
             </View>
           ) : !isAuthenticated ? (
             <View className="mt-8 rounded-2xl border border-border bg-card p-5">
@@ -62,32 +65,22 @@ export default function ParcelsScreen() {
               <Text className="mt-1 text-sm text-muted-foreground">
                 Rastrear un paquete suelto no necesita cuenta. Guardarlos y recibir avisos, sí.
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => openAccountDialog()}
-                className="mt-4 h-11 items-center justify-center rounded-xl bg-primary px-5"
-              >
-                <Text className="text-sm font-semibold text-primary-foreground">
-                  Iniciar sesión
-                </Text>
-              </Pressable>
+              <Button className="mt-4" onPress={() => openAccountDialog()}>
+                Iniciar sesión
+              </Button>
             </View>
           ) : parcels.isPending ? (
             <View className="mt-16 items-center">
-              <ActivityIndicator />
+              <Loading variant="spinner" />
             </View>
           ) : parcels.isError ? (
             <View className="mt-8 rounded-2xl border border-border bg-card p-5">
               <Text className="text-sm text-muted-foreground">
                 {apiErrorMessage(parcels.error, 'No hemos podido cargar tus paquetes.')}
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => parcels.refetch()}
-                className="mt-4 h-11 items-center justify-center rounded-xl bg-primary px-5"
-              >
-                <Text className="text-sm font-semibold text-primary-foreground">Reintentar</Text>
-              </Pressable>
+              <Button className="mt-4" onPress={() => parcels.refetch()}>
+                Reintentar
+              </Button>
             </View>
           ) : parcels.data.parcels.length === 0 ? (
             <View className="mt-8 rounded-2xl border border-border bg-card p-5">

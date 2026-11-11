@@ -1,15 +1,8 @@
 import type { ReactNode } from 'react';
 import { View, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
 import Head from 'expo-router/head';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Label } from '@/components/ui/label';
-import { Button } from '@moovo/app-shell/components/ui/button';
-
-/** Header height (px) below the safe-area inset — matches `SettingsHeader`. */
-const HEADER_HEIGHT = 56;
+import { PageHeader } from '@oxy.so/bloom/page-header';
 
 interface FormScreenProps {
   title: string;
@@ -17,37 +10,19 @@ interface FormScreenProps {
 }
 
 /**
- * A form page shell: a back-affordance header + a centered, scrollable padded
- * body. Used by the create-company and company-settings forms. Web title is set
- * for the document head.
+ * A form page shell: Bloom's page header with a back affordance, over a
+ * centered, scrollable padded body. Used by the create-company and
+ * company-settings forms. Web title is set for the document head.
  */
 export function FormScreen({ title, children }: FormScreenProps) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   return (
     <View className="flex-1 bg-background">
       <Head>
         <title>{title} · Moovo Hub</title>
       </Head>
-      <View
-        className="flex-row items-center gap-2 border-b border-border px-4"
-        style={{ paddingTop: insets.top, height: HEADER_HEIGHT + insets.top }}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          onPress={() => router.back()}
-          className="h-9 w-9 rounded-full"
-        >
-          <ArrowLeft size={20} className="text-muted-foreground" />
-        </Button>
-        <View className="flex-1">
-          <Text className="text-lg font-bold" numberOfLines={1}>
-            {title}
-          </Text>
-        </View>
-      </View>
+      <PageHeader presentation="bar" title={title} onBack={() => router.back()} />
 
       <ScrollView
         className="flex-1"
@@ -56,31 +31,6 @@ export function FormScreen({ title, children }: FormScreenProps) {
       >
         {children}
       </ScrollView>
-    </View>
-  );
-}
-
-/** A labelled form field wrapper with an optional helper/error line. */
-export function Field({
-  label,
-  helper,
-  error,
-  children,
-}: {
-  label: string;
-  helper?: string;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <View className="gap-2">
-      <Label>{label}</Label>
-      {children}
-      {error ? (
-        <Text className="text-xs text-destructive">{error}</Text>
-      ) : helper ? (
-        <Text className="text-xs text-muted-foreground">{helper}</Text>
-      ) : null}
     </View>
   );
 }

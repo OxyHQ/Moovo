@@ -1,37 +1,17 @@
-import { View, Pressable } from 'react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
+import { View } from 'react-native';
+import { Text } from '@oxy.so/bloom/typography';
 import { Logo } from '@moovo/app-shell/components/Logo';
 
-const FOOTER_LINKS = ['About', 'Help', 'Privacy', 'Terms'] as const;
-
-/* ================================================================
-   Footer — light footer for the home scroll
-   ================================================================ */
-
 export function Footer() {
-  const year = new Date().getFullYear();
-
   return (
-    <View className="mt-8 border-t border-border px-6 py-8">
+    <View className="mt-8 gap-3 border-t border-border px-6 py-8">
       <View className="flex-row items-center gap-2">
         <Logo size={20} />
-        <Text className="text-sm font-semibold text-foreground">Moovo</Text>
+        <Text variant="body-semibold">Moovo</Text>
       </View>
-
-      <View className="mt-4 flex-row flex-wrap items-center gap-4">
-        {FOOTER_LINKS.map((link) => (
-          <Pressable
-            key={link}
-            accessibilityRole="button"
-            accessibilityLabel={link}
-            className="active:opacity-70"
-          >
-            <Text className="text-sm text-muted-foreground">{link}</Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <Text className="mt-4 text-xs text-muted-foreground">© {year} Moovo by Oxy</Text>
+      <Text variant="caption-1-regular" className="text-muted-foreground">
+        © {new Date().getFullYear()} Moovo by Oxy
+      </Text>
     </View>
   );
 }

@@ -1,14 +1,17 @@
 import { useMemo, useState } from 'react';
-import { View, ScrollView, Pressable, Platform } from 'react-native';
+import { View, ScrollView, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useOxy } from '@oxy.so/services/ui/client';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react-native';
-import { Text } from '@moovo/app-shell/components/ui/text';
-import { Input } from '@moovo/app-shell/components/ui/input';
-import { Switch } from '@moovo/app-shell/components/ui/switch';
+import { RiArrowRightLine } from '@oxy.so/bloom/icons/RiArrowRightLine';
+import { Button } from '@oxy.so/bloom/button';
+import { SelectionCard } from '@oxy.so/bloom/card';
+import { Field } from '@oxy.so/bloom/field';
+import { PageHeader } from '@oxy.so/bloom/page-header';
+import { Switch } from '@oxy.so/bloom/switch';
+import { TextFieldInput } from '@oxy.so/bloom/text-field';
+import { Text } from '@oxy.so/bloom/typography';
 import { EndpointPicker } from '@/components/transport/EndpointPicker';
-import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 import { useCreateShipment } from '@/lib/hooks/use-shipments';
 import { SHIPMENT_TYPES, SHIPMENT_TYPE_ORDER } from '@/lib/shipment-type';
 import {
@@ -30,44 +33,32 @@ const SIZE_CLASSES: { value: SizeClass; label: string; hint: string }[] = [
 
 /** The type-selection step. */
 function TypeStep() {
-  const { colors } = useColorScheme();
   const type = useShipmentDraft((s) => s.type);
   const setType = useShipmentDraft((s) => s.setType);
   return (
-    <View className="gap-3">
-      {SHIPMENT_TYPE_ORDER.map((t) => {
-        const meta = SHIPMENT_TYPES[t];
-        const Icon = meta.icon;
-        const selected = type === t;
-        return (
-          <Pressable
-            key={t}
-            onPress={() => setType(t)}
-            accessibilityRole="button"
-            className={`flex-row items-center gap-3 rounded-2xl border bg-card p-4 active:opacity-80 ${selected ? 'border-primary' : 'border-border'}`}
-          >
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
-              <Icon size={22} color={colors.primary} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-base font-semibold text-foreground">{meta.label}</Text>
-              <Text className="text-xs text-muted-foreground">{meta.description}</Text>
-            </View>
-            {selected ? (
-              <View className="h-6 w-6 items-center justify-center rounded-full bg-primary">
-                <Check size={14} color={colors.primaryForeground} />
-              </View>
-            ) : null}
-          </Pressable>
-        );
-      })}
-    </View>
+    <Field label="What are you sending?" multiple>
+      <View className="gap-3">
+        {SHIPMENT_TYPE_ORDER.map((t) => {
+          const meta = SHIPMENT_TYPES[t];
+          return (
+            <SelectionCard
+              key={t}
+              selection="single"
+              icon={meta.icon}
+              title={meta.label}
+              description={meta.description}
+              selected={type === t}
+              onPress={() => setType(t)}
+            />
+          );
+        })}
+      </View>
+    </Field>
   );
 }
 
 /** The parcel + contents step (labels adapt to the chosen type). */
 function ParcelStep() {
-  const { colors } = useColorScheme();
   const type = useShipmentDraft((s) => s.type) ?? 'package';
   const parcel = useShipmentDraft((s) => s.parcel);
   const patchParcel = useShipmentDraft((s) => s.patchParcel);
@@ -77,78 +68,61 @@ function ParcelStep() {
 
   return (
     <View className="gap-4">
-      <View className="gap-2">
-        <Text className="text-sm font-medium text-foreground">{meta.itemLabel}</Text>
-        <Input
-          value={itemDescription}
-          onChangeText={setItemDescription}
-          placeholder={meta.itemPrompt}
-          multiline
-        />
-      </View>
+      <TextFieldInput
+        label={meta.itemLabel}
+        value={itemDescription}
+        onValueChange={setItemDescription}
+        placeholder={meta.itemPrompt}
+        multiline
+      />
 
-      <View className="gap-2">
-        <Text className="text-sm font-medium text-foreground">Size</Text>
+      <Field label="Size" multiple>
         <View className="flex-row gap-2">
-          {SIZE_CLASSES.map((sc) => {
-            const selected = parcel.sizeClass === sc.value;
-            return (
-              <Pressable
-                key={sc.value}
+          {SIZE_CLASSES.map((sc) => (
+            <View key={sc.value} className="flex-1">
+              <SelectionCard
+                selection="single"
+                compact
+                title={sc.label}
+                description={sc.hint}
+                selected={parcel.sizeClass === sc.value}
                 onPress={() => patchParcel({ sizeClass: sc.value })}
-                accessibilityRole="button"
-                className={`flex-1 rounded-xl border bg-card p-3 active:opacity-80 ${selected ? 'border-primary' : 'border-border'}`}
-              >
-                <Text
-                  className={`text-sm font-semibold ${selected ? 'text-primary' : 'text-foreground'}`}
-                >
-                  {sc.label}
-                </Text>
-                <Text className="mt-0.5 text-xs text-muted-foreground">{sc.hint}</Text>
-              </Pressable>
-            );
-          })}
+              />
+            </View>
+          ))}
         </View>
-      </View>
+      </Field>
 
       <View className="flex-row gap-2">
-        <View className="flex-1 gap-2">
-          <Text className="text-sm font-medium text-foreground">Weight (kg)</Text>
-          <Input
+        <View className="flex-1">
+          <TextFieldInput
+            label="Weight (kg)"
             value={parcel.weightKg}
-            onChangeText={(weightKg) => patchParcel({ weightKg })}
+            onValueChange={(weightKg) => patchParcel({ weightKg })}
             placeholder="1"
             keyboardType="decimal-pad"
           />
         </View>
-        <View className="flex-1 gap-2">
-          <Text className="text-sm font-medium text-foreground">Pieces</Text>
-          <Input
+        <View className="flex-1">
+          <TextFieldInput
+            label="Pieces"
             value={parcel.pieces}
-            onChangeText={(pieces) => patchParcel({ pieces })}
+            onValueChange={(pieces) => patchParcel({ pieces })}
             placeholder="1"
             keyboardType="number-pad"
           />
         </View>
       </View>
 
-      <View className="flex-row items-center justify-between rounded-xl border border-border bg-card p-4">
-        <View className="flex-1 pr-3">
-          <Text className="text-sm font-medium text-foreground">Fragile</Text>
-          <Text className="text-xs text-muted-foreground">Handle with extra care</Text>
-        </View>
-        <Switch value={parcel.fragile} onValueChange={(fragile) => patchParcel({ fragile })} />
-      </View>
-
-      {/* `colors` referenced so the step reads theme without hardcoded values. */}
-      <View className="h-px w-full" style={{ backgroundColor: colors.border }} />
+      <Field label="Fragile" description="Handle with extra care">
+        <Switch checked={parcel.fragile} onCheckedChange={(fragile) => patchParcel({ fragile })} />
+      </Field>
     </View>
   );
 }
 
 export default function SendScreen() {
   const router = useRouter();
-  const { colors } = useColorScheme();
   const { isAuthenticated } = useOxy();
   const params = useLocalSearchParams<{ type?: string }>();
 
@@ -230,12 +204,9 @@ export default function SendScreen() {
         <Text className="text-center text-base text-muted-foreground">
           Please sign in to create a shipment.
         </Text>
-        <Pressable
-          onPress={() => router.replace('/(app)')}
-          className="mt-4 rounded-full bg-primary px-5 py-2.5 active:opacity-90"
-        >
-          <Text className="text-sm font-semibold text-primary-foreground">Back home</Text>
-        </Pressable>
+        <Button className="mt-4" onPress={() => router.replace('/(app)')}>
+          Back home
+        </Button>
       </View>
     );
   }
@@ -248,25 +219,19 @@ export default function SendScreen() {
         <title>Send · Moovo</title>
       </Head>
 
-      {/* Header with progress. */}
-      <View className="border-b border-border px-4 pb-3 pt-4">
-        <View className="flex-row items-center gap-3">
-          <Pressable onPress={handleBack} accessibilityRole="button" hitSlop={8} className="p-1">
-            <ArrowLeft size={20} color={colors.foreground} />
-          </Pressable>
-          <Text className="flex-1 text-lg font-bold text-foreground">{stepTitle[step]}</Text>
-          <Text className="text-xs text-muted-foreground">
-            {stepIndex + 1} / {STEPS.length}
-          </Text>
-        </View>
-        <View className="mt-3 h-1 flex-row gap-1">
-          {STEPS.map((s, i) => (
-            <View
-              key={s}
-              className={`h-1 flex-1 rounded-full ${i <= stepIndex ? 'bg-primary' : 'bg-border'}`}
-            />
-          ))}
-        </View>
+      <PageHeader
+        presentation="bar"
+        title={stepTitle[step]}
+        subtitle={`${stepIndex + 1} / ${STEPS.length}`}
+        onBack={handleBack}
+      />
+      <View className="h-1 flex-row gap-1 px-4">
+        {STEPS.map((s, i) => (
+          <View
+            key={s}
+            className={`h-1 flex-1 rounded-full ${i <= stepIndex ? 'bg-primary' : 'bg-border'}`}
+          />
+        ))}
       </View>
 
       <ScrollView
@@ -296,24 +261,15 @@ export default function SendScreen() {
         style={Platform.OS !== 'web' ? { paddingBottom: 28 } : undefined}
       >
         <View className="web:mx-auto web:w-full web:max-w-[640px]">
-          <Pressable
+          <Button
+            size="lg"
             onPress={handleNext}
-            disabled={!canProceed || createShipment.isPending}
-            accessibilityRole="button"
-            className={`flex-row items-center justify-center gap-2 rounded-xl py-3.5 ${canProceed && !createShipment.isPending ? 'bg-primary active:opacity-90' : 'bg-muted'}`}
+            disabled={!canProceed}
+            loading={createShipment.isPending}
+            trailingIcon={isLast ? undefined : RiArrowRightLine}
           >
-            <Text
-              className={`text-base font-semibold ${canProceed && !createShipment.isPending ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-            >
-              {createShipment.isPending ? 'Creating…' : isLast ? 'Get quotes' : 'Continue'}
-            </Text>
-            {!isLast ? (
-              <ArrowRight
-                size={18}
-                color={canProceed ? colors.primaryForeground : colors.mutedForeground}
-              />
-            ) : null}
-          </Pressable>
+            {isLast ? 'Get quotes' : 'Continue'}
+          </Button>
         </View>
       </View>
     </View>
