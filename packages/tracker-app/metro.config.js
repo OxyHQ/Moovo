@@ -1,6 +1,7 @@
 const path = require('node:path');
 const { getDefaultConfig } = require('expo/metro-config');
 const { withNativeWind } = require('nativewind/metro');
+const { withoutAvatarCatalog } = require('../app-shell/metro/withoutAvatarCatalog');
 
 // Monorepo roots: this package lives at packages/tracker-app, so the workspace
 // root is two levels up. Metro must watch the root and resolve from the hoisted
@@ -25,6 +26,12 @@ module.exports = (() => {
     '@moovo/app-shell': path.resolve(monorepoRoot, 'packages/app-shell'),
     '@moovo/shared-types': path.resolve(monorepoRoot, 'packages/shared-types/src'),
   };
+
+  // Keep Bloom's default agent-avatar catalog out of the bundle (no character is drawn).
+  config.resolver.resolveRequest = withoutAvatarCatalog(
+    config.resolver.resolveRequest ??
+      ((context, moduleName, platform) => context.resolveRequest(context, moduleName, platform)),
+  );
 
   // Package exports, for zod v4 compatibility.
   config.resolver.unstable_enablePackageExports = true;

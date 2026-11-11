@@ -1,6 +1,7 @@
 const path = require('node:path');
 const { getDefaultConfig } = require('expo/metro-config');
 const { withNativeWind } = require('nativewind/metro');
+const { withoutAvatarCatalog } = require('../app-shell/metro/withoutAvatarCatalog');
 
 // Monorepo roots: this package lives at packages/frontend, so the workspace
 // root is two levels up. Metro must watch the root and resolve from the hoisted
@@ -48,7 +49,7 @@ module.exports = (() => {
       if (platform === 'web' && moduleName === 'react-native-track-player') {
         return { filePath: trackPlayerWebShim, type: 'sourceFile' };
       }
-      return context.resolveRequest(context, moduleName, platform);
+      return withoutAvatarCatalog(context.resolveRequest)(context, moduleName, platform);
     },
   };
 
