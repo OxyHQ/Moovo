@@ -1,8 +1,8 @@
 import { View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Card } from '@/components/ui/card';
-import { useColorScheme } from '@/lib/useColorScheme';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Card } from '@moovo/app-shell/components/ui/card';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 
 interface StatCardProps {
   /** Short metric label. */

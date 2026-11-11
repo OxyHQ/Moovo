@@ -28,6 +28,7 @@ module.exports = (() => {
   // Resolve the workspace dependency to shared-types SOURCE so live edits are
   // picked up without a rebuild. Falls through to node_modules/dist otherwise.
   config.resolver.extraNodeModules = {
+    '@moovo/app-shell': path.resolve(monorepoRoot, 'packages/app-shell'),
     '@moovo/shared-types': path.resolve(monorepoRoot, 'packages/shared-types/src'),
   };
 

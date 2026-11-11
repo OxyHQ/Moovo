@@ -5,7 +5,7 @@ import type {
   PaginatedResponse,
   ApiResponse,
 } from '@moovo/shared-types';
-import apiClient from './client';
+import apiClient from '@moovo/app-shell/lib/api/client';
 
 /**
  * Jobs API client (the operator's own jobs).

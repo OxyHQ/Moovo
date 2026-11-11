@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { Text } from '@/components/ui/text';
+import { Text } from '@moovo/app-shell/components/ui/text';
 
 interface BarRowProps {
   /** Row label. */

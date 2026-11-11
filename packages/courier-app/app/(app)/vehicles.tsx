@@ -5,11 +5,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { Vehicle } from '@moovo/shared-types';
 import { Plus, Check, Trash2 } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
+import { Card, CardContent } from '@moovo/app-shell/components/ui/card';
 import { ScreenHeader } from '@/components/courier/ScreenHeader';
-import { useColorScheme } from '@/lib/useColorScheme';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import {
   fetchCourierVehicles,

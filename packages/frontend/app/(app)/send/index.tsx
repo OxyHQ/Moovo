@@ -4,11 +4,11 @@ import Head from 'expo-router/head';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useOxy } from '@oxy.so/services/ui/client';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Input } from '@moovo/app-shell/components/ui/input';
+import { Switch } from '@moovo/app-shell/components/ui/switch';
 import { EndpointPicker } from '@/components/transport/EndpointPicker';
-import { useColorScheme } from '@/lib/useColorScheme';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 import { useCreateShipment } from '@/lib/hooks/use-shipments';
 import { SHIPMENT_TYPES, SHIPMENT_TYPE_ORDER } from '@/lib/shipment-type';
 import {

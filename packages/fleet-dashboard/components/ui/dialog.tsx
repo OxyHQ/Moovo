@@ -2,8 +2,8 @@ import * as React from 'react';
 import { Modal, View, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
-import { cn } from '@/lib/utils';
-import { Text } from './text';
+import { cn } from '@moovo/app-shell/lib/utils';
+import { Text } from '@moovo/app-shell/components/ui/text';
 
 interface DialogProps {
   open?: boolean;

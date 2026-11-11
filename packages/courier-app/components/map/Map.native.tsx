@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import MapView, { Marker, Polyline, UrlTile, type Region } from 'react-native-maps';
-import { cn } from '@/lib/utils';
+import { cn } from '@moovo/app-shell/lib/utils';
 import { type JobMapProps, type LngLat, MARKER_COLORS, OSM_TILE_URL } from './Map.types';
 
 /**

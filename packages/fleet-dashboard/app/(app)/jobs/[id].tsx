@@ -5,18 +5,18 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, MapPin, Flag, Phone } from 'lucide-react-native';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { JobView, JobStatusEvent, ShipmentEndpoint } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
+import { Card } from '@moovo/app-shell/components/ui/card';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import { StatusChip } from '@/components/dashboard/StatusChip';
 import { FleetMap } from '@/components/dashboard/Map';
 import type { MapMarker } from '@/components/dashboard/map-types';
 import { fetchJob } from '@/lib/api/jobs';
-import { useColorScheme } from '@/lib/useColorScheme';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { formatMoney, formatTime, formatDate, jobStatusKey, jobTypeKey } from '@/lib/format';
-import { useI18nStore } from '@/lib/stores/i18n-store';
+import { useI18nStore } from '@moovo/app-shell/lib/stores/i18n-store';
 
 /** Map height for the route overview. */
 const MAP_HEIGHT = 320;

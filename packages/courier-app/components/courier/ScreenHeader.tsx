@@ -2,8 +2,8 @@ import { View, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { useColorScheme } from '@/lib/useColorScheme';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 
 /**
  * A lightweight back-navigation header for the courier stack screens (vehicles,

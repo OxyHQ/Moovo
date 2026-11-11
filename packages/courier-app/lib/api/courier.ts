@@ -5,7 +5,7 @@ import type {
   Vehicle,
   VehicleType,
 } from '@moovo/shared-types';
-import apiClient from './client';
+import apiClient from '@moovo/app-shell/lib/api/client';
 
 /**
  * Courier API client.

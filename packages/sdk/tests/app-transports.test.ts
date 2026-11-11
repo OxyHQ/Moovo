@@ -4,21 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { OxyServices } from '@oxy.so/core';
 
 const endpoint = vi.hoisted(() => ({ origin: '' }));
-vi.mock('../../frontend/lib/config', () => ({
-  default: {
-    get apiUrl() {
-      return endpoint.origin;
-    },
-  },
-}));
-vi.mock('../../courier-app/lib/config', () => ({
-  default: {
-    get apiUrl() {
-      return endpoint.origin;
-    },
-  },
-}));
-vi.mock('../../fleet-dashboard/lib/config', () => ({
+vi.mock('../../app-shell/lib/config', () => ({
   default: {
     get apiUrl() {
       return endpoint.origin;
@@ -73,9 +59,7 @@ afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 const token = (userId: string, generation = 0) =>
   `e30.${Buffer.from(JSON.stringify({ userId, sessionId: `session-${userId}`, exp: Math.floor(Date.now() / 1000) + 600 + generation })).toString('base64url')}.fixture`;
 for (const [name, load] of [
-  ['customer', () => import('../../frontend/lib/api/client')],
-  ['courier', () => import('../../courier-app/lib/api/client')],
-  ['fleet', () => import('../../fleet-dashboard/lib/api/client')],
+  ['customer, courier and fleet', () => import('../../app-shell/lib/api/client')],
   ['tracker', () => import('../../tracker-app/lib/api/client')],
 ] as const) {
   it(`${name} preserves anonymous access, refresh, account switches and Axios errors without local token plumbing`, async () => {

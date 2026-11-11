@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Settings, Bell } from 'lucide-react-native';
-import * as DropdownMenu from '@/components/ui/dropdown-menu';
-import { useTranslation } from '@/hooks/useTranslation';
+import * as DropdownMenu from '@moovo/app-shell/components/ui/dropdown-menu';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 interface AccountMenuProps {
   /**

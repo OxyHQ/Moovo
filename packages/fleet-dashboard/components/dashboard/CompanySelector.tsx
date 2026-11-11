@@ -1,7 +1,7 @@
 import { View, Pressable, ScrollView } from 'react-native';
 import type { Company } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { cn } from '@moovo/app-shell/lib/utils';
 
 interface CompanySelectorProps {
   companies: Company[];

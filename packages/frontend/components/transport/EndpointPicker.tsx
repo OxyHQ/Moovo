@@ -1,10 +1,10 @@
 import { View, Pressable, ActivityIndicator } from 'react-native';
 import { Crosshair } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Input } from '@/components/ui/input';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Input } from '@moovo/app-shell/components/ui/input';
 import MoovoMap from '@/components/Map';
 import type { MapMarker, MapMarkerKind } from '@/components/map-types';
-import { useColorScheme } from '@/lib/useColorScheme';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 import { useCurrentLocation, reverseGeocode, type Coordinates } from '@/lib/hooks/use-location';
 import type { DraftEndpoint } from '@/lib/stores/shipment-draft-store';
 

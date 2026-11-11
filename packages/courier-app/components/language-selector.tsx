@@ -1,8 +1,8 @@
 import { View, Pressable } from 'react-native';
-import { Text } from '@/components/ui/text';
-import { useTranslation } from '@/hooks/useTranslation';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { ChevronDown, Globe2 } from 'lucide-react-native';
-import * as DropdownMenu from '@/components/ui/dropdown-menu';
+import * as DropdownMenu from '@moovo/app-shell/components/ui/dropdown-menu';
 
 const SUPPORTED_LOCALES = [
   { code: 'en-US', label: 'English', nativeLabel: 'English' },

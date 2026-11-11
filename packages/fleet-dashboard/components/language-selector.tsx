@@ -1,6 +1,6 @@
 import { View, Pressable } from 'react-native';
-import { Text } from '@/components/ui/text';
-import { useTranslation } from '@/hooks/useTranslation';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { ChevronDown, Globe2 } from 'lucide-react-native';
 import { useOxy } from '@oxy.so/services/ui/client';
 import { getNativeLanguageName } from '@oxy.so/core';

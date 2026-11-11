@@ -10,11 +10,11 @@ import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 
-import { AppErrorBoundary } from '@/components/error-boundary';
-import AppSplashScreen from '@/components/AppSplashScreen';
-import { useColorScheme } from '@/lib/useColorScheme';
-import { setOxyServices } from '@/lib/api/client';
-import { OXY_CLIENT_ID } from '@/lib/config';
+import { ErrorBoundary as BloomErrorBoundary } from '@oxy.so/bloom/error-boundary';
+import AppSplashScreen from '@moovo/app-shell/components/AppSplashScreen';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { setOxyServices } from '@moovo/app-shell/lib/api/client';
+import { OXY_CLIENT_ID } from '@moovo/app-shell/lib/config';
 import { BLOOM_THEME_PERSIST_KEY, BLOOM_THEME_STORAGE } from '@/lib/themePersistence';
 import 'react-native-reanimated';
 import '../global.css';
@@ -110,7 +110,7 @@ function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <AppErrorBoundary>
+    <BloomErrorBoundary>
       <BloomProvider
         scrollAdapter={expoRouterScrollAdapter}
         defaultMode="system"
@@ -118,7 +118,7 @@ function RootLayout() {
         persistKey={BLOOM_THEME_PERSIST_KEY}
         storage={BLOOM_THEME_STORAGE}
         fonts={false}
-        onFontsLoading={<AppSplashScreen />}
+        onFontsLoading={<AppSplashScreen persistKey={BLOOM_THEME_PERSIST_KEY} />}
       >
         <OxyProvider
           baseURL={OXY_API_URL}
@@ -133,7 +133,7 @@ function RootLayout() {
           <AppContent />
         </OxyProvider>
       </BloomProvider>
-    </AppErrorBoundary>
+    </BloomErrorBoundary>
   );
 }
 

@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { View, Pressable, ActivityIndicator } from 'react-native';
 import { MapPin, Flag, Clock, Package } from 'lucide-react-native';
 import type { JobOfferView } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { useColorScheme } from '@/lib/useColorScheme';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 import { formatDisplayMoney } from '@/lib/money';
 import { formatDistance } from '@/lib/geo';
 

@@ -4,7 +4,7 @@ import type {
   UpdateCompanyInput,
   ApiResponse,
 } from '@moovo/shared-types';
-import apiClient from './client';
+import apiClient from '@moovo/app-shell/lib/api/client';
 
 /**
  * Companies API client (fleet admin).

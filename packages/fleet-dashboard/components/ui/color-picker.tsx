@@ -1,6 +1,6 @@
 import { View, Pressable } from 'react-native';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { cn } from '@moovo/app-shell/lib/utils';
 
 export const COLOR_OPTIONS = [
   '#3b82f6', // blue

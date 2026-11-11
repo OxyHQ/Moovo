@@ -1,5 +1,5 @@
 import type { Vehicle, CreateVehicleInput, ApiResponse } from '@moovo/shared-types';
-import apiClient from './client';
+import apiClient from '@moovo/app-shell/lib/api/client';
 
 /**
  * Company vehicles (fleet) API client.

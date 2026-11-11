@@ -1,0 +1,28 @@
+import { View, ScrollView } from 'react-native';
+import { useEffect } from 'react';
+import { useOxy } from '@oxy.so/services/ui/client';
+import { useRouter } from 'expo-router';
+import { useTranslation } from '../../hooks/useTranslation';
+import { AccountSection } from '../../components/settings/account-section';
+import { SettingsHeader } from '../../components/settings/settings-header';
+
+export function SettingsAccountScreen({ showBack = false }: { showBack?: boolean }) {
+  const router = useRouter();
+  const { isAuthenticated } = useOxy();
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/(app)');
+    }
+  }, [isAuthenticated, router]);
+
+  return (
+    <View className="flex-1 bg-background">
+      <SettingsHeader title={t('settings.sections.account')} showBack={showBack} />
+      <ScrollView className="flex-1" contentContainerClassName="p-5 max-w-2xl">
+        <AccountSection />
+      </ScrollView>
+    </View>
+  );
+}

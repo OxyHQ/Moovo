@@ -1,8 +1,8 @@
 import { View } from 'react-native';
 import { ArrowRight, MapPin } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { useColorScheme } from '@/lib/useColorScheme';
-import { cn } from '@/lib/utils';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { cn } from '@moovo/app-shell/lib/utils';
 
 /**
  * A compact "from → to" route line for list rows and headers.

@@ -6,7 +6,7 @@ import type {
   PaginatedResponse,
   PaginationParams,
 } from '@moovo/shared-types';
-import apiClient from './client';
+import apiClient from '@moovo/app-shell/lib/api/client';
 
 /**
  * Jobs API client — the booked-job lifecycle as seen by the SENDER (customer).

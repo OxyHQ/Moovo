@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import type { JobStatus, ShipmentStatus } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { cn } from '@/lib/utils';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { cn } from '@moovo/app-shell/lib/utils';
 
 /**
  * A compact pill rendering a shipment or job status with a semantic color.

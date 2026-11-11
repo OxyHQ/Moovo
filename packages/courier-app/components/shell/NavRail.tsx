@@ -3,10 +3,10 @@ import { View, Pressable, Platform, type LayoutRectangle, type ViewStyle } from 
 import { createPortal } from 'react-dom';
 import { useRouter, usePathname } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Logo } from '@/components/Logo';
-import { useColorScheme } from '@/lib/useColorScheme';
-import { cn } from '@/lib/utils';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Logo } from '@moovo/app-shell/components/Logo';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { cn } from '@moovo/app-shell/lib/utils';
 import { useAuth, ProfileButton } from '@oxy.so/services/ui/client';
 import { NAV_ITEMS, isNavItemActive, type NavItem } from './nav-items';
 
