@@ -6,7 +6,7 @@ import type {
   PaginatedResponse,
   ScanInput,
 } from '@moovo/shared-types';
-import apiClient from './client';
+import apiClient from '@moovo/app-shell/lib/api/client';
 
 /**
  * Jobs API client.

@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/deploy-cloudflare.yml'
+      - 'packages/app-shell/**'
       - 'packages/frontend/**'
       - 'shared/**'
       - 'package.json'

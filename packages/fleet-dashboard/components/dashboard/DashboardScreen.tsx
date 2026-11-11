@@ -2,11 +2,11 @@ import type { ReactNode } from 'react';
 import { View, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import Head from 'expo-router/head';
 import { useOxy } from '@oxy.so/services/ui/client';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { MoovoWordmark } from '@/components/ui/moovo-wordmark';
-import { useColorScheme } from '@/lib/useColorScheme';
-import { useTranslation } from '@/hooks/useTranslation';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
+import { MoovoWordmark } from '@moovo/app-shell/components/ui/moovo-wordmark';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 /** Spread (px) of the gutter-color mask around the rounded desktop frame. */
 const GUTTER_MASK_SPREAD = 40;

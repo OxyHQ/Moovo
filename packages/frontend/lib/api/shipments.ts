@@ -8,7 +8,7 @@ import type {
   ApiResponse,
   PaginatedResponse,
 } from '@moovo/shared-types';
-import apiClient from './client';
+import apiClient from '@moovo/app-shell/lib/api/client';
 
 /**
  * Shipments API client — the customer's request → quotes → booking flow.

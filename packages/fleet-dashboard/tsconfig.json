@@ -4,6 +4,7 @@
     "strict": true,
     "paths": {
       "@/*": ["./*"],
+      "@moovo/app-shell/*": ["../app-shell/*"],
       "@moovo/shared-types": ["../shared-types/src"],
       "@moovo/shared-types/*": ["../shared-types/src/*"]
     }

@@ -3,9 +3,9 @@ import { View, ActivityIndicator } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Truck } from 'lucide-react-native';
 import type { Vehicle, CreateVehicleInput, CompanyMember } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
+import { Card } from '@moovo/app-shell/components/ui/card';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
@@ -25,9 +25,9 @@ import {
 } from '@/lib/api/vehicles';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { useCompanyContext } from '@/lib/hooks/use-company-context';
-import { useColorScheme } from '@/lib/useColorScheme';
-import { useTranslation } from '@/hooks/useTranslation';
-import { cn } from '@/lib/utils';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
+import { cn } from '@moovo/app-shell/lib/utils';
 
 /** Extract a human message from an axios/API error. */
 function errorMessage(err: unknown, fallback: string): string {

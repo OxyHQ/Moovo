@@ -1,8 +1,8 @@
 import { View } from 'react-native';
 import type { DisplayMoney } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
+import { Text } from '@moovo/app-shell/components/ui/text';
 import { formatFair, formatFiat } from '@/lib/money';
-import { cn } from '@/lib/utils';
+import { cn } from '@moovo/app-shell/lib/utils';
 
 /**
  * Render a FAIR {@link DisplayMoney} amount: the canonical FAIR value (⊜ + major

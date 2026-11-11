@@ -1,5 +1,5 @@
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 interface ConfirmationDialogProps {
   open: boolean;

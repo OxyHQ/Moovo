@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Pressable, View } from 'react-native';
-import { cn } from '@/lib/utils';
-import { Text } from './text';
+import { cn } from '@moovo/app-shell/lib/utils';
+import { Text } from '@moovo/app-shell/components/ui/text';
 
 interface ToggleGroupProps {
   type: 'single' | 'multiple';

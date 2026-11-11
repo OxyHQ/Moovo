@@ -1,9 +1,9 @@
 import { View } from 'react-native';
 import type { JobStatus } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { useTranslation } from '@/hooks/useTranslation';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { jobStatusKey } from '@/lib/format';
-import { cn } from '@/lib/utils';
+import { cn } from '@moovo/app-shell/lib/utils';
 
 /**
  * A job-status pill. Color encodes the lifecycle stage: live/active stages use

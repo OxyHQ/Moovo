@@ -60,6 +60,7 @@ jobs:
               - '.dockerignore'
               - 'docker-compose.postgres.yml'
             frontend:
+              - 'packages/app-shell/**'
               - 'packages/frontend/**'
               - 'packages/courier-app/**'
               - 'packages/fleet-dashboard/**'

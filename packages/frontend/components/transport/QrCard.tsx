@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import { Text } from '@/components/ui/text';
-import { useColorScheme } from '@/lib/useColorScheme';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 
 /**
  * A labelled QR card the SENDER shows the courier to prove a leg.

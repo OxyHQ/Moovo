@@ -9,11 +9,11 @@ import { BloomProvider } from '@oxy.so/bloom/provider';
 import { expoRouterScrollAdapter } from '@oxy.so/bloom/scroll/expo-router';
 import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
 
-import { AppErrorBoundary } from '@/components/error-boundary';
+import { ErrorBoundary as BloomErrorBoundary } from '@oxy.so/bloom/error-boundary';
 import { QueryProvider } from '@/lib/query-client';
 import { setOxyServices } from '@/lib/api/client';
 import { OXY_CLIENT_ID } from '@/lib/config';
-import { useColorScheme } from '@/lib/useColorScheme';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 import { BLOOM_THEME_PERSIST_KEY, BLOOM_THEME_STORAGE } from '@/lib/themePersistence';
 import 'react-native-reanimated';
 import '../global.css';
@@ -81,7 +81,7 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <AppErrorBoundary>
+    <BloomErrorBoundary>
       <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
         <BloomProvider
           scrollAdapter={expoRouterScrollAdapter}
@@ -107,6 +107,6 @@ export default function RootLayout() {
           </OxyProvider>
         </BloomProvider>
       </View>
-    </AppErrorBoundary>
+    </BloomErrorBoundary>
   );
 }

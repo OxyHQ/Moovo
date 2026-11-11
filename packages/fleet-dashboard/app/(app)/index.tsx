@@ -3,9 +3,9 @@ import { Link } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Truck, CheckCircle2, Star, Package, Users } from 'lucide-react-native';
 import type { JobSummary } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
+import { Card } from '@moovo/app-shell/components/ui/card';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -16,9 +16,9 @@ import { useJobSocket } from '@/lib/hooks/use-job-socket';
 import { fetchJobs } from '@/lib/api/jobs';
 import { fetchVehicles } from '@/lib/api/vehicles';
 import { queryKeys } from '@/lib/hooks/query-keys';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { formatMoney, formatTime, isActiveJob, jobTypeKey } from '@/lib/format';
-import { useI18nStore } from '@/lib/stores/i18n-store';
+import { useI18nStore } from '@moovo/app-shell/lib/stores/i18n-store';
 
 /** Whether an ISO instant falls on today's local date. */
 function isToday(iso: string): boolean {

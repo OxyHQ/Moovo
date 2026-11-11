@@ -3,11 +3,11 @@ import { View } from 'react-native';
 import { Link } from 'expo-router';
 import { Lock } from 'lucide-react-native';
 import type { Company } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
-import { useColorScheme } from '@/lib/useColorScheme';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 interface CompanyHeaderProps {
   /** Page title (e.g. "Members"). */

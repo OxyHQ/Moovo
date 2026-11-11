@@ -4,9 +4,9 @@ import { Link } from 'expo-router';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { Info, Wifi, WifiOff } from 'lucide-react-native';
 import type { JobSummary, JobView } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
+import { Card } from '@moovo/app-shell/components/ui/card';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
   CompanyHeader,
@@ -20,10 +20,10 @@ import { fetchJobs, fetchJob } from '@/lib/api/jobs';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { useCompanyContext } from '@/lib/hooks/use-company-context';
 import { useJobSocket } from '@/lib/hooks/use-job-socket';
-import { useColorScheme } from '@/lib/useColorScheme';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 import { formatMoney, formatTime, isActiveJob, jobTypeKey } from '@/lib/format';
-import { useI18nStore } from '@/lib/stores/i18n-store';
+import { useI18nStore } from '@moovo/app-shell/lib/stores/i18n-store';
 
 /** Max active jobs we fetch full detail for (to plot pickups on the map). */
 const MAX_DETAIL_FETCH = 20;

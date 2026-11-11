@@ -7,8 +7,8 @@ import {
   type BarcodeSettings,
 } from 'expo-camera';
 import { X } from 'lucide-react-native';
-import { Text } from '@/components/ui/text';
-import { Button } from '@/components/ui/button';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Button } from '@moovo/app-shell/components/ui/button';
 import { decodeQrPayload, type ScanLeg } from '@/lib/job-codes';
 
 /**

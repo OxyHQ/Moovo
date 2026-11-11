@@ -1,10 +1,10 @@
 import { Slot, Stack } from 'expo-router';
 import { View, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AppErrorBoundary } from '@/components/error-boundary';
+import { ErrorBoundary as BloomErrorBoundary } from '@oxy.so/bloom/error-boundary';
 import { NavRail } from '@/components/shell/NavRail';
 import { BottomTabBar } from '@/components/shell/BottomTabBar';
-import { useNotificationSetup } from '@/lib/hooks/use-notification-setup';
+import { useNotificationSetup } from '@moovo/app-shell/lib/hooks/use-notification-setup';
 
 const SCREEN_OPTIONS = { headerShown: false } as const;
 
@@ -20,7 +20,7 @@ export default function AppLayout() {
   // transitions on native.
   if (Platform.OS !== 'web') {
     return (
-      <AppErrorBoundary>
+      <BloomErrorBoundary>
         <GestureHandlerRootView style={GESTURE_ROOT_STYLE}>
           {/* The floating pill is an absolute overlay (NOT in flex flow), so the
               content column fills the screen and the bar floats above it. Each
@@ -45,7 +45,7 @@ export default function AppLayout() {
             <BottomTabBar />
           </View>
         </GestureHandlerRootView>
-      </AppErrorBoundary>
+      </BloomErrorBoundary>
     );
   }
 
@@ -58,7 +58,7 @@ export default function AppLayout() {
   //  - Bottom bar: floating pill visible below md, hidden at md+.
   // The home screen's rounded panel + bleed mask are themselves gated to desktop.
   return (
-    <AppErrorBoundary>
+    <BloomErrorBoundary>
       <GestureHandlerRootView style={GESTURE_ROOT_STYLE}>
         <View className="min-h-screen bg-background md:grid md:grid-cols-[4.75rem_1fr]">
           <View className="sticky top-0 z-40 hidden h-screen md:flex md:row-start-1 md:col-start-1">
@@ -81,6 +81,6 @@ export default function AppLayout() {
           </View>
         </View>
       </GestureHandlerRootView>
-    </AppErrorBoundary>
+    </BloomErrorBoundary>
   );
 }

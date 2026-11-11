@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { GeoPoint } from '@moovo/shared-types';
-import { openMoovoSocket, type JobStatusPayload, type JobLocationPayload } from '@/lib/socket';
+import { openMoovoSocket } from '@moovo/app-shell/lib/socket';
+import type { JobStatusPayload, JobLocationPayload } from '@/lib/job-events';
 import { queryKeys } from '@/lib/hooks/query-keys';
 
 /** A job's most-recent live courier position, keyed by job id. */

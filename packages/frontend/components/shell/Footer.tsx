@@ -1,6 +1,6 @@
 import { View, Pressable } from 'react-native';
-import { Text } from '@/components/ui/text';
-import { Logo } from '@/components/Logo';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Logo } from '@moovo/app-shell/components/Logo';
 
 const FOOTER_LINKS = ['About', 'Help', 'Privacy', 'Terms'] as const;
 

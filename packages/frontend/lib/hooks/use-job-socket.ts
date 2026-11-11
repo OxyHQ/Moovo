@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useOxy } from '@oxy.so/services/ui/client';
 import type { GeoPoint, JobStatus } from '@moovo/shared-types';
-import { openMoovoSocket } from '@/lib/socket';
+import { openMoovoSocket } from '@moovo/app-shell/lib/socket';
 import { queryKeys } from '@/lib/hooks/query-keys';
 
 /**

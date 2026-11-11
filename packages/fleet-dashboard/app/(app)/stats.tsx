@@ -3,8 +3,8 @@ import { View, ActivityIndicator } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, Star, MessageSquare, Truck } from 'lucide-react-native';
 import type { JobStatus, CompanyRole } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { Card } from '@/components/ui/card';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Card } from '@moovo/app-shell/components/ui/card';
 import { DashboardScreen } from '@/components/dashboard/DashboardScreen';
 import {
   CompanyHeader,
@@ -17,7 +17,7 @@ import { fetchJobs } from '@/lib/api/jobs';
 import { fetchVehicles } from '@/lib/api/vehicles';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { useCompanyContext } from '@/lib/hooks/use-company-context';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 const ROLES: CompanyRole[] = ['owner', 'dispatcher', 'driver'];
 const JOB_STATUSES: JobStatus[] = [

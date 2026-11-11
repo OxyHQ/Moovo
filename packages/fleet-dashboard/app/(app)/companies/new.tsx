@@ -4,9 +4,9 @@ import { useRouter } from 'expo-router';
 import { useOxy } from '@oxy.so/services/ui/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CreateCompanyInput, CurrencyCode } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Textarea } from '@moovo/app-shell/components/ui/textarea';
+import { Button } from '@moovo/app-shell/components/ui/button';
 import { ColorPicker, COLOR_OPTIONS } from '@/components/ui/color-picker';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { FormScreen, Field } from '@/components/dashboard/FormScreen';
@@ -14,7 +14,7 @@ import { toast } from '@oxy.so/bloom/toast';
 import { createCompany } from '@/lib/api/companies';
 import { queryKeys } from '@/lib/hooks/query-keys';
 import { useCompanyStore } from '@/lib/stores/company-store';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 /** The currencies the backend accepts (mirrors `currencySchema`). */
 const CURRENCIES: CurrencyCode[] = ['USD', 'EUR', 'GBP'];

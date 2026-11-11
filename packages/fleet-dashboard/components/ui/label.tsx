@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Text, type TextProps } from 'react-native';
-import { cn } from '@/lib/utils';
+import { cn } from '@moovo/app-shell/lib/utils';
 
 const Label = React.forwardRef<React.ComponentRef<typeof Text>, TextProps>(
   ({ className, ...props }, ref) => (

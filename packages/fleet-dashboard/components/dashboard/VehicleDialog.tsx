@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import type { Vehicle, VehicleType, CreateVehicleInput } from '@moovo/shared-types';
-import { Text } from '@/components/ui/text';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Text } from '@moovo/app-shell/components/ui/text';
+import { Input } from '@moovo/app-shell/components/ui/input';
+import { Button } from '@moovo/app-shell/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Dialog,
@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Field } from '@/components/dashboard/FormScreen';
 import type { UpdateVehicleBody } from '@/lib/api/vehicles';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useTranslation } from '@moovo/app-shell/hooks/useTranslation';
 
 const VEHICLE_TYPES: VehicleType[] = ['bike', 'scooter', 'car', 'van', 'truck'];
 

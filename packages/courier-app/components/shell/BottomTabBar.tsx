@@ -13,8 +13,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { BlurView } from 'expo-blur';
 import { LogIn, type LucideIcon } from 'lucide-react-native';
 
-import { UserAvatar } from '@/components/user-avatar';
-import { useColorScheme } from '@/lib/useColorScheme';
+import { UserAvatar } from '@moovo/app-shell/components/user-avatar';
+import { useColorScheme } from '@moovo/app-shell/lib/useColorScheme';
 import { useHaptics } from '@oxy.so/bloom/hooks';
 import { useTheme } from '@oxy.so/bloom/theme';
 import { useOxy } from '@oxy.so/services/ui/client';

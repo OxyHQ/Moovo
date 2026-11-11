@@ -9,7 +9,7 @@ import {
   type StyleSpecification,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { cn } from '@/lib/utils';
+import { cn } from '@moovo/app-shell/lib/utils';
 import {
   type JobMapProps,
   type LngLat,
