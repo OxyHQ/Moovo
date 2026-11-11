@@ -3,6 +3,7 @@ import { preventNativeSplashAutoHide, useHideNativeSplashWhenReady } from '@oxy.
 import { useCallback } from 'react';
 import { OxyProvider, useAccountColor, useOxy } from '@oxy.so/services/ui/client';
 import { BloomProvider } from '@oxy.so/bloom/provider';
+import { avatarCatalog } from '@moovo/app-shell/lib/avatarCatalog';
 import { useTheme } from '@oxy.so/bloom/theme';
 import { expoRouterScrollAdapter } from '@oxy.so/bloom/scroll/expo-router';
 import { ImageResolverProvider } from '@oxy.so/bloom/image-resolver';
@@ -103,6 +104,7 @@ function RootLayout() {
   return (
     <BloomErrorBoundary>
       <BloomProvider
+        avatarCatalog={avatarCatalog}
         scrollAdapter={expoRouterScrollAdapter}
         defaultMode="system"
         defaultColorPreset="blue"
