@@ -4,7 +4,7 @@
   "private": true,
   "description": "Source shared by the Moovo Expo apps: settings and notification screens, i18n, API client, notification wiring and the nav shell, all composed from Bloom. Consumed as TypeScript source through Metro and tsconfig paths; never built or published.",
   "peerDependencies": {
-    "@oxy.so/bloom": "19.1.0",
+    "@oxy.so/bloom": "19.3.0",
     "@oxy.so/core": "7.48.0",
     "@oxy.so/services": "14.19.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
