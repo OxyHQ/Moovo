@@ -19,7 +19,7 @@
   "dependencies": {
     "@expo/app-integrity": "~58.0.2",
     "@expo/html-elements": "^0.13.8",
-    "@gemies/sdk": "1.0.0",
+    "@gemies/sdk": "3.1.0",
     "@hugeicons/react-native": "^1.0.11",
     "@moovo/app-shell": "workspace:*",
     "@moovo/shared-types": "workspace:*",
