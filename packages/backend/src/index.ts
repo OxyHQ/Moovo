@@ -5,6 +5,7 @@ import {
 } from './ecosystemActivity';
 import express from 'express';
 import { createOxyCors, createOxySecurityHeaders, oxyTrustProxy } from '@oxy.so/core/server';
+import { OXY_TELEMETRY_REQUEST_HEADERS } from '@oxy.so/telemetry';
 import http from 'node:http';
 import { log } from './lib/logger.js';
 import { isAbortError, isFatalError, isTransientNetworkError } from './lib/error-classification.js';
@@ -103,8 +104,7 @@ const appCors = createOxyCors({
     'Content-Type',
     'Authorization',
     'X-Requested-With',
-    'X-Oxy-Edge-Region',
-    'X-Oxy-Activity-Id',
+    ...OXY_TELEMETRY_REQUEST_HEADERS,
   ],
 });
 app.use((req, res, next) => (req.path.startsWith('/api/v1/') ? next() : appCors(req, res, next)));
