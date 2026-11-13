@@ -47,17 +47,14 @@ postgres.js via `@oxy.so/db`), optional Redis and Socket.IO on the backend;
 `EXPO_PUBLIC_OXY_CLIENT_ID`; backend auth wiring is in
 `packages/backend/src/middleware/auth.ts`.
 
-**Development bundles of all four apps use Noxcturnal**, Expo's oxc transformer
-(`experiments.noxcturnalTransformWorker` in each `app.config.js`). It stays
-inactive when an app has any Babel config other than the bare Expo preset, or a
-custom `babelTransformerPath` such as `react-native-svg-transformer`, so the apps
-have NO `babel.config.js` and no SVG transformer: `@/` resolves through
-`tsconfig.json` paths, `babel-preset-expo` adds the worklets plugin and the
-`import.meta` transform itself, and an SVG icon is a committed component, never
-an imported `.svg`. Production exports (`NODE_ENV=production`) stay on Babel,
-because Noxcturnal keeps the requires of dead platform branches and pulls
-native-only packages into the web bundle. Run an export with `LOG_EVENTS=<file>`
-to see which files fall back to Babel and why (`transform:noxcturnal:fallback`).
+**Noxcturnal stays off in all four apps.** Noxcturnal, Expo's oxc transformer
+(`experiments.noxcturnalTransformWorker`), stays off: noxcturnal 0.1.11 to
+0.1.13 miscompile `@tanstack/query-core`'s `QueriesObserver` on web (the
+temporary holding the lowered constructor's return value reuses `_result`, the
+name of the `#result` private key), so every `useQueries` throws "attempted to
+use private field on non-instance" in development. Development and production
+both bundle with Babel; turn it back on only with a release that compiles that
+class correctly.
 
 Material donation transport, payer authorization and retry behavior are documented
 in `docs/material-transports.md`. Its FAIR cents differ from Mercaria's money scale;
