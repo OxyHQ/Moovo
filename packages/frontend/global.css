@@ -10,7 +10,7 @@
 @source "../app-shell/**/*.{ts,tsx}";
 @source "../../node_modules/@oxy.so/services/lib/**/*.{js,jsx}";
 @source "../../node_modules/@oxy.so/bloom/lib/**/*.{js,jsx}";
-@source "../../node_modules/@alia.onl/sdk/src/**/*.{ts,tsx}";
+@source "../../node_modules/@gemies/sdk/src/**/*.{ts,tsx}";
 
 @theme {
   --font-sans: Inter, sans-serif;

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react';
-import { AliaChatSheet, type AliaChatSheetRef } from '@alia.onl/sdk';
-import { AliaAvatarIcon } from '@alia.onl/sdk/avatar';
+import { GemieChatSheet, type GemieChatSheetRef } from '@gemies/sdk';
+import { GemieAvatarIcon } from '@gemies/sdk/avatar';
 import { Button } from '@oxy.so/bloom/button';
 import { useAuth } from '@oxy.so/services/ui/client';
 import i18n from '@/lib/i18n';
@@ -15,7 +15,7 @@ import i18n from '@/lib/i18n';
  */
 export function AskAlia() {
   const { canUsePrivateApi, signIn } = useAuth();
-  const chatRef = useRef<AliaChatSheetRef>(null);
+  const chatRef = useRef<GemieChatSheetRef>(null);
 
   const welcomeSuggestions = useMemo(
     () => [
@@ -33,11 +33,11 @@ export function AskAlia() {
 
   return (
     <>
-      <Button size="sm" appearance="outline" leadingIcon={AliaAvatarIcon} onPress={handleAskAlia}>
+      <Button size="sm" appearance="outline" leadingIcon={GemieAvatarIcon} onPress={handleAskAlia}>
         {i18n.t('alia.ask')}
       </Button>
       {canUsePrivateApi && (
-        <AliaChatSheet
+        <GemieChatSheet
           ref={chatRef}
           clientContext={i18n.t('alia.clientContext')}
           welcomeSuggestions={welcomeSuggestions}
