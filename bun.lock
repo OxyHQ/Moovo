@@ -56,6 +56,7 @@
         "@oxy.so/core": "7.49.0",
         "@oxy.so/db": "1.5.0",
         "@oxy.so/moovo-contracts": "workspace:*",
+        "@oxy.so/telemetry": "2.2.0",
         "@socket.io/redis-adapter": "^8.3.0",
         "bullmq": "^5.34.0",
         "cors": "^2.8.5",

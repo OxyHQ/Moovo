@@ -12,6 +12,7 @@ import {
 import { optionalAuth } from '../middleware/auth';
 import { makeRateLimiter } from '../lib/rate-limit';
 import { OxyAccessError } from '@oxy.so/core/server';
+import { OXY_TELEMETRY_REQUEST_HEADERS } from '@oxy.so/telemetry';
 import {
   transportAccessError,
   transportCaller,
@@ -38,8 +39,7 @@ router.use(
     allowedHeaders: [
       'Authorization',
       'Content-Type',
-      'X-Oxy-Activity-Id',
-      'X-Oxy-Edge-Region',
+      ...OXY_TELEMETRY_REQUEST_HEADERS,
       'X-Session-Id',
       'X-Device-Info',
     ],
