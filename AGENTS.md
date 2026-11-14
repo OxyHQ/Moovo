@@ -27,6 +27,7 @@ bun run check:api-entrypoints
 - Inherited marketplace code (buy/sell, shops, cart, checkout) is scaffolding, not the domain; the courier domain is `courier-company`, `courier-profile`, `job`, `job-offer`, `provider`, `quote` and `address`. Why: the repo was forked from Mercaria.
 - PostgreSQL is the only store; `DATABASE_URL` is the only store config and `db/postgres.ts` refuses to open without it. Why: a default makes a misconfigured task boot and fail every request. Details: [databases](docs/agent-rules/databases.md).
 - Every image is an Oxy file; attach client file ids only through `assertFilesAttachable`. Why: otherwise a client stores somebody else's photo. Rules: [Oxy Files](docs/agent-rules/oxy-files.md).
+- First-party never asks people for permissions: this app acts for a person with `actingFor` on what oxy's first-party registry declares (oxy ADR 0066); permissions, scopes and consent are only for third parties.
 - Tracker work follows the invariants in [tracker rules](docs/agent-rules/tracker.md). Why: several fail silently (cost multiplication, inert SEO head).
 - Reports go through CrowdSource: [moderation rules](docs/agent-rules/crowdsource-moderation.md).
 - Open Postgres-port decisions with owners: [open decisions](docs/agent-rules/open-decisions-the-postgres-port-left-with-owners.md).
