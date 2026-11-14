@@ -4,11 +4,14 @@ The backend publishes aggregate traffic and its infrastructure heartbeat to the
 Oxy API, which broadcasts changes to the website dashboard. Collection runs in
 the service process regardless of whether somebody opens the dashboard.
 
-Activation follows the registered workload identity. Set `AWS_REGION`; the ECS
-role `oxy-moovo-task` attests with its administratively bound environment (Oxy
+`startEcosystemTraffic` from `@oxy.so/core/server` starts it at process bootstrap
+(`packages/backend/src/index.ts`). `OXY_ECOSYSTEM_ACTIVITY_ENABLED` is `true` or
+`false` and wins when set (production sets `true`); unset, it publishes where
+`AWS_REGION` is set, and a missing region once it should publish fails at boot.
+Activation follows the registered workload identity: the ECS role `oxy-moovo-task` attests with its administratively bound environment (Oxy
 ADR 0049). Own services need no OAuth scopes, application grants or customer key
 pairs. The shared temporary AWS role provider also supports authenticated development/SSO
-roles. A missing region omits only telemetry; missing/revoked identity follows the
+roles. Missing/revoked identity follows the
 shared retry policy and must not be read as zero traffic. The same provider
 authenticates Files references, whose durable outbox retries failed requests.
 

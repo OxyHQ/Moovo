@@ -1,13 +1,14 @@
-import {
-  startEcosystemActivity,
-  stopEcosystemActivity,
-  ecosystemActivityMiddleware,
-} from './ecosystemActivity';
 import express from 'express';
-import { createOxyCors, createOxySecurityHeaders, oxyTrustProxy } from '@oxy.so/core/server';
+import {
+  createOxyCors,
+  createOxySecurityHeaders,
+  oxyTrustProxy,
+  startEcosystemTraffic,
+} from '@oxy.so/core/server';
 import { OXY_TELEMETRY_REQUEST_HEADERS } from '@oxy.so/telemetry';
 import http from 'node:http';
 import { log } from './lib/logger.js';
+import { workloadCredentials } from './workload.js';
 import { isAbortError, isFatalError, isTransientNetworkError } from './lib/error-classification.js';
 
 // Routes
@@ -49,6 +50,12 @@ import { MOOVO_APP_ORIGINS } from './lib/origins.js';
 // script that starts this server (`dev`, `start`) runs in packages/backend, so it
 // reads packages/backend/.env. Variables already in the environment win.
 
+// `ready` is read on the heartbeat, after this module has finished evaluating.
+const traffic = startEcosystemTraffic({
+  service: 'moovo',
+  ready: () => server.listening,
+  workloadCredentials,
+});
 const app = express();
 // Before every middleware that reads `req.ip` (the global rate limiter keys
 // anonymous callers on it). The socket peer is the ALB; behind the Cloudflare
@@ -57,7 +64,7 @@ const app = express();
 // real client whether api.moovo.now is proxied or DNS-only, and a forged
 // header is never believed.
 app.set('trust proxy', oxyTrustProxy);
-app.use(ecosystemActivityMiddleware);
+app.use(traffic.observeHttp);
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
 // Create HTTP server with optimized settings
@@ -87,8 +94,7 @@ server.on('connection', (socket) => {
   socket.setKeepAlive(true, 60000);
 });
 
-startEcosystemActivity(() => server.listening);
-initSocket(server);
+initSocket(server, traffic);
 
 // Security headers (Helmet with the Oxy CSP baseline). Resources stay
 // loadable cross-origin: the four web apps live on other moovo.now hosts.
@@ -467,7 +473,7 @@ try {
       log.general.info('Redis connections closed');
 
       clearTimeout(forceTimeout);
-      await stopEcosystemActivity();
+      await traffic.stop();
       log.general.info('Graceful shutdown complete');
       process.exit(0);
     } catch (error) {

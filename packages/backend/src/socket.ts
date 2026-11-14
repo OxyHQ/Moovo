@@ -1,6 +1,5 @@
-import { observeEcosystemSocket } from './ecosystemActivity';
 import { Server } from 'socket.io';
-import { createOxySocketCors } from '@oxy.so/core/server';
+import { createOxySocketCors, type EcosystemTraffic } from '@oxy.so/core/server';
 import { createAdapter } from '@socket.io/redis-adapter';
 import type http from 'node:http';
 import { getRedisClient, getRedisSubClient } from './lib/redis.js';
@@ -10,7 +9,7 @@ import { MOOVO_APP_ORIGINS } from './lib/origins.js';
 
 let io: Server | null = null;
 
-export function initSocket(server: http.Server) {
+export function initSocket(server: http.Server, traffic: EcosystemTraffic) {
   // Hold the instance in a local const so the async adapter callback below
   // references a provably-defined server (no module-level non-null assertion).
   // The same browser origins as HTTP, on the polling transport AND the
@@ -42,7 +41,7 @@ export function initSocket(server: http.Server) {
   socketServer.use(oxyClient.middleware.socket());
 
   socketServer.on('connection', (socket) => {
-    observeEcosystemSocket(socket);
+    traffic.observeSocket(socket);
     const userId = (socket.data as { userId?: string }).userId;
     if (!userId) {
       // middleware.socket() guarantees userId, but fail closed if it is ever missing.
