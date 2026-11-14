@@ -19,7 +19,7 @@
     "@expo/html-elements": "^0.13.8",
     "@moovo/app-shell": "workspace:*",
     "@moovo/shared-types": "workspace:*",
-    "@oxy.so/app-preset": "^6.6.0",
+    "@oxy.so/app-preset": "^6.7.2",
     "@oxy.so/bloom": "21.0.0",
     "@oxy.so/core": "7.49.0",
     "@oxy.so/services": "14.21.0",
