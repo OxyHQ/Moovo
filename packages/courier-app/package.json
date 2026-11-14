@@ -10,8 +10,8 @@
     "web": "expo start --web",
     "generate-sitemap": "bun scripts/generate-sitemap.ts",
     "prebuild": "bun run generate-sitemap",
-    "build": "bun x expo export --platform web && bun run build:edge",
-    "build:production": "NODE_ENV=production bun x expo export --platform web --clear && bun run build:edge",
+    "build": "bun x expo export --platform web && oxy-web-pwa dist && bun run build:edge",
+    "build:production": "NODE_ENV=production bun x expo export --platform web --clear && oxy-web-pwa dist && bun run build:edge",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",
     "build:edge": "bun build worker/index.js --target=browser --format=esm --outfile=dist/_worker.js"

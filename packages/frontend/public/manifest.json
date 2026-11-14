@@ -1,8 +1,9 @@
 {
-  "name": "Moovo - Buy & Sell by Oxy",
+  "name": "Moovo by Oxy",
   "short_name": "Moovo",
-  "description": "Moovo by Oxy — buy and sell new and secondhand items.",
+  "description": "Moovo by Oxy — send packages, food and moves, delivered by Moovo couriers or partner carriers.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#040711",
   "theme_color": "#040711",
@@ -11,12 +12,20 @@
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
