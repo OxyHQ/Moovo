@@ -250,7 +250,10 @@ jobs:
 
   # lint-and-test's hosted twin in the Seldon race: the same name and steps.
   lint-and-test-hosted:
-    name: Lint & Test
+    # The real job's name only while the race is on: a skipped twin or rescue
+    # sharing it would become that name's newest check run and could mask a
+    # failed required check.
+    name: ${{ vars.CI_SELDON_RACE == 'true' && 'Lint & Test' || 'Lint & Test (seldon twin, off)' }}
     needs: [changes, race]
     if: ${{ !cancelled() && !failure() && needs.race.outputs.race == 'true' && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
@@ -263,7 +266,10 @@ jobs:
   # lint-and-test's rescue: reruns it hosted when its Seldon lane failed (the
   # house network drops connections); a genuine failure fails again.
   lint-and-test-rescue:
-    name: Lint & Test
+    # The real job's name only while the race is on: a skipped twin or rescue
+    # sharing it would become that name's newest check run and could mask a
+    # failed required check.
+    name: ${{ vars.CI_SELDON_RACE == 'true' && 'Lint & Test' || 'Lint & Test (seldon rescue, off)' }}
     needs: [changes, lint-and-test]
     if: ${{ !cancelled() && needs.lint-and-test.result == 'failure' && vars.CI_SELDON_RACE == 'true' && github.run_attempt == 1 && (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
@@ -333,7 +339,10 @@ jobs:
 
   # api-image-smoke's hosted twin in the Seldon race: the same name and steps.
   api-image-smoke-hosted:
-    name: API image smoke (Bun)
+    # The real job's name only while the race is on: a skipped twin or rescue
+    # sharing it would become that name's newest check run and could mask a
+    # failed required check.
+    name: ${{ vars.CI_SELDON_RACE == 'true' && 'API image smoke (Bun)' || 'API image smoke (Bun) (seldon twin, off)' }}
     needs: [changes, race]
     if: ${{ !cancelled() && !failure() && needs.race.outputs.race == 'true' && (github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true') }}
     runs-on: ubuntu-latest
@@ -346,7 +355,10 @@ jobs:
   # api-image-smoke's rescue: reruns it hosted when its Seldon lane failed (the
   # house network drops connections); a genuine failure fails again.
   api-image-smoke-rescue:
-    name: API image smoke (Bun)
+    # The real job's name only while the race is on: a skipped twin or rescue
+    # sharing it would become that name's newest check run and could mask a
+    # failed required check.
+    name: ${{ vars.CI_SELDON_RACE == 'true' && 'API image smoke (Bun)' || 'API image smoke (Bun) (seldon rescue, off)' }}
     needs: [changes, api-image-smoke]
     if: ${{ !cancelled() && needs.api-image-smoke.result == 'failure' && vars.CI_SELDON_RACE == 'true' && github.run_attempt == 1 && (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
@@ -416,7 +428,10 @@ jobs:
 
   # build-app's hosted twin in the Seldon race: the same name and steps.
   build-app-hosted:
-    name: Build App
+    # The real job's name only while the race is on: a skipped twin or rescue
+    # sharing it would become that name's newest check run and could mask a
+    # failed required check.
+    name: ${{ vars.CI_SELDON_RACE == 'true' && 'Build App' || 'Build App (seldon twin, off)' }}
     needs: [changes, race]
     if: ${{ !cancelled() && !failure() && needs.race.outputs.race == 'true' && (github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true') }}
     runs-on: ubuntu-latest
@@ -429,7 +444,10 @@ jobs:
   # build-app's rescue: reruns it hosted when its Seldon lane failed (the house
   # network drops connections); a genuine failure fails again.
   build-app-rescue:
-    name: Build App
+    # The real job's name only while the race is on: a skipped twin or rescue
+    # sharing it would become that name's newest check run and could mask a
+    # failed required check.
+    name: ${{ vars.CI_SELDON_RACE == 'true' && 'Build App' || 'Build App (seldon rescue, off)' }}
     needs: [changes, build-app]
     if: ${{ !cancelled() && needs.build-app.result == 'failure' && vars.CI_SELDON_RACE == 'true' && github.run_attempt == 1 && (github.event_name == 'pull_request' || github.event_name == 'merge_group') && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
