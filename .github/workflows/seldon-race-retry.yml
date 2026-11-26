@@ -5,6 +5,7 @@ name: Seldon race retry
 # Seldon only on run_attempt 1 (OxyHQ/oxy docs/engineering/build-and-deploy.md,
 # CI on Seldon). The house's ISP gateway can fail a Seldon job's checkout or
 # upload where hosted would pass; a genuine failure fails again on hosted.
+# (Proof run for the race on Moovo; this pull request is closed unmerged.)
 on:
   workflow_run:
     workflows: [CI]
